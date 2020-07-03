@@ -5,6 +5,7 @@ from collections import defaultdict
 from overcooked_ai_py.utils import pos_distance, load_from_json
 from overcooked_ai_py import read_layout_dict
 from overcooked_ai_py.mdp.actions import Action, Direction
+from overcooked_ai_py.mdp.graphics import *
 
 
 class ObjectState(object):
@@ -399,6 +400,7 @@ class OvercookedGridworld(object):
         self.delivery_reward = delivery_reward
         self.reward_shaping_params = NO_REW_SHAPING_PARAMS if rew_shaping_params is None else rew_shaping_params
         self.layout_name = layout_name
+        self.viewer = None # for visualization
 
     @staticmethod
     def from_layout_name(layout_name, **params_to_overwrite):
@@ -1202,6 +1204,44 @@ class OvercookedGridworld(object):
                 len(state.order_list), len([order == "any" for order in state.order_list])
             )
         return grid_string
+
+    ###################
+    # RENDER FUNCTION #
+    ###################
+
+    def render(self, state):
+        players_dict = {player.position: player for player in state.players}
+
+        # set window size; SPRITE_LENGTH is the length of each squared sprite, which could be tuned in graphics.py
+        window_size = self.width*SPRITE_LENGTH, self.height*SPRITE_LENGTH
+        
+        if self.viewer == None:
+            # create viewer
+            self.viewer = pygame.display.set_mode(window_size)
+            self.viewer.fill((255,255,255))
+        
+            # render the terrain
+            for y, terrain_row in enumerate(self.terrain_mtx):
+                for x, terrain in enumerate(terrain_row):
+                    curr_pos = pygame.Rect(x*SPRITE_LENGTH, y*SPRITE_LENGTH, SPRITE_LENGTH, SPRITE_LENGTH)
+                    # render the terrain
+                    terrain_obj = load_image(TERRAIN_TO_IMG[terrain])
+                    self.viewer.blit(terrain_obj, curr_pos)
+
+        # render the agents/players/chefs
+        for pos, player in players_dict.items():
+            x, y = pos
+            curr_pos = pygame.Rect(x*SPRITE_LENGTH, y*SPRITE_LENGTH, SPRITE_LENGTH, SPRITE_LENGTH)
+
+            # check player position conflicts
+            player_idx_lst = [i for i, p in enumerate(state.players) if p.position == player.position]
+            assert len(player_idx_lst) == 1
+
+            player_obj, player_hat_obj = get_player_sprite(player, player_idx_lst[0])
+            self.viewer.blit(player_obj, curr_pos)
+            self.viewer.blit(player_hat_obj, curr_pos)
+
+        pygame.display.update()
 
     ###################
     # STATE ENCODINGS #
