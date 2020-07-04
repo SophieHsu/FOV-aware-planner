@@ -1,5 +1,6 @@
 import itertools, copy
 import numpy as np
+import time
 from functools import reduce
 from collections import defaultdict
 from overcooked_ai_py.utils import pos_distance, load_from_json
@@ -353,6 +354,13 @@ EVENT_TYPES = [
     'useful_onion_drop',
     'potting_onion',
 
+    # Tomato events
+    'tomato_pickup',
+    'useful_tomato_pickup',
+    'tomato_drop',
+    'useful_tomato_drop',
+    'potting_tomato',
+
     # Dish events
     'dish_pickup',
     'useful_dish_pickup',
@@ -401,6 +409,8 @@ class OvercookedGridworld(object):
         self.reward_shaping_params = NO_REW_SHAPING_PARAMS if rew_shaping_params is None else rew_shaping_params
         self.layout_name = layout_name
         self.viewer = None # for visualization
+        self.pre_players_pos = None # players position of the previous state, for visualization
+        self.pre_objects_pos = None
 
     @staticmethod
     def from_layout_name(layout_name, **params_to_overwrite):
@@ -1209,38 +1219,101 @@ class OvercookedGridworld(object):
     # RENDER FUNCTION #
     ###################
 
-    def render(self, state):
+    def render(self, state, time_left=None):
+        """
+        Function that renders the game
+
+        Args:
+            state(OvercookedState): state to render
+            time_left(int): timestep left for the game
+        """
         players_dict = {player.position: player for player in state.players}
+        objects_pos = [] # list of positions of the objects
 
         # set window size; SPRITE_LENGTH is the length of each squared sprite, which could be tuned in graphics.py
         window_size = self.width*SPRITE_LENGTH, self.height*SPRITE_LENGTH
-        
+
         if self.viewer == None:
             # create viewer
             self.viewer = pygame.display.set_mode(window_size)
             self.viewer.fill((255,255,255))
-        
+
             # render the terrain
             for y, terrain_row in enumerate(self.terrain_mtx):
                 for x, terrain in enumerate(terrain_row):
-                    curr_pos = pygame.Rect(x*SPRITE_LENGTH, y*SPRITE_LENGTH, SPRITE_LENGTH, SPRITE_LENGTH)
-                    # render the terrain
-                    terrain_obj = load_image(TERRAIN_TO_IMG[terrain])
-                    self.viewer.blit(terrain_obj, curr_pos)
+                    curr_pos = get_curr_pos(x, y)
+                    terrain_pgobj = load_image(TERRAIN_TO_IMG[terrain])
+                    self.viewer.blit(terrain_pgobj, curr_pos)
 
-        # render the agents/players/chefs
+        # update score and time left
+        if time_left is not None:
+            t_surface = get_text_sprite("time left: %d" % time_left)
+            self.viewer.blit(t_surface, t_surface.get_rect())
+
+        # remove the objects on the counters and pots
+        if self.pre_objects_pos is not None:
+            for pos in self.pre_objects_pos:
+                x, y = pos
+                blit_terrain(x, y, self.terrain_mtx, self.viewer)
+
+        # render objects at the new locations
+        for y, terrain_row in enumerate(self.terrain_mtx):
+            for x, terrain in enumerate(terrain_row):
+                curr_pos = get_curr_pos(x, y)
+                # there is object on a counter
+                if terrain == "X" and state.has_object((x, y)):
+                    state_obj = state.get_object((x, y))
+                    obj_pgobj = get_object_sprite(state_obj)
+                    self.viewer.blit(obj_pgobj, curr_pos)
+                    objects_pos.append((x, y))
+                # there is soup on a pot
+                elif terrain == "P" and state.has_object((x, y)):
+                    soup_obj = state.get_object((x, y))
+                    soup_type, num_items, cook_time = soup_obj.state
+                    # if soup is ready
+                    if self.soup_ready_at_location(state, (x, y)):
+                        soup_pgobj = load_image(os.path.join(ASSETS_DIR,
+                                                             OBJECT_DIR,
+                                                             'soup-%s-cooked.png' % soup_type))
+                    # if soup is not ready
+                    else:
+                        soup_pgobj = get_object_sprite(soup_obj, on_pot = True)
+                    self.viewer.blit(soup_pgobj, curr_pos)
+                    objects_pos.append((x, y))
+
+                    # render cook time for current soup if cooking starts
+                    if num_items == self.num_items_for_soup:
+                        cook_time_text_surface = get_text_sprite(str(cook_time))
+                        text_pos = cook_time_text_surface.get_rect()
+                        # align midbottom of the textbox to midbottom of current terrain
+                        text_pos.midbottom = curr_pos.midbottom
+                        self.viewer.blit(cook_time_text_surface, text_pos)
+
+        # remove chefs from last state
+        if self.pre_players_pos is not None:
+            for pos in self.pre_players_pos:
+                x, y = pos
+                blit_terrain(x, y, self.terrain_mtx, self.viewer)
+
+        # render the chefs at new location
         for pos, player in players_dict.items():
             x, y = pos
-            curr_pos = pygame.Rect(x*SPRITE_LENGTH, y*SPRITE_LENGTH, SPRITE_LENGTH, SPRITE_LENGTH)
+            curr_pos = get_curr_pos(x, y)
 
             # check player position conflicts
             player_idx_lst = [i for i, p in enumerate(state.players) if p.position == player.position]
             assert len(player_idx_lst) == 1
 
-            player_obj, player_hat_obj = get_player_sprite(player, player_idx_lst[0])
-            self.viewer.blit(player_obj, curr_pos)
-            self.viewer.blit(player_hat_obj, curr_pos)
+            player_pgobj, player_hat_pgobj = get_player_sprite(player, player_idx_lst[0])
+            self.viewer.blit(player_pgobj, curr_pos)
+            self.viewer.blit(player_hat_pgobj, curr_pos)
 
+        # update previous players and objects positions
+        self.pre_players_pos = players_dict.keys()
+        if len(objects_pos) > 0:
+            self.pre_objects_pos = objects_pos
+        else:
+            self.pre_objects_pos = None
         pygame.display.update()
 
     ###################
