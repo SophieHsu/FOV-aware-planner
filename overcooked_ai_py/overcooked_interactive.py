@@ -123,7 +123,7 @@ class App:
         self.on_cleanup()
 
 if __name__ == "__main__" :
-    mdp = OvercookedGridworld.from_layout_name("simple_tomato")
+    mdp = OvercookedGridworld.from_layout_name("basic_1-1")
     env = OvercookedEnv.from_mdp(mdp)
     rand_agent = RandomAgent(all_actions=True)
     theApp = App(env, rand_agent, player_idx=0, slow_time=True)
