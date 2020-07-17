@@ -13,7 +13,7 @@ from torch.autograd import Variable
 import dcgan
 import os
 import json
-from helper import get_lvls, get_integer_lvl
+from helper import read_in_training_data, obj_types
 
 
 def run(nz,
@@ -48,20 +48,20 @@ def run(nz,
 
     map_size = 32
 
-    index2strJson = json.load(open(os.path.join(os.path.dirname(__file__), 'zelda_index2str.json'), 'r'))
-    str2index = {}
-    for key in index2strJson:
-        str2index[index2strJson[key]] = key
+    # index2strJson = json.load(open(os.path.join(os.path.dirname(__file__), 'zelda_index2str.json'), 'r'))
+    # str2index = {}
+    # for key in index2strJson:
+    #     str2index[index2strJson[key]] = key
 
-    # get all levels and store them in one numpy array
-    np_lvls = []
-    lvls = get_lvls(lvl_data)
-    for lvl in lvls:
-        numpyLvl = get_integer_lvl(lvl, str2index)
-        np_lvls.append(numpyLvl)
+    # # get all levels and store them in one numpy array
+    # np_lvls = []
+    # lvls = get_lvls(lvl_data)
+    # for lvl in lvls:
+    #     numpyLvl = get_integer_lvl(lvl, str2index)
+    #     np_lvls.append(numpyLvl)
 
-    X = np.array(np_lvls)
-    z_dims = len(index2strJson)
+    X = read_in_training_data(lvl_data)
+    z_dims = len(obj_types)
 
     num_batches = X.shape[0] / batch_size
     X_onehot = np.eye(z_dims, dtype='uint8')[X]
@@ -202,7 +202,7 @@ if __name__ == '__main__':
     parser.add_argument('--gan_experiment', help='Where to store samples and models')
     parser.add_argument('--adam', action='store_true', help='Whether to use adam (default is rmsprop)')
     parser.add_argument('--seed', type=int, default=999, help='random seed for reproducibility')
-    parser.add_argument('--lvl_data', help='Path to the human designed levels.')
+    parser.add_argument('--lvl_data', help='Path to the human designed levels.', default=os.path.join("data", "layouts"))
     opt = parser.parse_args()
 
     run(opt.nz,
