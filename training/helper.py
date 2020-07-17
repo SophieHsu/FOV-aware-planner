@@ -1,26 +1,26 @@
-import os
-
 import numpy as np
+import os
+import json
+from overcooked_ai_py import read_layout_dict
 
+obj_types = "12XSPOD "
 
-def get_lvls(folder):
+def read_in_training_data(data_path):
     lvls = []
-    files = sorted([f for f in os.listdir(folder)], key=lambda x: int(x.split('.')[0]))
-    for f in files:
-        f = open(os.path.join(folder, f))
-        lvl = f.readlines()
-        clean_level = []
-        for l in lvl:
-            if len(l.strip()) > 0:
-                clean_level.append(l.strip())
-        lvls.append(clean_level)
-    return lvls
+    for layout_file in os.listdir(data_path):
+        if layout_file.endswith(".layout") and layout_file.startswith("gen"):
+            layout_name = layout_file.split('.')[0]
+            raw_layout = read_layout_dict(layout_name)
+            raw_layout = raw_layout['grid'].split('\n')
+            lvl = []
+            for row in raw_layout:
+                lvl_row = []
+                for tile in row:
+                    print(tile)
+                    lvl_row.append(obj_types.index(tile))
+                lvl.append(np.array(lvl_row))
+            lvls.append(np.array(lvl))
 
+    return np.array(lvls)
 
-def get_integer_lvl(lvl, str2index):
-    numpyLvl = np.zeros((len(lvl), len(lvl[0])))
-    for y in range(len(lvl)):
-        for x in range(len(lvl[y])):
-            c = lvl[y][x]
-            numpyLvl[y][x] = str2index[c]
-    return numpyLvl.astype(np.uint8)
+# print(read_in_training_data(os.path.join("data", "layouts")))
