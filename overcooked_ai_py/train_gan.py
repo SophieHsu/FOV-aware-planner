@@ -62,7 +62,7 @@ def run(nz,
 
     X = read_in_training_data(lvl_data)
     z_dims = len(obj_types)
-    print(X.shape)
+    print('x_shape', X.shape)
 
     num_batches = X.shape[0] / batch_size
     X_onehot = np.eye(z_dims, dtype='uint8')[X]

@@ -18,7 +18,7 @@ def read_in_training_data(data_path):
                 row = row.strip()
                 for y, tile in enumerate(row):
                     np_lvl[x][y] = obj_types.index(tile)
-            lvls.append(np_lvl)
+            lvls.append(np_lvl.astype(np.uint8))
 
     return np.array(lvls)
 
