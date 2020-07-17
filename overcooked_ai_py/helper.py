@@ -12,14 +12,13 @@ def read_in_training_data(data_path):
             layout_name = layout_file.split('.')[0]
             raw_layout = read_layout_dict(layout_name)
             raw_layout = raw_layout['grid'].split('\n')
-            lvl = []
-            for row in raw_layout:
-                lvl_row = []
-                for tile in row:
-                    print(tile)
-                    lvl_row.append(obj_types.index(tile))
-                lvl.append(np.array(lvl_row))
-            lvls.append(np.array(lvl))
+
+            np_lvl = np.zeros((len(raw_layout), len(raw_layout[0])))
+            for x, row in enumerate(raw_layout):
+                row = row.strip()
+                for y, tile in enumerate(row[:-1]):
+                    np_lvl[x][y] = obj_types.index(tile)
+            lvls.append(np_lvl)
 
     return np.array(lvls)
 
