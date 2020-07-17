@@ -62,6 +62,7 @@ def run(nz,
 
     X = read_in_training_data(lvl_data)
     z_dims = len(obj_types)
+    print(X.shape)
 
     num_batches = X.shape[0] / batch_size
     X_onehot = np.eye(z_dims, dtype='uint8')[X]
@@ -199,7 +200,7 @@ if __name__ == '__main__':
     parser.add_argument('--clamp_lower', type=float, default=-0.01)
     parser.add_argument('--clamp_upper', type=float, default=0.01)
     parser.add_argument('--n_extra_layers', type=int, default=0, help='Number of extra layers on gen and disc')
-    parser.add_argument('--gan_experiment', help='Where to store samples and models')
+    parser.add_argument('--gan_experiment', help='Where to store samples and models', default=os.path.join("training"))
     parser.add_argument('--adam', action='store_true', help='Whether to use adam (default is rmsprop)')
     parser.add_argument('--seed', type=int, default=999, help='random seed for reproducibility')
     parser.add_argument('--lvl_data', help='Path to the human designed levels.', default=os.path.join("data", "layouts"))
