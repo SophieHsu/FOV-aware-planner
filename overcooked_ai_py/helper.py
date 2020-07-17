@@ -16,10 +16,10 @@ def read_in_training_data(data_path):
             np_lvl = np.zeros((len(raw_layout), len(raw_layout[0])))
             for x, row in enumerate(raw_layout):
                 row = row.strip()
-                for y, tile in enumerate(row[:-1]):
+                for y, tile in enumerate(row):
                     np_lvl[x][y] = obj_types.index(tile)
             lvls.append(np_lvl)
 
     return np.array(lvls)
 
-# print(read_in_training_data(os.path.join("data", "layouts")))
+print(read_in_training_data(os.path.join("data", "layouts")))
