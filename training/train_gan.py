@@ -4,17 +4,16 @@ import argparse
 import math
 import random
 
-import matplotlib.pyplot as plt
 import numpy as np
 import torch.backends.cudnn as cudnn
 import torch.optim as optim
 import torch.utils.data
 from torch.autograd import Variable
 
-import algos.torch.dcgan.dcgan as dcgan
+import dcgan
 import os
 import json
-from utils.TrainLevelHelper import get_lvls, get_integer_lvl
+from helper import get_lvls, get_integer_lvl
 
 
 def run(nz,
