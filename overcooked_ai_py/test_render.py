@@ -28,7 +28,7 @@ def setup_env(layout_name):
 # Test designed levels
 
 # render_level("basic_1-6")
-agent1, agent2, env = setup_env("gen1_basic_6-5")
+agent1, agent2, env = setup_env("corridor")
 done = False
 while not done:
     env.render()

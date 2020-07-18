@@ -11,7 +11,7 @@ _current_dir = os.path.dirname(os.path.abspath(__file__))
 DATA_DIR = _current_dir + "/data/"
 COMMON_TESTS_DIR = "/".join(_current_dir.split("/")[:-1]) + "/common_tests/"
 HUMAN_DATA_DIR = DATA_DIR + "human_data/"
-LAYOUTS_DIR = DATA_DIR + "layouts/"
+LAYOUTS_DIR = "/".join(_current_dir.split("/")[:-1]) + "/layouts/"
 
 def read_layout_dict(layout_name):
     return load_dict_from_file(os.path.join(LAYOUTS_DIR, layout_name + ".layout"))

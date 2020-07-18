@@ -14,6 +14,7 @@ import dcgan
 import os
 import json
 from helper import read_in_training_data, obj_types
+from overcooked_ai_py import LAYOUTS_DIR
 
 
 def run(nz,
@@ -61,6 +62,7 @@ def run(nz,
     #     np_lvls.append(numpyLvl)
 
     X = read_in_training_data(lvl_data)
+    print(X)
     z_dims = len(obj_types)
     print('x_shape', X.shape)
 
@@ -203,7 +205,7 @@ if __name__ == '__main__':
     parser.add_argument('--gan_experiment', help='Where to store samples and models', default=os.path.join("data", "training"))
     parser.add_argument('--adam', action='store_true', help='Whether to use adam (default is rmsprop)')
     parser.add_argument('--seed', type=int, default=999, help='random seed for reproducibility')
-    parser.add_argument('--lvl_data', help='Path to the human designed levels.', default=os.path.join("data", "layouts"))
+    parser.add_argument('--lvl_data', help='Path to the human designed levels.', default=LAYOUTS_DIR)
     opt = parser.parse_args()
 
     run(opt.nz,

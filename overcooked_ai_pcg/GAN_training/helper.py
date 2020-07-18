@@ -1,10 +1,11 @@
 import numpy as np
 import os
 import json
-from overcooked_ai_pcg import read_layout_dict
+from overcooked_ai_py import read_layout_dict
 import dcgan
 import torch
 from torch.autograd import Variable
+from overcooked_ai_py import LAYOUTS_DIR
 
 obj_types = "12XSPOD "
 
@@ -25,7 +26,7 @@ def read_in_training_data(data_path):
 
     return np.array(lvls)
 
-# print(read_in_training_data(os.path.join("data", "layouts")))
+# print(read_in_training_data(LAYOUTS_DIR))
 
 
 def gan_generate(batch_size, model_path):
