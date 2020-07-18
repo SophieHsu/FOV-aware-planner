@@ -25,7 +25,7 @@ def read_in_training_data(data_path):
 
     return np.array(lvls)
 
-print(read_in_training_data(os.path.join("data", "layouts")))
+# print(read_in_training_data(os.path.join("data", "layouts")))
 
 
 def gan_generate(batch_size, model_path):
@@ -49,4 +49,4 @@ def gan_generate(batch_size, model_path):
         lvl_str += "\n"
     print(lvl_str)
 
-# gan_generate(1, "training/netG_epoch_199_999.pth")
+# gan_generate(1, "data/training/netG_epoch_199_999.pth")
