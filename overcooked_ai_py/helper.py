@@ -2,6 +2,9 @@ import numpy as np
 import os
 import json
 from overcooked_ai_py import read_layout_dict
+import dcgan
+import torch
+from torch.autograd import Variable
 
 obj_types = "12XSPOD "
 
@@ -22,4 +25,28 @@ def read_in_training_data(data_path):
 
     return np.array(lvls)
 
-print(read_in_training_data(os.path.join("data", "layouts")))
+# print(read_in_training_data(os.path.join("data", "layouts")))
+
+
+def gan_generate(batch_size, model_path):
+    nz = 32
+    x = np.random.randn(batch_size, nz, 1, 1)
+
+    generator = dcgan.DCGAN_G(isize=32, nz=nz, nc=len(obj_types), ngf=64, ngpu=1)
+    generator.load_state_dict(torch.load(model_path, map_location=lambda storage, loc: storage))
+    latent_vector = torch.FloatTensor(x).view(batch_size, nz, 1, 1)
+    with torch.no_grad():
+        levels = generator(Variable(latent_vector))
+    levels.data = levels.data[:, :, :10, :15]
+    im = levels.data.cpu().numpy()
+    im = np.argmax( im, axis = 1)
+    lvl_int = im[0]
+
+    lvl_str = ""
+    for lvl_row in lvl_int:
+        for tile_int in lvl_row:
+            lvl_str += obj_types[tile_int]
+        lvl_str += "\n"
+    print(lvl_str)
+
+# gan_generate(1, "training/netG_epoch_199_999.pth")
