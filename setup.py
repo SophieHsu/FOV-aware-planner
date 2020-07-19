@@ -12,6 +12,7 @@ setup(name='overcooked_ai',
         'numpy',
         'tqdm',
         'gym',
-        'pygame'
+        'pygame',
+        'torch'
       ]
     )
