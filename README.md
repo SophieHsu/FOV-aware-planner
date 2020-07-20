@@ -1,21 +1,25 @@
-# Overcooked-AI
+# Overcooked-AI-PCG
+
+Overcooked-AI-PCG is a Procedural Content Generation project aiming to generate Overcooked-AI game levels that would cause undesirable behaviors while Human and AI play cooperatively in Overcooked-AI environment.
+
+## Overcooked-AI
 <p align="center">
   <!-- <img src="overcooked_ai_js/images/screenshot.png" width="350"> -->
-  <img src="overcooked_ai_js/images/layouts.gif" width="100%"> 
+  <img src="overcooked_ai_py/images/layouts.gif" width="100%"> 
   <i>5 of the available layouts. New layouts are easy to hardcode or generate programmatically.</i>
 </p>
 
-## Introduction
+### Introduction
 
 Overcooked-AI is a benchmark environment for fully cooperative multi-agent performance, based on the wildly popular video game [Overcooked](http://www.ghosttowngames.com/overcooked/). 
 
 The goal of the game is to deliver soups as fast as possible. Each soup requires taking 3 items and placing them in a pot, waiting for the soup to cook, and then having an agent pick up the soup and delivering it. The agents should split up tasks on the fly and coordinate effectively in order to achieve high reward.
 
-You can **try out the game [here](https://humancompatibleai.github.io/overcooked-demo/)** (playing with some previously trained DRL agents). To play with your own trained agents using this interface, you can use [this repo](https://github.com/HumanCompatibleAI/overcooked-demo). To run human-AI experiments, check out [this repo](https://github.com/HumanCompatibleAI/overcooked-hAI-exp). You can find some human-human gameplay data already collected [here](https://github.com/HumanCompatibleAI/human_aware_rl/tree/master/human_aware_rl/data/human/anonymized).
+You can **try out the game [here](https://humancompatibleai.github.io/overcooked-demo/)** (playing with some previously trained DRL agents).
 
-Check out [this repo](https://github.com/HumanCompatibleAI/human_aware_rl) for the DRL implementations compatible with the environment and reproducible results to our paper: *[On the Utility of Learning about Humans for Human-AI Coordination](https://arxiv.org/abs/1910.05789)* (also see our [blog post](https://bair.berkeley.edu/blog/2019/10/21/coordination/)).
+For more information about the environment, please check out the [original Overcooked-AI repo](https://github.com/HumanCompatibleAI/overcooked_ai).
 
-## Installation
+### Install Overcooked-AI
 
 It is useful to setup a conda environment with Python 3.7:
 
@@ -31,15 +35,7 @@ cd overcooked_ai
 python setup.py develop
 ```
 
-In `overcooked_ai_js` there is a javascript implementation of the Overcooked MDP and game visualizer.
-
-To install it, cd into `overcooked_ai_js` and set up the package with `npm install`.
-For development, you will also need to install browserify: `npm install -g browserify`
-
-
 ### Verifying Installation
-
-#### Python Code
 
 To verify your python installation, you can try running the following command from the inner `overcooked_ai_py` folder:
 
@@ -49,14 +45,8 @@ python run_tests.py
 
 If you're thinking of using the planning code extensively, you should run (this can take 5-10 mins): `python run_tests_full_planning_suite.py`
 
-#### Javascript Code
 
-Run tests with `npm run test`. Testing scripts use `jest`, which exposes a `window` object, and so
-`npm run build-window` should be run before running modified tests.
-
-`overcooked-window.js` is used for the demo and testing.
-
-## Python Code Structure Overview
+### Python Code Structure Overview
 
 `overcooked_ai_py` contains:
 
@@ -64,6 +54,8 @@ Run tests with `npm run test`. Testing scripts use `jest`, which exposes a `wind
 - `overcooked_mdp.py`: main Overcooked game logic
 - `overcooked_env.py`: environment classes built on top of the Overcooked mdp
 - `layout_generator.py`: functions to generate random layouts programmatically
+- `actions`: actions that agents can take
+- `graphics`: render related functions
 
 `agents/`:
 - `agent.py`: location of agent classes
@@ -75,20 +67,60 @@ Run tests with `npm run test`. Testing scripts use `jest`, which exposes a `wind
 
 `run_tests.py`: script to run all tests
 
-## Python Visualizations
+### Python Visualizations
+To test the visualization mechanism of Overcooked-AI, please run the following:
 
-One can adapt a version of [this file](https://github.com/HumanCompatibleAI/human_aware_rl/blob/master/human_aware_rl/overcooked_interactive.py) in order to be able to play games in terminal graphics with custom-defined agents.
-
-## Javascript Visualizations
-
-To run a simple demo that plays a trajectory demonstrating the
-transitions in the game (requires having npm installed):
-
-```
-$ npm run demo
+```bash
+cd overcooked_ai_py
+python test_render.py
 ```
 
-## Further Issues and questions
+A pygame window should pop up and two agents should be start to performing random actions in the environment.
 
-If you have issues or questions, don't hesitate to contact [Micah Carroll](https://micahcarroll.github.io) at mdc@berkeley.edu.
+## PCG GAN
 
+### GAN Training
+
+To train the GAN that generates Overcooked-AI levels, run the following:
+
+```bash
+cd overcooked_ai_pcg/GAN_training
+python train_gan.py --cuda
+```
+
+### Making More Training Data
+
+The size of the training levels are fixed to be 15(width) x 10(height). The available tile types are:
+
+```
+'1': Player 1
+'2': Player 2
+'X': Wall
+'S': Serve Point
+'P': Pot
+'O': Onion Dispenser
+'D': Dish Dispenser 
+' ': Floor
+```
+
+Please make sure that the levels you make satisfy **ALL** of the following constraints:
+
+1. The level must be **rigidly surrounded**. i.e. the first and last row, and the first and last column can be anything except `‘1’` (Player 1), `‘2’` (Player 2), and `‘ ’`(floor).
+
+2. There are **exactly 2 players** at different positions. But they cannot be at the first and last row, and the first and last column.
+
+3. There is **at least one** `‘O’`(onion).
+
+4. There is **at least one** `‘D’`(dish plate).
+
+5. There is **at least one** `‘P’`(pot).
+
+6. There is **at least one** `‘S’`(serve point).
+
+7. `‘O’`, `‘D’`, `‘P’`, `‘S’` can be **anywhere**.
+
+8. Both of the players must be able to reach at least one of `‘O’`, `‘D’`, `‘P’`, and `‘S’`.
+
+9. The size is exactly **15(width) x 10(height)**
+
+Please grab a version of `overcooked_ai_py/data/layouts/base.layout` to make the levels and place it under `overcooked_ai_py/data/layouts`. **Be sure to add prefix `gen` to its file name to differentiate it from non-GAN-training layouts.**
