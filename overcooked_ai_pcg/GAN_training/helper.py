@@ -10,6 +10,15 @@ from overcooked_ai_py import LAYOUTS_DIR
 obj_types = "12XSPOD "
 
 def read_in_training_data(data_path):
+    """
+    Read in .layouts file and return the data
+
+    Args:
+        data_path: path to the directory containing the training data
+
+    returns: a 3D np array of size num_lvl x lvl_height x lvl_width 
+             containing the encoded levels
+    """
     lvls = []
     for layout_file in os.listdir(data_path):
         if layout_file.endswith(".layout") and layout_file.startswith("gen"):
@@ -30,6 +39,12 @@ def read_in_training_data(data_path):
 
 
 def gan_generate(batch_size, model_path):
+    """
+    Generate level string given the path to the train netG model
+
+    Args:
+        model_path: path to the trained netG model
+    """
     nz = 32
     x = np.random.randn(batch_size, nz, 1, 1)
 
@@ -48,6 +63,6 @@ def gan_generate(batch_size, model_path):
         for tile_int in lvl_row:
             lvl_str += obj_types[tile_int]
         lvl_str += "\n"
-    print(lvl_str)
+    return lvl_str
 
 # gan_generate(1, "data/training/netG_epoch_199_999.pth")
