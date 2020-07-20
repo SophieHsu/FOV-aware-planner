@@ -46,7 +46,7 @@ python run_tests.py
 If you're thinking of using the planning code extensively, you should run (this can take 5-10 mins): `python run_tests_full_planning_suite.py`
 
 
-### Python Code Structure Overview
+### Overcooked-AI Code Structure Overview
 
 `overcooked_ai_py` contains:
 
@@ -105,17 +105,17 @@ The size of the training levels are fixed to be 15(width) x 10(height). The avai
 
 Please make sure that the levels you make satisfy **ALL** of the following constraints:
 
-1. The level must be **rigidly surrounded**. i.e. the first and last row, and the first and last column can be anything except `‘1’` (Player 1), `‘2’` (Player 2), and `‘ ’`(floor).
+1. The level must be **rigidly surrounded**. i.e. the first and last row, and the first and last column can be anything except `‘1’`, `‘2’`, and `‘ ’`.
 
 2. There are **exactly 2 players** at different positions. But they cannot be at the first and last row, and the first and last column.
 
-3. There is **at least one** `‘O’`(onion).
+3. There is **at least one** `‘O’`.
 
-4. There is **at least one** `‘D’`(dish plate).
+4. There is **at least one** `‘D’`.
 
-5. There is **at least one** `‘P’`(pot).
+5. There is **at least one** `‘P’`.
 
-6. There is **at least one** `‘S’`(serve point).
+6. There is **at least one** `‘S’`.
 
 7. `‘O’`, `‘D’`, `‘P’`, `‘S’` can be **anywhere**.
 
@@ -124,3 +124,12 @@ Please make sure that the levels you make satisfy **ALL** of the following const
 9. The size is exactly **15(width) x 10(height)**
 
 Please grab a version of `overcooked_ai_py/data/layouts/base.layout` to make the levels and place it under `overcooked_ai_py/data/layouts`. **Be sure to add prefix `gen` to its file name to differentiate it from non-GAN-training layouts.**
+
+### Overcooked-AI-PCG Code structure Overview
+
+`overcooked_ai_pcg` contains:
+
+`GAN_training`:
+- `dcgan.py`: Deep Convolutional Generative Adversarial Network Code
+- `train_gan.py`: GAN training script
+- `helper.py`: helper functions

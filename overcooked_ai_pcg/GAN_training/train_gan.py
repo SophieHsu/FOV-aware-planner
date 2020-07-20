@@ -62,10 +62,10 @@ def run(nz,
     #     np_lvls.append(numpyLvl)
 
     X = read_in_training_data(lvl_data)
-    print(X)
     z_dims = len(obj_types)
-    print('x_shape', X.shape)
+    print('x_shape', X.shape) # shape must be num_lvls x lvl_height x lvl_width
 
+    # set up input to the GAN, size is batch_size x z_dim x map_size x map_size
     num_batches = X.shape[0] / batch_size
     X_onehot = np.eye(z_dims, dtype='uint8')[X]
     X_onehot = np.rollaxis(X_onehot, 3, 1)
@@ -73,6 +73,7 @@ def run(nz,
     X_train[:, 1, :, :] = 1.0
     X_train[:X.shape[0], :, :X.shape[1], :X.shape[2]] = X_onehot
 
+    # apply a initialization function to each module of the network
     def weights_init(m):
         classname = m.__class__.__name__
         if classname.find('Conv') != -1:
@@ -92,11 +93,12 @@ def run(nz,
         netD.load_state_dict(torch.load(path_netD))
 
     input = torch.FloatTensor(batch_size, z_dims, map_size, map_size)
-    noise = torch.FloatTensor(batch_size, nz, 1, 1)
-    fixed_noise = torch.FloatTensor(batch_size, nz, 1, 1).normal_(0, 1)
-    one = torch.FloatTensor([1])
+    noise = torch.FloatTensor(batch_size, nz, 1, 1) # used for trainng
+    fixed_noise = torch.FloatTensor(batch_size, nz, 1, 1).normal_(0, 1) # used for testing
+    one = torch.FloatTensor([1]) # flip minimization and maximization using one and mone
     mone = one * -1
 
+    # move data to GPU
     if cuda:
         netD.cuda(gpu_id)
         netG.cuda(gpu_id)
@@ -113,6 +115,7 @@ def run(nz,
         optimizerD = optim.RMSprop(netD.parameters(), lr=lrD)
         optimizerG = optim.RMSprop(netG.parameters(), lr=lrG)
 
+    # main trainng loop
     for epoch in range(niter):
         X_train = X_train[torch.randperm(len(X_train))]
 
@@ -142,11 +145,14 @@ def run(nz,
 
             input.resize_as_(real_cpu).copy_(real_cpu)
 
+            # compute gradient read input image
+            # D minimize the likehood of read image being fake
             errD_real = netD(input)
             errD_real.backward(one)
             total_errD_real += errD_real.item()
 
-            # train with fake
+            # compute gradient of fake input image from G
+            # D maximize the likelihood of the fake image being fake
             noise.resize_(batch_size, nz, 1, 1).normal_(0, 1)
             fake = netG(noise)
             errD_fake = netD(fake.detach())
@@ -160,6 +166,7 @@ def run(nz,
             ###########################
             netG.zero_grad()
 
+            # G minimize the likelihood of the fake image being fake
             errG = netD(fake)
             errG.backward(one)
             total_errG += errG.item()
@@ -173,11 +180,12 @@ def run(nz,
         print('[%d/%d] Loss_G: %f Loss_D_real: %f Loss_D_fake %f'
               % (epoch, niter, average_errG, average_errD_real, average_errD_fake))
 
+        # use trained G to generate fake levels from fixed noise vector once in a while
         if epoch % 10 == 9 or epoch == niter - 1:
             netG.eval()
             with torch.no_grad():
                 fake = netG(fixed_noise)
-                im = fake.cpu().numpy()[:, :, :9, :13]
+                im = fake.cpu().numpy()[:, :, :10, :15]
                 im = np.argmax(im, axis=1)
             with open('{0}/fake_level_epoch_{1}_{2}.json'.format(gan_experiment, epoch, seed), 'w') as f:
                 f.write(json.dumps(im[0].tolist()))

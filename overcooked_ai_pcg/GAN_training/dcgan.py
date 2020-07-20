@@ -4,7 +4,22 @@ import torch.nn.parallel
 
 
 class DCGAN_D(nn.Module):
+    """
+    Discriminator DCGAN.
+    """
     def __init__(self, isize, nz, nc, ndf, ngpu, n_extra_layers=0):
+        """
+        isize: size of input image
+        nz: size of latent z vector
+        nc: total number of objects in the environment
+        ndf: number of output channels of initial conv2d layer
+        ngpu: number of GPUs
+        n_extra_layers: number of extra layers with out_channels to be ndf to add
+        
+        Note: 
+        input to the GAN is nc x isize x isize
+        output from the GAN is the likehood of the image being fake
+        """
         super(DCGAN_D, self).__init__()
         self.ngpu = ngpu
         assert isize % 16 == 0, "isize has to be a multiple of 16"
@@ -17,7 +32,7 @@ class DCGAN_D(nn.Module):
                         nn.LeakyReLU(0.2, inplace=True))
         csize, cndf = isize / 2, ndf
 
-        # Extra layers
+        # add extra layers with out_channels set to ndf
         for t in range(n_extra_layers):
             main.add_module('extra-layers-{0}:{1}:conv'.format(t, cndf),
                             nn.Conv2d(cndf, cndf, 3, 1, 1, bias=False))
@@ -25,7 +40,8 @@ class DCGAN_D(nn.Module):
                             nn.BatchNorm2d(cndf))
             main.add_module('extra-layers-{0}:{1}:relu'.format(t, cndf),
                             nn.LeakyReLU(0.2, inplace=True))
-
+        
+        # add more conv2d layers with exponentially more out_channels
         while csize > 4:
             in_feat = cndf
             out_feat = cndf * 2
@@ -54,7 +70,20 @@ class DCGAN_D(nn.Module):
 
 
 class DCGAN_G(nn.Module):
+    """
+    Generator DCGAN
+    """
     def __init__(self, isize, nz, nc, ngf, ngpu, n_extra_layers=0):
+        """
+        isize: size of input image
+        nz: size of latent z vector
+        nc: total number of objects in the environment
+        ngf: number of output channels of initial conv2d layer
+        ngpu: number of GPUs
+        n_extra_layers: number of extra layers with out_channels to be ngf to add
+        
+        Note: input is a latent vector of size nz
+        """
         super(DCGAN_G, self).__init__()
         self.ngpu = ngpu
         assert isize % 16 == 0, "isize has to be a multiple of 16"
