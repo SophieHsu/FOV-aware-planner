@@ -1,6 +1,6 @@
 # Overcooked-AI-PCG
 
-Overcooked-AI-PCG is a Procedural Content Generation project aiming to generate Overcooked-AI game levels that would cause undesirable behaviors while Human and AI play cooperatively in Overcooked-AI environment.
+Overcooked-AI-PCG is a Procedural Content Generation project aiming to generate Overcooked-Ai game levels that would cause undesirable behaviors while Human and AI play cooperatively in the environment.
 
 ## Overcooked-AI
 <p align="center">
@@ -75,7 +75,7 @@ cd overcooked_ai_py
 python test_render.py
 ```
 
-A pygame window should pop up and two agents should be start to performing random actions in the environment.
+A pygame window should pop up and two agents should start performing random actions in the environment.
 
 ## PCG GAN
 
@@ -90,7 +90,7 @@ python train_gan.py --cuda
 
 ### Making More Training Data
 
-The size of the training levels are fixed to be 15(width) x 10(height). The available tile types are:
+The size of the training levels is fixed to be 15(width) x 10(height). The available tile types are:
 
 ```
 '1': Player 1

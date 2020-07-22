@@ -145,8 +145,8 @@ def run(nz,
 
             input.resize_as_(real_cpu).copy_(real_cpu)
 
-            # compute gradient read input image
-            # D minimize the likehood of read image being fake
+            # compute gradient of real input image
+            # D minimize the likehood of real image being fake
             errD_real = netD(input)
             errD_real.backward(one)
             total_errD_real += errD_real.item()
