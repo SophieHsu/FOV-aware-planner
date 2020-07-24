@@ -13,6 +13,7 @@ setup(name='overcooked_ai',
         'tqdm',
         'gym',
         'pygame',
-        'torch'
+        'torch',
+        'matplotlib',
       ]
     )

@@ -1,13 +1,38 @@
 import numpy as np
 import os
 import json
-from overcooked_ai_py import read_layout_dict
 import dcgan
 import torch
 from torch.autograd import Variable
+from matplotlib import pyplot as plt
+from overcooked_ai_py import read_layout_dict
 from overcooked_ai_py import LAYOUTS_DIR
+from overcooked_ai_pcg import ERR_LOG_PIC
 
 obj_types = "12XSPOD "
+
+
+def vertical_flip(np_lvl):
+    """
+    Return the vertically flipped version of the input np level.
+    """
+    np_lvl_vflip = np.zeros(np_lvl.shape)
+    height, width = np_lvl.shape
+    for x in range(height):
+        for y in range(width):
+            np_lvl_vflip[x][y] = np_lvl[x][width-y-1]
+    
+    return np_lvl_vflip.astype(np.uint8)
+
+def horizontal_flip(np_lvl):
+    """
+    Return the horizontally flipped version of the input np level.
+    """
+    np_lvl_hflip = np.zeros(np_lvl.shape)
+    height = np_lvl.shape[0]
+    for x in range(height):
+        np_lvl_hflip[x] = np_lvl[height-x-1]
+    return np_lvl_hflip.astype(np.uint8)
 
 def read_in_training_data(data_path):
     """
@@ -31,7 +56,16 @@ def read_in_training_data(data_path):
                 row = row.strip()
                 for y, tile in enumerate(row):
                     np_lvl[x][y] = obj_types.index(tile)
-            lvls.append(np_lvl.astype(np.uint8))
+            
+            # data agumentation: add flipped levels to data set
+            np_lvl = np_lvl.astype(np.uint8)
+            np_lvl_vflip = vertical_flip(np_lvl)
+            np_lvl_hflip = horizontal_flip(np_lvl)
+            np_lvl_vhflip = vertical_flip(np_lvl_hflip)
+            lvls.append(np_lvl)
+            lvls.append(np_lvl_vflip)
+            lvls.append(np_lvl_hflip)
+            lvls.append(np_lvl_vhflip)
 
     return np.array(lvls)
 
@@ -65,4 +99,17 @@ def gan_generate(batch_size, model_path):
         lvl_str += "\n"
     return lvl_str
 
-# gan_generate(1, "data/training/netG_epoch_199_999.pth")
+def plot_err(average_errG_log, average_errD_fake_log, average_errD_real_log):
+    """
+    Given lists of recorded errors and plot them.
+    """
+    plt.plot(average_errG_log, 'r', label="err_G")
+    plt.plot(average_errD_fake_log, 'b', label="err_D_fake")
+    plt.plot(average_errD_real_log, 'g', label="err_D_real")
+    plt.legend()
+    plt.savefig(ERR_LOG_PIC)
+    plt.show()
+
+
+# lvl_str = gan_generate(1, "data/training/netG_epoch_54999_999.pth")
+# print(lvl_str)

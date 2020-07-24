@@ -13,8 +13,9 @@ from torch.autograd import Variable
 import dcgan
 import os
 import json
-from helper import read_in_training_data, obj_types
+from helper import read_in_training_data, obj_types, plot_err
 from overcooked_ai_py import LAYOUTS_DIR
+from overcooked_ai_pcg import GAN_TRAINING_DIR
 
 
 def run(nz,
@@ -115,6 +116,11 @@ def run(nz,
         optimizerD = optim.RMSprop(netD.parameters(), lr=lrD)
         optimizerG = optim.RMSprop(netG.parameters(), lr=lrG)
 
+        # record errors for plotting
+        average_errG_log = []
+        average_errD_fake_log = []
+        average_errD_real_log = []
+
     # main trainng loop
     for epoch in range(niter):
         X_train = X_train[torch.randperm(len(X_train))]
@@ -177,6 +183,10 @@ def run(nz,
         average_errD_fake = total_errD_fake / num_batches
         average_errD_real = total_errD_real / num_batches
 
+        average_errG_log.append(average_errG)
+        average_errD_fake_log.append(average_errD_fake)
+        average_errD_real_log.append(average_errD_real)
+
         print('[%d/%d] Loss_G: %f Loss_D_real: %f Loss_D_fake %f'
               % (epoch, niter, average_errG, average_errD_real, average_errD_fake))
 
@@ -190,7 +200,7 @@ def run(nz,
             with open('{0}/fake_level_epoch_{1}_{2}.json'.format(gan_experiment, epoch, seed), 'w') as f:
                 f.write(json.dumps(im[0].tolist()))
             torch.save(netG.state_dict(), '{0}/netG_epoch_{1}_{2}.pth'.format(gan_experiment, epoch, seed))
-
+    plot_err(average_errG_log, average_errD_fake_log, average_errD_real_log)
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
@@ -199,8 +209,8 @@ if __name__ == '__main__':
     parser.add_argument('--ndf', type=int, default=64)
     parser.add_argument('--batch_size', type=int, default=50, help='input batch size')
     parser.add_argument('--niter', type=int, default=55000, help='number of epochs to train for')
-    parser.add_argument('--lrD', type=float, default=0.0002, help='learning rate for Critic, default=0.00005')
-    parser.add_argument('--lrG', type=float, default=0.0002, help='learning rate for Generator, default=0.00005')
+    parser.add_argument('--lrD', type=float, default=0.0001, help='learning rate for Critic')
+    parser.add_argument('--lrG', type=float, default=0.0001, help='learning rate for Generator')
     parser.add_argument('--beta1', type=float, default=0.5, help='beta1 for adam. default=0.5')
     parser.add_argument('--cuda', action='store_true', help='enables cuda')
     parser.add_argument('--ngpu', type=int, default=1, help='number of GPUs to use')
@@ -210,7 +220,7 @@ if __name__ == '__main__':
     parser.add_argument('--clamp_lower', type=float, default=-0.01)
     parser.add_argument('--clamp_upper', type=float, default=0.01)
     parser.add_argument('--n_extra_layers', type=int, default=0, help='Number of extra layers on gen and disc')
-    parser.add_argument('--gan_experiment', help='Where to store samples and models', default=os.path.join("data", "training"))
+    parser.add_argument('--gan_experiment', help='Where to store samples and models', default=GAN_TRAINING_DIR)
     parser.add_argument('--adam', action='store_true', help='Whether to use adam (default is rmsprop)')
     parser.add_argument('--seed', type=int, default=999, help='random seed for reproducibility')
     parser.add_argument('--lvl_data', help='Path to the human designed levels.', default=LAYOUTS_DIR)
