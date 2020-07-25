@@ -120,6 +120,7 @@ def run(nz,
         average_errG_log = []
         average_errD_fake_log = []
         average_errD_real_log = []
+        average_errD_log = []
 
     # main trainng loop
     for epoch in range(niter):
@@ -136,6 +137,7 @@ def run(nz,
         total_errD_fake = 0
         total_errD_real = 0
         total_errG = 0
+        total_errD = 0
         while i < num_batches:  # len(dataloader):
             netD.zero_grad()
             # clamp parameters to a cube
@@ -149,7 +151,7 @@ def run(nz,
             else:
                 real_cpu = torch.FloatTensor(data)
 
-            input.resize_as_(real_cpu).copy_(real_cpu)
+            input.resize_as_(real_cpu).copy_(real_cpu) # copy data to input
 
             # compute gradient of real input image
             # D minimize the likehood of real image being fake
@@ -164,6 +166,9 @@ def run(nz,
             errD_fake = netD(fake.detach())
             errD_fake.backward(mone)
             total_errD_fake += errD_fake.item()
+
+            errD = errD_real - errD_fake
+            total_errD += errD.item()
 
             optimizerD.step()
 
@@ -182,13 +187,15 @@ def run(nz,
         average_errG = total_errG / num_batches
         average_errD_fake = total_errD_fake / num_batches
         average_errD_real = total_errD_real / num_batches
+        average_errD = total_errD / num_batches
 
         average_errG_log.append(average_errG)
         average_errD_fake_log.append(average_errD_fake)
         average_errD_real_log.append(average_errD_real)
+        average_errD_log.append(average_errD)
 
-        print('[%d/%d] Loss_G: %f Loss_D_real: %f Loss_D_fake %f'
-              % (epoch, niter, average_errG, average_errD_real, average_errD_fake))
+        print('[%d/%d] Loss_G: %f Loss_D: %f Loss_D_real: %f Loss_D_fake %f'
+              % (epoch, niter, average_errG, average_errD, average_errD_real, average_errD_fake))
 
         # use trained G to generate fake levels from fixed noise vector once in a while
         if epoch % 10 == 9 or epoch == niter - 1:
@@ -200,14 +207,14 @@ def run(nz,
             with open('{0}/fake_level_epoch_{1}_{2}.json'.format(gan_experiment, epoch, seed), 'w') as f:
                 f.write(json.dumps(im[0].tolist()))
             torch.save(netG.state_dict(), '{0}/netG_epoch_{1}_{2}.pth'.format(gan_experiment, epoch, seed))
-    plot_err(average_errG_log, average_errD_fake_log, average_errD_real_log)
+    plot_err(average_errG_log, average_errD_log, average_errD_fake_log, average_errD_real_log)
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument('--nz', type=int, default=32, help='size of the latent z vector')
     parser.add_argument('--ngf', type=int, default=64)
     parser.add_argument('--ndf', type=int, default=64)
-    parser.add_argument('--batch_size', type=int, default=50, help='input batch size')
+    parser.add_argument('--batch_size', type=int, default=32, help='input batch size')
     parser.add_argument('--niter', type=int, default=55000, help='number of epochs to train for')
     parser.add_argument('--lrD', type=float, default=0.0001, help='learning rate for Critic')
     parser.add_argument('--lrG', type=float, default=0.0001, help='learning rate for Generator')

@@ -99,12 +99,13 @@ def gan_generate(batch_size, model_path):
         lvl_str += "\n"
     return lvl_str
 
-def plot_err(average_errG_log, average_errD_fake_log, average_errD_real_log):
+def plot_err(average_errG_log, average_errD_log, average_errD_fake_log, average_errD_real_log):
     """
     Given lists of recorded errors and plot them.
     """
     plt.plot(average_errG_log, 'r', label="err_G")
-    plt.plot(average_errD_fake_log, 'b', label="err_D_fake")
+    plt.plot(average_errD_log, 'b', label="err_D")
+    plt.plot(average_errD_fake_log, 'm', label="err_D_fake")
     plt.plot(average_errD_real_log, 'g', label="err_D_real")
     plt.legend()
     plt.savefig(ERR_LOG_PIC)
