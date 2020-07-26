@@ -135,3 +135,4 @@ dmypy.json
 
 # overcooked_pcg_related
 overcooked_ai_pcg/GAN_training/data/training/*
+overcooked_ai_pcg/GAN_training/data/loss/*

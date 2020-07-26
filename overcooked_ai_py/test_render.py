@@ -24,10 +24,6 @@ def setup_env(layout_name):
     return agent1, agent2, env
 
 
-################################################################
-# Test designed levels
-
-# render_level("basic_1-6")
 agent1, agent2, env = setup_env("corridor")
 done = False
 while not done:
@@ -35,11 +31,3 @@ while not done:
     joint_action = (agent1.action(env.state)[0], agent2.action(env.state)[0])
     next_state, timestep_sparse_reward, done, info = env.step(joint_action)
     time.sleep(0.5)
-
-# for layout_filename in os.listdir("data/layouts"):
-#     print(layout_filename)
-#     if layout_filename.endswith(".layout"):
-#         layout_name = layout_filename.split(".")[0]
-#         env = setup_env(layout_name)
-#         print((env.mdp.width, env.mdp.height))
-#         print()

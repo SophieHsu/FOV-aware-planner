@@ -9,6 +9,7 @@ register(
 
 _current_dir = os.path.dirname(os.path.abspath(__file__))
 DATA_DIR = _current_dir + "/data/"
+ASSETS_DIR = _current_dir + "/assets/"
 COMMON_TESTS_DIR = "/".join(_current_dir.split("/")[:-1]) + "/common_tests/"
 HUMAN_DATA_DIR = DATA_DIR + "human_data/"
 LAYOUTS_DIR = DATA_DIR + "layouts/"

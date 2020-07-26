@@ -1,11 +1,11 @@
 import os
 import pygame
 import time
+from overcooked_ai_py import ASSETS_DIR
 from overcooked_ai_py.mdp.actions import Action, Direction
 pygame.init()
 
 SPRITE_LENGTH = 50 # length of each sprite square
-ASSETS_DIR = 'assets'
 TERRAIN_DIR = 'terrain'
 CHEF_DIR = 'chefs'
 OBJECT_DIR = 'objects'
