@@ -1,16 +1,16 @@
 import numpy as np
 import os
 import json
-import dcgan
 import torch
-from torch.autograd import Variable
 from matplotlib import pyplot as plt
+from overcooked_ai_py.mdp.overcooked_mdp import OvercookedGridworld
+from overcooked_ai_py.mdp.overcooked_env import OvercookedEnv
+from overcooked_ai_py.agents.agent import *
 from overcooked_ai_py import read_layout_dict
 from overcooked_ai_py import LAYOUTS_DIR
 from overcooked_ai_pcg import ERR_LOG_PIC
 
 obj_types = "12XSPOD "
-
 
 def vertical_flip(np_lvl):
     """
@@ -34,6 +34,28 @@ def horizontal_flip(np_lvl):
         np_lvl_hflip[x] = np_lvl[height-x-1]
     return np_lvl_hflip.astype(np.uint8)
 
+def lvl_str2number(raw_layout):
+    """
+    Turns pure string formatted lvl to num encoded format
+    """
+    np_lvl = np.zeros((len(raw_layout), len(raw_layout[0])))
+    for x, row in enumerate(raw_layout):
+        row = row.strip()
+        for y, tile in enumerate(row):
+            np_lvl[x,y] = obj_types.index(tile)
+    return np_lvl
+
+def lvl_number2str(np_lvl):
+    """
+    Turns num encoded format to pure string formatted lvl 
+    """
+    lvl_str = ""
+    for lvl_row in np_lvl:
+        for tile_int in lvl_row:
+            lvl_str += obj_types[tile_int]
+        lvl_str += "\n"
+    return lvl_str
+
 def read_in_training_data(data_path):
     """
     Read in .layouts file and return the data
@@ -51,11 +73,7 @@ def read_in_training_data(data_path):
             raw_layout = read_layout_dict(layout_name)
             raw_layout = raw_layout['grid'].split('\n')
 
-            np_lvl = np.zeros((len(raw_layout), len(raw_layout[0])))
-            for x, row in enumerate(raw_layout):
-                row = row.strip()
-                for y, tile in enumerate(row):
-                    np_lvl[x][y] = obj_types.index(tile)
+            np_lvl = lvl_str2number(raw_layout)
             
             # data agumentation: add flipped levels to data set
             np_lvl = np_lvl.astype(np.uint8)
@@ -71,34 +89,6 @@ def read_in_training_data(data_path):
 
 # print(read_in_training_data(LAYOUTS_DIR))
 
-
-def gan_generate(batch_size, model_path):
-    """
-    Generate level string given the path to the train netG model
-
-    Args:
-        model_path: path to the trained netG model
-    """
-    nz = 32
-    x = np.random.randn(batch_size, nz, 1, 1)
-
-    generator = dcgan.DCGAN_G(isize=32, nz=nz, nc=len(obj_types), ngf=64, ngpu=1)
-    generator.load_state_dict(torch.load(model_path, map_location=lambda storage, loc: storage))
-    latent_vector = torch.FloatTensor(x).view(batch_size, nz, 1, 1)
-    with torch.no_grad():
-        levels = generator(Variable(latent_vector))
-    levels.data = levels.data[:, :, :10, :15]
-    im = levels.data.cpu().numpy()
-    im = np.argmax( im, axis = 1)
-    lvl_int = im[0]
-
-    lvl_str = ""
-    for lvl_row in lvl_int:
-        for tile_int in lvl_row:
-            lvl_str += obj_types[tile_int]
-        lvl_str += "\n"
-    return lvl_str
-
 def plot_err(average_errG_log, average_errD_log, average_errD_fake_log, average_errD_real_log):
     """
     Given lists of recorded errors and plot them.
@@ -111,6 +101,20 @@ def plot_err(average_errG_log, average_errD_log, average_errD_fake_log, average_
     plt.savefig(ERR_LOG_PIC)
     plt.show()
 
+def setup_env_from_grid(layout_grid, config):
+    """
+    Set up random agents and overcooked env to run demo game.
 
-# lvl_str = gan_generate(1, "data/training/netG_epoch_54999_999.pth")
-# print(lvl_str)
+    Args:
+        layout_grid: list of string each representing a row of layout
+        config: metadata to config the env
+    """
+    mdp = OvercookedGridworld.from_grid(layout_grid, config)
+    env = OvercookedEnv.from_mdp(mdp, info_level = 0)
+    agent1 = RandomAgent(all_actions=True)
+    agent2 = RandomAgent(all_actions=True)
+    agent1.set_agent_index(0)
+    agent2.set_agent_index(1)
+    agent1.set_mdp(mdp)
+    agent2.set_mdp(mdp)
+    return agent1, agent2, env
