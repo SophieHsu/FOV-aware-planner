@@ -28,9 +28,16 @@ def gan_generate(batch_size, model_path):
     im = levels.data.cpu().numpy()
     im = np.argmax( im, axis = 1)
     lvl_int = im[0]
-    
+
+    print("Before repair:")
+    print(lvl_number2str(lvl_int))
+-
++
     lvl_repaired = repair_lvl(lvl_int)
     lvl_str = lvl_number2str(lvl_repaired)
+
+    print("After repair:")
+    print(lvl_str)
     return lvl_str
 
 def main():

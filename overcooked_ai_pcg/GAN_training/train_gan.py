@@ -8,6 +8,7 @@ import numpy as np
 import torch.backends.cudnn as cudnn
 import torch.optim as optim
 import torch.utils.data
+from torch import nn
 from torch.autograd import Variable
 
 import dcgan
@@ -37,7 +38,8 @@ def run(nz,
         gan_experiment,
         adam,
         seed,
-        lvl_data):
+        lvl_data,
+        save_length):
     os.makedirs(gan_experiment, exist_ok=True)
 
     random.seed(seed)
@@ -49,18 +51,6 @@ def run(nz,
         print("WARNING: You have a CUDA device, so you should probably run with --cuda")
 
     map_size = 32
-
-    # index2strJson = json.load(open(os.path.join(os.path.dirname(__file__), 'zelda_index2str.json'), 'r'))
-    # str2index = {}
-    # for key in index2strJson:
-    #     str2index[index2strJson[key]] = key
-
-    # # get all levels and store them in one numpy array
-    # np_lvls = []
-    # lvls = get_lvls(lvl_data)
-    # for lvl in lvls:
-    #     numpyLvl = get_integer_lvl(lvl, str2index)
-    #     np_lvls.append(numpyLvl)
 
     X = read_in_training_data(lvl_data)
     z_dims = len(obj_types)
@@ -98,6 +88,14 @@ def run(nz,
     fixed_noise = torch.FloatTensor(batch_size, nz, 1, 1).normal_(0, 1) # used for testing
     one = torch.FloatTensor([1]) # flip minimization and maximization using one and mone
     mone = one * -1
+    
+    # common practice for real and fake label
+    real = 1
+    fake = 0
+    criterion = nn.BCELoss()
+
+    # get current device
+    device = torch.device("cuda:{}".format(gpu_id) if (torch.cuda.is_available() and ngpu > 0) else "cpu")
 
     # move data to GPU
     if cuda:
@@ -116,18 +114,18 @@ def run(nz,
         optimizerD = optim.RMSprop(netD.parameters(), lr=lrD)
         optimizerG = optim.RMSprop(netG.parameters(), lr=lrG)
 
-        # record errors for plotting
-        average_errG_log = []
-        average_errD_fake_log = []
-        average_errD_real_log = []
-        average_errD_log = []
+    # record errors for plotting
+    average_errG_log = []
+    average_errD_fake_log = []
+    average_errD_real_log = []
+    average_errD_log = []
 
     # main trainng loop
     for epoch in range(niter):
         X_train = X_train[torch.randperm(len(X_train))]
 
         ############################
-        # (1) Update D network
+        # (1) Update D network: maximize log(D(x)) + log(1 - D(G(z)))
         ###########################
         # for p in netD.parameters():  # reset requires_grad
         #     p.requires_grad = True  # they are set to False below in netG update
@@ -153,37 +151,49 @@ def run(nz,
 
             input.resize_as_(real_cpu).copy_(real_cpu) # copy data to input
 
+            # construct real and fake labels
+            curr_batch_size = input.size(0)
+            real_label = torch.full((curr_batch_size,), 1, device=device)
+            fake_label = torch.full((curr_batch_size,), 0, device=device)
+
             # compute gradient of real input image
-            # D minimize the likehood of real image being fake
-            errD_real = netD(input)
-            errD_real.backward(one)
+            # D maximize the likelihood of real image being real            
+            output = netD(input).view(-1)
+            errD_real = criterion(output, real_label)
+            errD_real.backward()
             total_errD_real += errD_real.item()
+            D_x = output.mean().item()
 
             # compute gradient of fake input image from G
-            # D maximize the likelihood of the fake image being fake
-            noise.resize_(batch_size, nz, 1, 1).normal_(0, 1)
+            # D minimize the likelihood of the fake image being real
+            noise.resize_(curr_batch_size, nz, 1, 1).normal_(0, 1)
             fake = netG(noise)
-            errD_fake = netD(fake.detach())
-            errD_fake.backward(mone)
+            output = netD(fake.detach()).view(-1)
+            errD_fake = criterion(output, fake_label)
+            errD_fake.backward()
             total_errD_fake += errD_fake.item()
+            D_G_z1 = output.mean().item()
 
-            errD = errD_real - errD_fake
+            errD = errD_real + errD_fake
             total_errD += errD.item()
 
             optimizerD.step()
 
             ############################
-            # (2) Update G network
+            # (2) Update G network: maximize log(D(G(z)))
             ###########################
             netG.zero_grad()
 
             # G minimize the likelihood of the fake image being fake
-            errG = netD(fake)
-            errG.backward(one)
+            output = netD(fake).view(-1)
+            errG = criterion(output, real_label)
+            errG.backward()
+            D_G_z2 = output.mean().item()
             total_errG += errG.item()
             optimizerG.step()
 
             i += 1
+
         average_errG = total_errG / num_batches
         average_errD_fake = total_errD_fake / num_batches
         average_errD_real = total_errD_real / num_batches
@@ -198,7 +208,7 @@ def run(nz,
               % (epoch, niter, average_errG, average_errD, average_errD_real, average_errD_fake))
 
         # use trained G to generate fake levels from fixed noise vector once in a while
-        if epoch % 10 == 9 or epoch == niter - 1:
+        if epoch % save_length == save_length-1 or epoch == niter - 1:
             netG.eval()
             with torch.no_grad():
                 fake = netG(fixed_noise)
@@ -214,10 +224,10 @@ if __name__ == '__main__':
     parser.add_argument('--nz', type=int, default=32, help='size of the latent z vector')
     parser.add_argument('--ngf', type=int, default=64)
     parser.add_argument('--ndf', type=int, default=64)
-    parser.add_argument('--batch_size', type=int, default=32, help='input batch size')
-    parser.add_argument('--niter', type=int, default=55000, help='number of epochs to train for')
-    parser.add_argument('--lrD', type=float, default=0.0001, help='learning rate for Critic')
-    parser.add_argument('--lrG', type=float, default=0.0001, help='learning rate for Generator')
+    parser.add_argument('--batch_size', type=int, default=64, help='input batch size')
+    parser.add_argument('--niter', type=int, default=10000, help='number of epochs to train for')
+    parser.add_argument('--lrD', type=float, default=0.0002, help='learning rate for Critic')
+    parser.add_argument('--lrG', type=float, default=0.0002, help='learning rate for Generator')
     parser.add_argument('--beta1', type=float, default=0.5, help='beta1 for adam. default=0.5')
     parser.add_argument('--cuda', action='store_true', help='enables cuda')
     parser.add_argument('--ngpu', type=int, default=1, help='number of GPUs to use')
@@ -231,6 +241,7 @@ if __name__ == '__main__':
     parser.add_argument('--adam', action='store_true', help='Whether to use adam (default is rmsprop)')
     parser.add_argument('--seed', type=int, default=999, help='random seed for reproducibility')
     parser.add_argument('--lvl_data', help='Path to the human designed levels.', default=LAYOUTS_DIR)
+    parser.add_argument('--save_length', help='Length of save point', default=100)
     opt = parser.parse_args()
 
     run(opt.nz,
@@ -252,5 +263,6 @@ if __name__ == '__main__':
         opt.gan_experiment,
         opt.adam,
         opt.seed,
-        opt.lvl_data)
+        opt.lvl_data,
+        opt.save_length)
 

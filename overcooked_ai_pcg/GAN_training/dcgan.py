@@ -57,6 +57,9 @@ class DCGAN_D(nn.Module):
         # state size. K x 4 x 4
         main.add_module('final:{0}-{1}:conv'.format(cndf, 1),
                         nn.Conv2d(cndf, 1, 4, 1, 0, bias=False))
+        
+        # sigmoid to keep output in range [0, 1]
+        main.add_module('final:sigmoid', nn.Sigmoid())
         self.main = main
 
     def forward(self, input):
@@ -65,9 +68,8 @@ class DCGAN_D(nn.Module):
         else:
             output = self.main(input)
 
-        output = output.mean(0)
-        return output.view(1)
-
+        # output = output.mean(0)
+        return output
 
 class DCGAN_G(nn.Module):
     """
