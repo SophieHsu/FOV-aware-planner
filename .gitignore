@@ -134,5 +134,4 @@ dmypy.json
 /overcooked_ai_py/mdp/old/
 
 # overcooked_pcg_related
-overcooked_ai_pcg/GAN_training/data/training/*
-overcooked_ai_pcg/GAN_training/data/loss/*
+overcooked_ai_pcg/GAN_training/data/
