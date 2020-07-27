@@ -10,3 +10,6 @@ GAN_LOSS_DIR = os.path.join(GAN_DATA_DIR, "loss")
 
 # plot pic path
 ERR_LOG_PIC = os.path.join(GAN_LOSS_DIR, "err.png")
+
+# G_param file path
+G_PARAM_FILE = os.path.join(GAN_DATA_DIR, "G_param.json")

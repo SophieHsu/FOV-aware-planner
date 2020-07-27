@@ -14,7 +14,7 @@ from torch.autograd import Variable
 import dcgan
 import os
 import json
-from helper import read_in_training_data, obj_types, plot_err
+from helper import read_in_training_data, obj_types, plot_err, save_gan_param
 from overcooked_ai_py import LAYOUTS_DIR
 from overcooked_ai_pcg import GAN_TRAINING_DIR
 
@@ -242,6 +242,18 @@ def run(nz,
              average_D_x_log,
              average_D_G_z1_log,
              average_D_G_z2_log)
+    
+    # save Generator constructor params for generating levels later
+    G_param = {
+        'isize': map_size,
+        'nz': nz,
+        'nc': len(obj_types),
+        'ngf': ngf,
+        'ngpu': ngpu,
+        'n_extra_layers': n_extra_layers
+    }
+    save_gan_param(G_param)
+
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
@@ -250,8 +262,8 @@ if __name__ == '__main__':
     parser.add_argument('--ndf', type=int, default=64)
     parser.add_argument('--batch_size', type=int, default=64, help='input batch size')
     parser.add_argument('--niter', type=int, default=10000, help='number of epochs to train for')
-    parser.add_argument('--lrD', type=float, default=0.0005, help='learning rate for Critic')
-    parser.add_argument('--lrG', type=float, default=0.0005, help='learning rate for Generator')
+    parser.add_argument('--lrD', type=float, default=0.00005, help='learning rate for Critic')
+    parser.add_argument('--lrG', type=float, default=0.00005, help='learning rate for Generator')
     parser.add_argument('--beta1', type=float, default=0.5, help='beta1 for adam. default=0.5')
     parser.add_argument('--cuda', action='store_true', help='enables cuda')
     parser.add_argument('--ngpu', type=int, default=1, help='number of GPUs to use')

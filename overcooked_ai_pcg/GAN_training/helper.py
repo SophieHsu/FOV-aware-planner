@@ -8,7 +8,7 @@ from overcooked_ai_py.mdp.overcooked_env import OvercookedEnv
 from overcooked_ai_py.agents.agent import *
 from overcooked_ai_py import read_layout_dict
 from overcooked_ai_py import LAYOUTS_DIR
-from overcooked_ai_pcg import ERR_LOG_PIC
+from overcooked_ai_pcg import ERR_LOG_PIC, G_PARAM_FILE
 
 obj_types = "12XSPOD "
 
@@ -132,3 +132,12 @@ def setup_env_from_grid(layout_grid, config):
     agent1.set_mdp(mdp)
     agent2.set_mdp(mdp)
     return agent1, agent2, env
+
+def save_gan_param(G_params):
+    with open(G_PARAM_FILE, "w") as f:
+        json.dump(G_params, f)
+
+def read_gan_param():
+    with open(G_PARAM_FILE, "r") as f:
+        G_params = json.load(f)
+    return G_params
