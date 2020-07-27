@@ -50,7 +50,7 @@ def run(nz,
     if torch.cuda.is_available() and not cuda:
         print("WARNING: You have a CUDA device, so you should probably run with --cuda")
 
-    map_size = 32
+    map_size = 16
 
     X = read_in_training_data(lvl_data)
     z_dims = len(obj_types)
@@ -119,6 +119,9 @@ def run(nz,
     average_errD_fake_log = []
     average_errD_real_log = []
     average_errD_log = []
+    average_D_x_log = []
+    average_D_G_z1_log = []
+    average_D_G_z2_log = []
 
     # main trainng loop
     for epoch in range(niter):
@@ -136,6 +139,9 @@ def run(nz,
         total_errD_real = 0
         total_errG = 0
         total_errD = 0
+        total_D_x = 0
+        total_D_G_z1 = 0
+        total_D_G_z2 = 0
         while i < num_batches:  # len(dataloader):
             netD.zero_grad()
             # clamp parameters to a cube
@@ -163,6 +169,7 @@ def run(nz,
             errD_real.backward()
             total_errD_real += errD_real.item()
             D_x = output.mean().item()
+            total_D_x += D_x
 
             # compute gradient of fake input image from G
             # D minimize the likelihood of the fake image being real
@@ -171,10 +178,11 @@ def run(nz,
             output = netD(fake.detach()).view(-1)
             errD_fake = criterion(output, fake_label)
             errD_fake.backward()
-            total_errD_fake += errD_fake.item()
             D_G_z1 = output.mean().item()
-
             errD = errD_real + errD_fake
+
+            total_errD_fake += errD_fake.item()
+            total_D_G_z1 += D_G_z1
             total_errD += errD.item()
 
             optimizerD.step()
@@ -189,6 +197,8 @@ def run(nz,
             errG = criterion(output, real_label)
             errG.backward()
             D_G_z2 = output.mean().item()
+
+            total_D_G_z2 += D_G_z2
             total_errG += errG.item()
             optimizerG.step()
 
@@ -198,14 +208,22 @@ def run(nz,
         average_errD_fake = total_errD_fake / num_batches
         average_errD_real = total_errD_real / num_batches
         average_errD = total_errD / num_batches
+        average_D_x = total_D_x / num_batches
+        average_D_G_z1 = total_D_G_z1 / num_batches
+        average_D_G_z2 = total_D_G_z2 / num_batches
+        
 
         average_errG_log.append(average_errG)
         average_errD_fake_log.append(average_errD_fake)
         average_errD_real_log.append(average_errD_real)
         average_errD_log.append(average_errD)
+        average_D_x_log.append(average_D_x)
+        average_D_G_z1_log.append(average_D_G_z1)
+        average_D_G_z2_log.append(average_D_G_z2)
 
-        print('[%d/%d] Loss_G: %f Loss_D: %f Loss_D_real: %f Loss_D_fake %f'
-              % (epoch, niter, average_errG, average_errD, average_errD_real, average_errD_fake))
+        print('[%d/%d] Loss_G: %f Loss_D: %f Loss_D_real: %f Loss_D_fake %f D(x) %f D(G(z)) %f / %f'
+              % (epoch, niter, average_errG, average_errD, average_errD_real, average_errD_fake, 
+                 average_D_x, average_D_G_z1, average_D_G_z2))
 
         # use trained G to generate fake levels from fixed noise vector once in a while
         if epoch % save_length == save_length-1 or epoch == niter - 1:
@@ -217,7 +235,13 @@ def run(nz,
             with open('{0}/fake_level_epoch_{1}_{2}.json'.format(gan_experiment, epoch, seed), 'w') as f:
                 f.write(json.dumps(im[0].tolist()))
             torch.save(netG.state_dict(), '{0}/netG_epoch_{1}_{2}.pth'.format(gan_experiment, epoch, seed))
-    plot_err(average_errG_log, average_errD_log, average_errD_fake_log, average_errD_real_log)
+    plot_err(average_errG_log, 
+             average_errD_log, 
+             average_errD_fake_log, 
+             average_errD_real_log,
+             average_D_x_log,
+             average_D_G_z1_log,
+             average_D_G_z2_log)
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
@@ -226,8 +250,8 @@ if __name__ == '__main__':
     parser.add_argument('--ndf', type=int, default=64)
     parser.add_argument('--batch_size', type=int, default=64, help='input batch size')
     parser.add_argument('--niter', type=int, default=10000, help='number of epochs to train for')
-    parser.add_argument('--lrD', type=float, default=0.0002, help='learning rate for Critic')
-    parser.add_argument('--lrG', type=float, default=0.0002, help='learning rate for Generator')
+    parser.add_argument('--lrD', type=float, default=0.0005, help='learning rate for Critic')
+    parser.add_argument('--lrG', type=float, default=0.0005, help='learning rate for Generator')
     parser.add_argument('--beta1', type=float, default=0.5, help='beta1 for adam. default=0.5')
     parser.add_argument('--cuda', action='store_true', help='enables cuda')
     parser.add_argument('--ngpu', type=int, default=1, help='number of GPUs to use')
@@ -241,7 +265,7 @@ if __name__ == '__main__':
     parser.add_argument('--adam', action='store_true', help='Whether to use adam (default is rmsprop)')
     parser.add_argument('--seed', type=int, default=999, help='random seed for reproducibility')
     parser.add_argument('--lvl_data', help='Path to the human designed levels.', default=LAYOUTS_DIR)
-    parser.add_argument('--save_length', help='Length of save point', default=100)
+    parser.add_argument('--save_length', type=int, default=100, help='Length of save point')
     opt = parser.parse_args()
 
     run(opt.nz,

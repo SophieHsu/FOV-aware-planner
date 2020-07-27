@@ -126,7 +126,7 @@ class DCGAN_G(nn.Module):
 
         main.add_module('final:{0}-{1}:convt'.format(cngf, nc),
                         nn.ConvTranspose2d(cngf, nc, 4, 2, 1, bias=False))
-        main.add_module('final:{0}:tanh'.format(nc),
+        main.add_module('final:{0}:relu'.format(nc),
                         nn.ReLU())  # nn.Softmax(1))    #Was TANH nn.Tanh())#
         self.main = main
 
@@ -136,8 +136,6 @@ class DCGAN_G(nn.Module):
         else:
             output = self.main(input)
 
-        # print (output[0,:,0,0])
-        # exit()
         return output
     ###############################################################################
 

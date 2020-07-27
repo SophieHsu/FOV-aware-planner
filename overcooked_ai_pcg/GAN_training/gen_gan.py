@@ -19,7 +19,7 @@ def gan_generate(batch_size, model_path):
     nz = 32
     x = np.random.randn(batch_size, nz, 1, 1)
 
-    generator = dcgan.DCGAN_G(isize=32, nz=nz, nc=len(obj_types), ngf=64, ngpu=1)
+    generator = dcgan.DCGAN_G(isize=16, nz=nz, nc=len(obj_types), ngf=64, ngpu=1, n_extra_layers=2)
     generator.load_state_dict(torch.load(model_path, map_location=lambda storage, loc: storage))
     latent_vector = torch.FloatTensor(x).view(batch_size, nz, 1, 1)
     with torch.no_grad():
@@ -31,8 +31,8 @@ def gan_generate(batch_size, model_path):
 
     print("Before repair:")
     print(lvl_number2str(lvl_int))
--
-+
+
+
     lvl_repaired = repair_lvl(lvl_int)
     lvl_str = lvl_number2str(lvl_repaired)
 
@@ -48,7 +48,7 @@ def main():
         "delivery_reward": 20,
         "rew_shaping_params": None
     }
-    lvl_str = gan_generate(1, os.path.join(GAN_TRAINING_DIR, "netG_epoch_54999_999.pth"))
+    lvl_str = gan_generate(1, os.path.join(GAN_TRAINING_DIR, "netG_epoch_1999_999.pth"))
     grid = [layout_row.strip() for layout_row in lvl_str.split("\n")][:-1]
 
     agent1, agent2, env = setup_env_from_grid(grid, config)

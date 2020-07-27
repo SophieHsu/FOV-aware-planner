@@ -89,15 +89,29 @@ def read_in_training_data(data_path):
 
 # print(read_in_training_data(LAYOUTS_DIR))
 
-def plot_err(average_errG_log, average_errD_log, average_errD_fake_log, average_errD_real_log):
+def plot_err(average_errG_log, 
+             average_errD_log, 
+             average_errD_fake_log, 
+             average_errD_real_log,
+             average_D_x_log,
+             average_D_G_z1_log,
+             average_D_G_z2_log):
     """
     Given lists of recorded errors and plot them.
     """
+    plt.subplot(1, 2, 1)
     plt.plot(average_errG_log, 'r', label="err_G")
     plt.plot(average_errD_log, 'b', label="err_D")
     plt.plot(average_errD_fake_log, 'm', label="err_D_fake")
     plt.plot(average_errD_real_log, 'g', label="err_D_real")
     plt.legend()
+
+    plt.subplot(1, 2, 2)
+    plt.plot(average_D_x_log, 'r', label="D(x)")
+    plt.plot(average_D_G_z1_log, 'g', label="D(G(z1))")
+    plt.plot(average_D_G_z2_log, 'b', label="D(G(z2))")
+    plt.legend()
+
     plt.savefig(ERR_LOG_PIC)
     plt.show()
 
