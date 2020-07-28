@@ -21,7 +21,7 @@ def vertical_flip(np_lvl):
     for x in range(height):
         for y in range(width):
             np_lvl_vflip[x][y] = np_lvl[x][width-y-1]
-    
+
     return np_lvl_vflip.astype(np.uint8)
 
 def horizontal_flip(np_lvl):
@@ -47,7 +47,7 @@ def lvl_str2number(raw_layout):
 
 def lvl_number2str(np_lvl):
     """
-    Turns num encoded format to pure string formatted lvl 
+    Turns num encoded format to pure string formatted lvl
     """
     lvl_str = ""
     for lvl_row in np_lvl:

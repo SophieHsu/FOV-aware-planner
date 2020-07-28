@@ -85,7 +85,7 @@ def run(nz,
     input = torch.FloatTensor(batch_size, z_dims, map_size, map_size)
     noise = torch.FloatTensor(batch_size, nz, 1, 1) # used for trainng
     fixed_noise = torch.FloatTensor(batch_size, nz, 1, 1).normal_(0, 1) # used for testing
-    
+
     # use Binary Cross Entropy loss
     criterion = nn.BCELoss()
 
@@ -225,7 +225,7 @@ def run(nz,
             with open('{0}/fake_level_epoch_{1}_{2}.json'.format(gan_experiment, epoch, seed), 'w') as f:
                 f.write(json.dumps(im[0].tolist()))
             torch.save(netG.state_dict(), '{0}/netG_epoch_{1}_{2}.pth'.format(gan_experiment, epoch, seed))
-    
+
     # save Generator constructor params for generating levels later
     G_params = {
         'isize': map_size,
@@ -238,9 +238,9 @@ def run(nz,
     save_gan_param(G_params)
 
     # plot the stats
-    plot_err(average_errG_log, 
-             average_errD_log, 
-             average_errD_fake_log, 
+    plot_err(average_errG_log,
+             average_errD_log,
+             average_errD_fake_log,
              average_errD_real_log,
              average_D_x_log,
              average_D_G_z1_log,

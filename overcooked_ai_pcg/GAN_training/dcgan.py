@@ -15,8 +15,8 @@ class DCGAN_D(nn.Module):
         ndf: number of output channels of initial conv2d layer
         ngpu: number of GPUs
         n_extra_layers: number of extra layers with out_channels to be ndf to add
-        
-        Note: 
+
+        Note:
         input to the GAN is nc x isize x isize
         output from the GAN is the likehood of the image being real
         """
@@ -40,7 +40,7 @@ class DCGAN_D(nn.Module):
                             nn.BatchNorm2d(cndf))
             main.add_module('extra-layers-{0}:{1}:relu'.format(t, cndf),
                             nn.LeakyReLU(0.2, inplace=True))
-        
+
         # add more conv2d layers with exponentially more out_channels
         while csize > 4:
             in_feat = cndf
@@ -57,7 +57,7 @@ class DCGAN_D(nn.Module):
         # state size. K x 4 x 4
         main.add_module('final:{0}-{1}:conv'.format(cndf, 1),
                         nn.Conv2d(cndf, 1, 4, 1, 0, bias=False))
-        
+
         # sigmoid to keep output in range [0, 1]
         main.add_module('final:sigmoid', nn.Sigmoid())
         self.main = main
@@ -83,7 +83,7 @@ class DCGAN_G(nn.Module):
         ngf: number of output channels of initial conv2d layer
         ngpu: number of GPUs
         n_extra_layers: number of extra layers with out_channels to be ngf to add
-        
+
         Note: input is a latent vector of size nz
         """
         super(DCGAN_G, self).__init__()
