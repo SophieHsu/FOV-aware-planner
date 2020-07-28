@@ -62,6 +62,6 @@ def main():
         joint_action = (agent1.action(env.state)[0], agent2.action(env.state)[0])
         next_state, timestep_sparse_reward, done, info = env.step(joint_action)
         time.sleep(0.5)
-        
+
 if __name__ == "__main__":
     main()

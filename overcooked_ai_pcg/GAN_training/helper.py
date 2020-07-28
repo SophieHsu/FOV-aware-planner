@@ -74,7 +74,7 @@ def read_in_training_data(data_path):
             raw_layout = raw_layout['grid'].split('\n')
 
             np_lvl = lvl_str2number(raw_layout)
-            
+
             # data agumentation: add flipped levels to data set
             np_lvl = np_lvl.astype(np.uint8)
             np_lvl_vflip = vertical_flip(np_lvl)
@@ -89,9 +89,9 @@ def read_in_training_data(data_path):
 
 # print(read_in_training_data(LAYOUTS_DIR))
 
-def plot_err(average_errG_log, 
-             average_errD_log, 
-             average_errD_fake_log, 
+def plot_err(average_errG_log,
+             average_errD_log,
+             average_errD_fake_log,
              average_errD_real_log,
              average_D_x_log,
              average_D_G_z1_log,

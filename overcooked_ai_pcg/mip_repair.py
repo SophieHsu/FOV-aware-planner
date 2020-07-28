@@ -178,7 +178,7 @@ def repair_lvl(np_lvl):
     for obj_label in obj_types:
         curr_type = [mdl.integer_var(name='obj_{}_{}'.format(obj_label, i), lb=0, ub=1) for i in range(n_nodes)]
         objs.append(curr_type)
-    
+
     # ensure one cell contains one obj_type
     add_object_placement(mdl, objs)
 

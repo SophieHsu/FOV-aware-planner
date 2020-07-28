@@ -153,7 +153,7 @@ def run(nz,
             fake_label = torch.full((curr_batch_size,), 0, device=device)
 
             # compute gradient of real input image
-            # D maximize the likelihood of real image being real            
+            # D maximize the likelihood of real image being real
             output = netD(input).view(-1)
             errD_real = criterion(output, real_label)
             errD_real.backward()
@@ -182,7 +182,7 @@ def run(nz,
             ###########################
             netG.zero_grad()
 
-            # G minimize the likelihood of the fake image being fake
+            # G maximize the likelihood of the fake image being real
             output = netD(fake).view(-1)
             errG = criterion(output, real_label)
             errG.backward()
