@@ -39,7 +39,8 @@ def run(nz,
         adam,
         seed,
         lvl_data,
-        save_length):
+        save_length,
+        map_size):
     os.makedirs(gan_experiment, exist_ok=True)
 
     random.seed(seed)
@@ -49,8 +50,6 @@ def run(nz,
 
     if torch.cuda.is_available() and not cuda:
         print("WARNING: You have a CUDA device, so you should probably run with --cuda")
-
-    map_size = 16
 
     X = read_in_training_data(lvl_data)
     z_dims = len(obj_types)
@@ -86,12 +85,8 @@ def run(nz,
     input = torch.FloatTensor(batch_size, z_dims, map_size, map_size)
     noise = torch.FloatTensor(batch_size, nz, 1, 1) # used for trainng
     fixed_noise = torch.FloatTensor(batch_size, nz, 1, 1).normal_(0, 1) # used for testing
-    one = torch.FloatTensor([1]) # flip minimization and maximization using one and mone
-    mone = one * -1
     
-    # common practice for real and fake label
-    real = 1
-    fake = 0
+    # use Binary Cross Entropy loss
     criterion = nn.BCELoss()
 
     # get current device
@@ -102,7 +97,6 @@ def run(nz,
         netD.cuda(gpu_id)
         netG.cuda(gpu_id)
         input = input.cuda(gpu_id)
-        one, mone = one.cuda(gpu_id), mone.cuda(gpu_id)
         noise, fixed_noise = noise.cuda(gpu_id), fixed_noise.cuda(gpu_id)
 
     # setup optimizer
@@ -130,10 +124,6 @@ def run(nz,
         ############################
         # (1) Update D network: maximize log(D(x)) + log(1 - D(G(z)))
         ###########################
-        # for p in netD.parameters():  # reset requires_grad
-        #     p.requires_grad = True  # they are set to False below in netG update
-        # for p in netG.parameters():
-        #     p.requires_grad = False
         i = 0
         total_errD_fake = 0
         total_errD_real = 0
@@ -235,16 +225,9 @@ def run(nz,
             with open('{0}/fake_level_epoch_{1}_{2}.json'.format(gan_experiment, epoch, seed), 'w') as f:
                 f.write(json.dumps(im[0].tolist()))
             torch.save(netG.state_dict(), '{0}/netG_epoch_{1}_{2}.pth'.format(gan_experiment, epoch, seed))
-    plot_err(average_errG_log, 
-             average_errD_log, 
-             average_errD_fake_log, 
-             average_errD_real_log,
-             average_D_x_log,
-             average_D_G_z1_log,
-             average_D_G_z2_log)
     
     # save Generator constructor params for generating levels later
-    G_param = {
+    G_params = {
         'isize': map_size,
         'nz': nz,
         'nc': len(obj_types),
@@ -252,7 +235,16 @@ def run(nz,
         'ngpu': ngpu,
         'n_extra_layers': n_extra_layers
     }
-    save_gan_param(G_param)
+    save_gan_param(G_params)
+
+    # plot the stats
+    plot_err(average_errG_log, 
+             average_errD_log, 
+             average_errD_fake_log, 
+             average_errD_real_log,
+             average_D_x_log,
+             average_D_G_z1_log,
+             average_D_G_z2_log)
 
 
 if __name__ == '__main__':
@@ -262,8 +254,8 @@ if __name__ == '__main__':
     parser.add_argument('--ndf', type=int, default=64)
     parser.add_argument('--batch_size', type=int, default=64, help='input batch size')
     parser.add_argument('--niter', type=int, default=10000, help='number of epochs to train for')
-    parser.add_argument('--lrD', type=float, default=0.00005, help='learning rate for Critic')
-    parser.add_argument('--lrG', type=float, default=0.00005, help='learning rate for Generator')
+    parser.add_argument('--lrD', type=float, default=0.00001, help='learning rate for Critic')
+    parser.add_argument('--lrG', type=float, default=0.00001, help='learning rate for Generator')
     parser.add_argument('--beta1', type=float, default=0.5, help='beta1 for adam. default=0.5')
     parser.add_argument('--cuda', action='store_true', help='enables cuda')
     parser.add_argument('--ngpu', type=int, default=1, help='number of GPUs to use')
@@ -278,6 +270,7 @@ if __name__ == '__main__':
     parser.add_argument('--seed', type=int, default=999, help='random seed for reproducibility')
     parser.add_argument('--lvl_data', help='Path to the human designed levels.', default=LAYOUTS_DIR)
     parser.add_argument('--save_length', type=int, default=100, help='Length of save point')
+    parser.add_argument('--map_size', type=int, default=16, help='Size of the initial layer of feature map of D')
     opt = parser.parse_args()
 
     run(opt.nz,
@@ -300,5 +293,6 @@ if __name__ == '__main__':
         opt.adam,
         opt.seed,
         opt.lvl_data,
-        opt.save_length)
+        opt.save_length,
+        opt.map_size)
 

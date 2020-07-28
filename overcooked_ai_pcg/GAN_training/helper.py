@@ -99,14 +99,20 @@ def plot_err(average_errG_log,
     """
     Given lists of recorded errors and plot them.
     """
-    plt.subplot(1, 2, 1)
-    plt.plot(average_errG_log, 'r', label="err_G")
+    plt.subplot(2, 2, 1)
     plt.plot(average_errD_log, 'b', label="err_D")
-    plt.plot(average_errD_fake_log, 'm', label="err_D_fake")
+    plt.legend()
+
+    plt.subplot(2, 2, 2)
+    plt.plot(average_errD_fake_log, 'r', label="err_D_fake")
     plt.plot(average_errD_real_log, 'g', label="err_D_real")
     plt.legend()
 
-    plt.subplot(1, 2, 2)
+    plt.subplot(2, 2, 3)
+    plt.plot(average_errG_log, 'r', label="err_G")
+    plt.legend()
+
+    plt.subplot(2, 2, 4)
     plt.plot(average_D_x_log, 'r', label="D(x)")
     plt.plot(average_D_G_z1_log, 'g', label="D(G(z1))")
     plt.plot(average_D_G_z2_log, 'b', label="D(G(z2))")

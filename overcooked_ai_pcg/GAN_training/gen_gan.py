@@ -52,7 +52,7 @@ def main():
         "delivery_reward": 20,
         "rew_shaping_params": None
     }
-    lvl_str = gan_generate(1, os.path.join(GAN_TRAINING_DIR, "netG_epoch_9999_999.pth"))
+    lvl_str = gan_generate(1, os.path.join(GAN_TRAINING_DIR, "netG_epoch_49999_999.pth"))
     grid = [layout_row.strip() for layout_row in lvl_str.split("\n")][:-1]
 
     agent1, agent2, env = setup_env_from_grid(grid, config)
