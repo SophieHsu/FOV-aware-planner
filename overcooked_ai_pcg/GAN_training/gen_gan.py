@@ -8,7 +8,7 @@ from torch.autograd import Variable
 from overcooked_ai_py.mdp.overcooked_mdp import OvercookedGridworld
 from overcooked_ai_pcg import GAN_TRAINING_DIR
 from overcooked_ai_pcg.GAN_training import dcgan
-from overcooked_ai_pcg.mip_repair import repair_lvl
+from overcooked_ai_pcg.milp_repair import repair_lvl
 from overcooked_ai_pcg.GAN_training.helper import obj_types, lvl_number2str, setup_env_from_grid
 
 def gan_generate(batch_size, model_path):

@@ -5,14 +5,14 @@ from docplex.mp.model import Model
 
 
 def read_in_fix_demo_layout():
-    raw_lvl = read_layout_dict("mip_demo")
+    raw_lvl = read_layout_dict("milp_demo")
     raw_lvl = raw_lvl['grid'].split('\n')
     return lvl_str2number(raw_lvl)
 
 
 # Adds constraints that ensure exactly one object is present in each cell
 #
-# mdl:                the mip model
+# mdl:                the milp model
 # all_objects:        a list of all object variables [[W_i], [P_i], ...]
 def add_object_placement(mdl, all_objects):
     # Transpose the given matrix and ensure exactly one object per graph node
@@ -20,9 +20,9 @@ def add_object_placement(mdl, all_objects):
         mdl.add_constraint(sum(cur_node) == 1)
 
 
-# Adds reachability constraints to MIP
+# Adds reachability constraints to milp
 #
-# mdl:                the mip model
+# mdl:                the milp model
 # graph:              an adjacency list
 # source_objects:     objects that must reach the sink objects [[P_i], ...]
 # sink_objects:       objects that must be reached by the source objects [[K_i], [D_i], ...]
@@ -231,7 +231,7 @@ def repair_lvl(np_lvl):
                 return i
         return -1
 
-    # Extract the new level from the MIP
+    # Extract the new level from the milp model
     new_lvl = np.zeros((n, m))
     for r in range(n):
         for c in range(m):
