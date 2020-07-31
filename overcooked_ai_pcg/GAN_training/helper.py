@@ -5,6 +5,7 @@ import torch
 from matplotlib import pyplot as plt
 from overcooked_ai_py.mdp.overcooked_mdp import OvercookedGridworld
 from overcooked_ai_py.mdp.overcooked_env import OvercookedEnv
+from overcooked_ai_py.planning.planners import MediumLevelPlanner
 from overcooked_ai_py.agents.agent import *
 from overcooked_ai_py import read_layout_dict
 from overcooked_ai_py import LAYOUTS_DIR
@@ -131,8 +132,21 @@ def setup_env_from_grid(layout_grid, config):
     """
     mdp = OvercookedGridworld.from_grid(layout_grid, config)
     env = OvercookedEnv.from_mdp(mdp, info_level = 0)
-    agent1 = RandomAgent(all_actions=True)
-    agent2 = RandomAgent(all_actions=True)
+    base_params = {
+        'start_orientations': False,
+        'wait_allowed': False,
+        'counter_goals': [],
+        'counter_drop': [],
+        'counter_pickup': [],
+        'same_motion_goals': True
+    }
+    mlp_planner1 = MediumLevelPlanner(mdp, base_params)
+    mlp_planner2 = MediumLevelPlanner(mdp, base_params)
+
+    print("hello")
+
+    agent1 = CoupledPlanningAgent(mlp_planner1)
+    agent2 = CoupledPlanningAgent(mlp_planner2)
     agent1.set_agent_index(0)
     agent2.set_agent_index(1)
     agent1.set_mdp(mdp)

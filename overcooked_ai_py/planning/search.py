@@ -42,6 +42,8 @@ class SearchTree(object):
                 print(iter_count)
 
             curr_state = curr_node.state
+            # print(iter_count, curr_state, curr_node.backwards_cost)
+            # print(iter_count, curr_state.num_orders_remaining)
 
             if curr_state in seen:
                 continue

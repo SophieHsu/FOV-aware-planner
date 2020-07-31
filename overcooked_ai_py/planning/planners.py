@@ -386,6 +386,9 @@ class JointMotionPlanner(object):
         possible_joint_goal_states = list(itertools.product(valid_player_states, repeat=2))
         valid_joint_goal_states = list(filter(self.is_valid_joint_motion_goal, possible_joint_goal_states))
 
+        # print("number of valid start states:", len(valid_joint_start_states))
+        # print("number of valid end states:", len(valid_joint_goal_states))
+
         if debug: print("Number of plans being pre-calculated: ", len(valid_joint_start_states) * len(valid_joint_goal_states))
         for joint_start_state, joint_goal_state in itertools.product(valid_joint_start_states, valid_joint_goal_states):
             

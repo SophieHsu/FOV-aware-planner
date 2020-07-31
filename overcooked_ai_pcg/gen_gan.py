@@ -3,13 +3,13 @@ import numpy as np
 import time
 import torch
 import json
-from helper import read_gan_param
 from torch.autograd import Variable
 from overcooked_ai_py.mdp.overcooked_mdp import OvercookedGridworld
 from overcooked_ai_pcg import GAN_TRAINING_DIR
 from overcooked_ai_pcg.GAN_training import dcgan
 from overcooked_ai_pcg.milp_repair import repair_lvl
 from overcooked_ai_pcg.GAN_training.helper import obj_types, lvl_number2str, setup_env_from_grid
+from overcooked_ai_pcg.GAN_training.helper import read_gan_param
 
 def gan_generate(batch_size, model_path):
     """
@@ -46,22 +46,33 @@ def gan_generate(batch_size, model_path):
 
 def main():
     config = {
-        "start_order_list": None,
+        "start_order_list": ['onion'] * 3,
         "cook_time": 20,
         "num_items_for_soup": 3,
         "delivery_reward": 20,
         "rew_shaping_params": None
     }
-    lvl_str = gan_generate(1, os.path.join(GAN_TRAINING_DIR, "netG_epoch_49999_999.pth"))
+    # lvl_str = gan_generate(1, os.path.join(GAN_TRAINING_DIR, "netG_epoch_49999_999.pth"))
+
+    lvl_str = """XXPXX
+                 T  2T
+                 X1  O
+                 XXDSX
+                 """
     grid = [layout_row.strip() for layout_row in lvl_str.split("\n")][:-1]
+
 
     agent1, agent2, env = setup_env_from_grid(grid, config)
     done = False
+    cnt = 0
     while not done:
+        cnt += 1
         env.render()
+        print("start compute actions")
         joint_action = (agent1.action(env.state)[0], agent2.action(env.state)[0])
+        print(joint_action)
         next_state, timestep_sparse_reward, done, info = env.step(joint_action)
         time.sleep(0.5)
-
+    print("number of iter:", cnt)
 if __name__ == "__main__":
     main()
