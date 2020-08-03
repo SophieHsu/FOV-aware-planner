@@ -8,17 +8,17 @@ from overcooked_ai_py.mdp.overcooked_mdp import OvercookedGridworld
 from overcooked_ai_pcg import GAN_TRAINING_DIR
 from overcooked_ai_pcg.GAN_training import dcgan
 from overcooked_ai_pcg.milp_repair import repair_lvl
-from overcooked_ai_pcg.GAN_training.helper import obj_types, lvl_number2str, setup_env_from_grid
-from overcooked_ai_pcg.GAN_training.helper import read_gan_param
+from overcooked_ai_pcg.helper import obj_types, lvl_number2str, setup_env_from_grid, read_gan_param, run_overcooked_game
 
-def gan_generate(batch_size, model_path):
+def generate_lvl(batch_size, model_path, latent_vector = None):
     """
-    Generate level string from random latent vector given the path to the train netG model
+    Generate level string from random latent vector given the path to the train netG model, and use MILP solver to repair it
 
     Args:
         model_path: path to the trained netG model
+        latent_vector: np.ndarray with the required dimension.
+                       When it is None, a new vector will be randomly sampled
     """
-
     # read in G constructor params from file
     G_params = read_gan_param()
     nz = G_params['nz']
@@ -26,7 +26,10 @@ def gan_generate(batch_size, model_path):
 
     generator = dcgan.DCGAN_G(**G_params)
     generator.load_state_dict(torch.load(model_path, map_location=lambda storage, loc: storage))
-    latent_vector = torch.FloatTensor(x).view(batch_size, nz, 1, 1)
+    if latent_vector is None:
+        latent_vector = torch.FloatTensor(x).view(batch_size, nz, 1, 1)
+    else:
+        latent_vector = torch.FloatTensor(latent_vector).view(batch_size, nz, 1, 1)
     with torch.no_grad():
         levels = generator(Variable(latent_vector))
     levels.data = levels.data[:, :, :10, :15]
@@ -37,6 +40,7 @@ def gan_generate(batch_size, model_path):
     print("Before repair:")
     print(lvl_number2str(lvl_int))
 
+    print("Start MILP repair...")
     lvl_repaired = repair_lvl(lvl_int)
     lvl_str = lvl_number2str(lvl_repaired)
 
@@ -45,34 +49,17 @@ def gan_generate(batch_size, model_path):
     return lvl_str
 
 def main():
-    config = {
-        "start_order_list": ['onion'] * 3,
-        "cook_time": 20,
-        "num_items_for_soup": 3,
-        "delivery_reward": 20,
-        "rew_shaping_params": None
-    }
-    # lvl_str = gan_generate(1, os.path.join(GAN_TRAINING_DIR, "netG_epoch_49999_999.pth"))
+    lvl_str = generate_lvl(1, os.path.join(GAN_TRAINING_DIR, "netG_epoch_49999_999.pth"))
+    # lvl_str = """XXPXX
+    #              T  2T
+    #              X1  O
+    #              XXDSX
+    #              """
 
-    lvl_str = """XXPXX
-                 T  2T
-                 X1  O
-                 XXDSX
-                 """
     grid = [layout_row.strip() for layout_row in lvl_str.split("\n")][:-1]
 
+    run_overcooked_game(lvl_str)
 
-    agent1, agent2, env = setup_env_from_grid(grid, config)
-    done = False
-    cnt = 0
-    while not done:
-        cnt += 1
-        env.render()
-        print("start compute actions")
-        joint_action = (agent1.action(env.state)[0], agent2.action(env.state)[0])
-        print(joint_action)
-        next_state, timestep_sparse_reward, done, info = env.step(joint_action)
-        time.sleep(0.5)
-    print("number of iter:", cnt)
+
 if __name__ == "__main__":
     main()

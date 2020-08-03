@@ -1,0 +1,9 @@
+Visualize=false
+
+[[Trials]]
+num_trials=5
+trial_config="RANDOM_demo.tml"
+
+[[Trials]]
+num_trials=5
+trial_config="MAPELITES_demo.tml"

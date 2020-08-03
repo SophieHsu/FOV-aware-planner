@@ -15,5 +15,6 @@ setup(name='overcooked_ai',
         'pygame',
         'torch',
         'matplotlib',
+        'pandas',
       ]
     )

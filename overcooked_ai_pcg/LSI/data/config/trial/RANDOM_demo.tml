@@ -1,0 +1,5 @@
+algorithm = "RANDOM"
+trial_name="RANDOM_demo"
+num_simulations=100
+algorithm_config = "random.tml"
+elite_map_config = "demo.tml"

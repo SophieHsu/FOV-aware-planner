@@ -1,7 +1,8 @@
-import numpy as np
 import os
 import json
 import torch
+import time
+import numpy as np
 from matplotlib import pyplot as plt
 from overcooked_ai_py.mdp.overcooked_mdp import OvercookedGridworld
 from overcooked_ai_py.mdp.overcooked_env import OvercookedEnv
@@ -56,6 +57,12 @@ def lvl_number2str(np_lvl):
             lvl_str += obj_types[tile_int]
         lvl_str += "\n"
     return lvl_str
+
+def lvl_str2grid(lvl_str):
+    """
+    Turns pure string formatted lvl to grid format compatible with overcooked-AI env
+    """
+    return [layout_row.strip() for layout_row in lvl_str.split("\n")][:-1]
 
 def read_in_training_data(data_path):
     """
@@ -122,16 +129,23 @@ def plot_err(average_errG_log,
     plt.savefig(ERR_LOG_PIC)
     plt.show()
 
-def setup_env_from_grid(layout_grid, config):
+def setup_env_from_grid(layout_grid):
     """
     Set up random agents and overcooked env to run demo game.
 
     Args:
         layout_grid: list of string each representing a row of layout
-        config: metadata to config the env
     """
+    config = {
+        "start_order_list": ['onion'] * 3,
+        "cook_time": 20,
+        "num_items_for_soup": 3,
+        "delivery_reward": 20,
+        "rew_shaping_params": None
+    }
     mdp = OvercookedGridworld.from_grid(layout_grid, config)
-    env = OvercookedEnv.from_mdp(mdp, info_level = 0)
+    env = OvercookedEnv.from_mdp(mdp, info_level = 0, horizon = 200)
+
     base_params = {
         'start_orientations': False,
         'wait_allowed': False,
@@ -140,13 +154,17 @@ def setup_env_from_grid(layout_grid, config):
         'counter_pickup': [],
         'same_motion_goals': True
     }
-    mlp_planner1 = MediumLevelPlanner(mdp, base_params)
+    # mlp_planner1 = MediumLevelPlanner(mdp, base_params)
     mlp_planner2 = MediumLevelPlanner(mdp, base_params)
 
     print("hello")
 
-    agent1 = CoupledPlanningAgent(mlp_planner1)
-    agent2 = CoupledPlanningAgent(mlp_planner2)
+    # agent1 = CoupledPlanningAgent(mlp_planner1)
+    # agent2 = CoupledPlanningAgent(mlp_planner2)
+
+    agent1 = StayAgent()
+    agent2 = GreedyHumanModel(mlp_planner2, env)
+
     agent1.set_agent_index(0)
     agent2.set_agent_index(1)
     agent1.set_mdp(mdp)
@@ -161,3 +179,24 @@ def read_gan_param():
     with open(G_PARAM_FILE, "r") as f:
         G_params = json.load(f)
     return G_params
+
+def run_overcooked_game(lvl_str, render=True):
+    """
+    Run one turn of overcooked game and return the sparse reward as fitness
+    """
+    grid = lvl_str2grid(lvl_str)
+    agent1, agent2, env = setup_env_from_grid(grid)
+    done = False
+    total_sparse_reward = 0
+    while not done:
+        if render:
+            env.render()
+            time.sleep(0.5)
+        print("start compute actions")
+        joint_action = (agent1.action(env.state)[0], agent2.action(env.state)[0])
+        print(joint_action)
+        next_state, timestep_sparse_reward, done, info = env.step(joint_action)
+        total_sparse_reward += timestep_sparse_reward
+
+
+    return total_sparse_reward
