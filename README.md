@@ -129,7 +129,7 @@ trial_config="MAPELITES_demo.tml"
 
 `workerID` from `1` to `5` would be running Random search, while `workerID` from `6` to `10` would be running MAP-Elites QD algorithm.
 
-`exp_config_file_path` is the filepath to the experiment config file.
+`exp_config_file_path` is the filepath to the experiment config file. It is default to be `overcooked_ai_pcg/LSI/data/config/experiment/experiments.tml`
 
 #### LSI config files
 
@@ -212,8 +212,8 @@ Note: These are also the constraints that the MILP solver is trying to satisfy.
   - `train_gan.py`: GAN training script
 
 - `LSI/`:
-  - `bc_calculate.py`: Relevant functions to calculate behavior characteristics.
-  - `qd_algorithms.py`: Implementations of QD algorithms.
-  - `search.py`: Relevant functions to run the LSI search.
-  - `run_search.py`: Script to run LSI search.
-  - `data/`: config and log data and LSI experiment.
+  - `bc_calculate.py`: Relevant functions to calculate behavior characteristics
+  - `qd_algorithms.py`: Implementations of QD algorithms
+  - `search.py`: Relevant functions to run the LSI search
+  - `run_search.py`: Script to run LSI search
+  - `data/`: config and log data and LSI experiment
