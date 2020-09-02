@@ -202,8 +202,9 @@ class Graph(object):
             traceback_path.append(cur_index)
             cur_index = self.predecessors[start_index][cur_index]
         traceback_path.append(start_index)
+        traceback_path.reverse()
 
-        return traceback_path[::-1]
+        return traceback_path
 
     def _get_connected_components(self):
         num_ccs, cc_labels = scipy.sparse.csgraph.connected_components(self.sparse_adjacency_matrix)
