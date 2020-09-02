@@ -139,7 +139,8 @@ class Graph(object):
             decoder: Dictionary mapping each adj mtx index to a graph node key
         """
         self.sparse_adjacency_matrix = scipy.sparse.csr_matrix(dense_adjacency_matrix)
-        self.distance_matrix, self.predecessors = scipy.sparse.csgraph.floyd_warshall(dense_adjacency_matrix, return_predecessors=True)
+        self.distance_matrix, self.predecessors = \
+             scipy.sparse.csgraph.floyd_warshall(dense_adjacency_matrix, return_predecessors=True, overwrite=True)
         self._encoder = encoder
         self._decoder = decoder
         start_time = time.time()
