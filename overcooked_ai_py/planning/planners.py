@@ -54,8 +54,6 @@ class MotionPlanner(object):
         self.graph_problem = self._graph_from_grid()
         self.motion_goals_for_pos = self._get_goal_dict()
 
-        self.all_plans = self._populate_all_plans()
-
     def get_plan(self, start_pos_and_or, goal_pos_and_or):
         """
         Returns pre-computed plan from initial agent position
@@ -65,8 +63,7 @@ class MotionPlanner(object):
             start_pos_and_or (tuple): starting (pos, or) tuple
             goal_pos_and_or (tuple): goal (pos, or) tuple
         """
-        plan_key = (start_pos_and_or, goal_pos_and_or)
-        action_plan, pos_and_or_path, plan_cost = self.all_plans[plan_key]
+        action_plan, pos_and_or_path, plan_cost = self._compute_plan(start_pos_and_or, goal_pos_and_or)
         return action_plan, pos_and_or_path, plan_cost
     
     def get_gridworld_distance(self, start_pos_and_or, goal_pos_and_or):
@@ -93,19 +90,6 @@ class MotionPlanner(object):
                 if plan_cost < min_cost:
                     min_cost = plan_cost
         return min_cost
-
-    def _populate_all_plans(self):
-        """Pre-computes all valid plans"""
-        all_plans = {}
-        valid_pos_and_ors = self.mdp.get_valid_player_positions_and_orientations()
-        valid_motion_goals = filter(self.is_valid_motion_goal, valid_pos_and_ors)
-        for start_motion_state, goal_motion_state in itertools.product(valid_pos_and_ors, valid_motion_goals):
-            if not self.is_valid_motion_start_goal_pair(start_motion_state, goal_motion_state):
-                continue
-            action_plan, pos_and_or_path, plan_cost = self._compute_plan(start_motion_state, goal_motion_state)
-            plan_key = (start_motion_state, goal_motion_state)
-            all_plans[plan_key] = (action_plan, pos_and_or_path, plan_cost)
-        return all_plans
 
     def is_valid_motion_start_goal_pair(self, start_pos_and_or, goal_pos_and_or, debug=False):
         if not self.is_valid_motion_goal(goal_pos_and_or):
