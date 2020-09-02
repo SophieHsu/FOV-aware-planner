@@ -72,9 +72,8 @@ class MotionPlanner(object):
         interaction action)"""
         assert self.is_valid_motion_start_goal_pair(start_pos_and_or, goal_pos_and_or), \
             "Goal position and orientation were not a valid motion goal"
-        _, _, plan_cost = self.get_plan(start_pos_and_or, goal_pos_and_or)
         # Removing interaction cost
-        return plan_cost - 1
+        return self.graph_problem.dist(start_pos_and_or, goal_pos_and_or) - 1
 
     def get_gridworld_pos_distance(self, pos1, pos2):
         """Minimum (over possible orientations) number of actions necessary 
