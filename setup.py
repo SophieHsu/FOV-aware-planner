@@ -5,8 +5,7 @@ from setuptools import setup, find_packages
 setup(name='overcooked_ai',
       version='0.0.1',
       description='Cooperative multi-agent environment based on Overcooked',
-      author='Micah Carroll', 'Matt Fontaine', 'Stefanos Nikolaidis', 'Yulun Zhang'
-      author_email='mdc@berkeley.edu', 'mfontain@usc.edu', 'nikolaid@usc.edu', 'yulunzha@usc.edu'
+      author='Micah Carroll<mdc@berkeley.edu>, Matt Fontaine<mfontain@usc.edu>, Stefanos Nikolaidis<nikolaid@usc.edu>, Yulun Zhang<yulunzha@usc.edu>',
       packages=find_packages(),
       install_requires=[
         'numpy',
@@ -15,5 +14,6 @@ setup(name='overcooked_ai',
         'pygame',
         'torch',
         'matplotlib',
+        'pandas',
       ]
     )
