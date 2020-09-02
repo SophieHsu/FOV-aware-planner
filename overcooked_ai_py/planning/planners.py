@@ -54,8 +54,6 @@ class MotionPlanner(object):
         self.graph_problem = self._graph_from_grid()
         self.motion_goals_for_pos = self._get_goal_dict()
 
-        self.all_plans = self._populate_all_plans()
-
     def get_plan(self, start_pos_and_or, goal_pos_and_or):
         """
         Returns pre-computed plan from initial agent position
@@ -65,8 +63,7 @@ class MotionPlanner(object):
             start_pos_and_or (tuple): starting (pos, or) tuple
             goal_pos_and_or (tuple): goal (pos, or) tuple
         """
-        plan_key = (start_pos_and_or, goal_pos_and_or)
-        action_plan, pos_and_or_path, plan_cost = self.all_plans[plan_key]
+        action_plan, pos_and_or_path, plan_cost = self._compute_plan(start_pos_and_or, goal_pos_and_or)
         return action_plan, pos_and_or_path, plan_cost
     
     def get_gridworld_distance(self, start_pos_and_or, goal_pos_and_or):
@@ -75,9 +72,8 @@ class MotionPlanner(object):
         interaction action)"""
         assert self.is_valid_motion_start_goal_pair(start_pos_and_or, goal_pos_and_or), \
             "Goal position and orientation were not a valid motion goal"
-        _, _, plan_cost = self.get_plan(start_pos_and_or, goal_pos_and_or)
         # Removing interaction cost
-        return plan_cost - 1
+        return self.graph_problem.dist(start_pos_and_or, goal_pos_and_or) - 1
 
     def get_gridworld_pos_distance(self, pos1, pos2):
         """Minimum (over possible orientations) number of actions necessary 
@@ -93,19 +89,6 @@ class MotionPlanner(object):
                 if plan_cost < min_cost:
                     min_cost = plan_cost
         return min_cost
-
-    def _populate_all_plans(self):
-        """Pre-computes all valid plans"""
-        all_plans = {}
-        valid_pos_and_ors = self.mdp.get_valid_player_positions_and_orientations()
-        valid_motion_goals = filter(self.is_valid_motion_goal, valid_pos_and_ors)
-        for start_motion_state, goal_motion_state in itertools.product(valid_pos_and_ors, valid_motion_goals):
-            if not self.is_valid_motion_start_goal_pair(start_motion_state, goal_motion_state):
-                continue
-            action_plan, pos_and_or_path, plan_cost = self._compute_plan(start_motion_state, goal_motion_state)
-            plan_key = (start_motion_state, goal_motion_state)
-            all_plans[plan_key] = (action_plan, pos_and_or_path, plan_cost)
-        return all_plans
 
     def is_valid_motion_start_goal_pair(self, start_pos_and_or, goal_pos_and_or, debug=False):
         if not self.is_valid_motion_goal(goal_pos_and_or):
@@ -322,7 +305,6 @@ class JointMotionPlanner(object):
         # starting positions to goal positions (without
         # accounting for orientations)
         self.joint_graph_problem = self._joint_graph_from_grid()
-        self.all_plans = self._populate_all_plans(debug)
 
     def get_low_level_action_plan(self, start_jm_state, goal_jm_state):
         """
@@ -369,42 +351,8 @@ class JointMotionPlanner(object):
             dummy_start_jm_state = tuple((pos, dummy_orientation) for pos in starting_positions)
             plan_key = (dummy_start_jm_state, goal_jm_state)
 
-        joint_action_plan, end_jm_state, plan_lengths = self.all_plans[plan_key]
+        joint_action_plan, end_jm_state, plan_lengths = self._obtain_plan(plan_key[0], plan_key[1])
         return joint_action_plan, end_jm_state, plan_lengths
-
-    def _populate_all_plans(self, debug=False):
-        """Pre-compute all valid plans"""
-        all_plans = {}
-
-        # Joint states are valid if players are not in same location
-        if self.start_orientations:
-            valid_joint_start_states = self.mdp.get_valid_joint_player_positions_and_orientations()
-        else:
-            valid_joint_start_states = self.mdp.get_valid_joint_player_positions()
-
-        valid_player_states = self.mdp.get_valid_player_positions_and_orientations()
-        possible_joint_goal_states = list(itertools.product(valid_player_states, repeat=2))
-        valid_joint_goal_states = list(filter(self.is_valid_joint_motion_goal, possible_joint_goal_states))
-
-        print("number of valid start states:", len(valid_joint_start_states))
-        print("number of valid end states:", len(valid_joint_goal_states))
-
-        if debug: print("Number of plans being pre-calculated: ", len(valid_joint_start_states) * len(valid_joint_goal_states))
-        for joint_start_state, joint_goal_state in itertools.product(valid_joint_start_states, valid_joint_goal_states):
-            
-            # If orientations not present, joint_start_state just includes positions.
-            if not self.start_orientations:
-                dummy_orientation = Direction.NORTH
-                joint_start_state = tuple((pos, dummy_orientation) for pos in joint_start_state)
-
-            # If either start-end states are not connected, skip to next plan
-            if not self.is_valid_jm_start_goal_pair(joint_start_state, joint_goal_state):
-                continue
-
-            joint_action_list, end_statuses, plan_lengths = self._obtain_plan(joint_start_state, joint_goal_state)
-            plan_key = (joint_start_state, joint_goal_state)
-            all_plans[plan_key] = (joint_action_list, end_statuses, plan_lengths)
-        return all_plans
 
     def is_valid_jm_start_goal_pair(self, joint_start_state, joint_goal_state):
         """Checks if the combination of joint start state and joint goal state is valid"""
