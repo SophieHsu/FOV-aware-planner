@@ -9,7 +9,7 @@ import torch
 from torch.autograd import Variable
 from collections import OrderedDict
 from overcooked_ai_pcg.helper import run_overcooked_game
-from overcooked_ai_pcg.gen_lvl import generate_lvl
+from overcooked_ai_pcg.gen_lvl import generate_lvl, generate_rnd_lvl
 from overcooked_ai_pcg.LSI import bc_calculate
 from overcooked_ai_pcg.LSI.qd_algorithms import *
 from overcooked_ai_pcg import LSI_LOG_DIR, LSI_CONFIG_DIR, LSI_CONFIG_TRIAL_DIR, LSI_CONFIG_MAP_DIR, LSI_CONFIG_ALGO_DIR
@@ -92,7 +92,8 @@ def run_trial(num_to_evaluate,
     while algorithm_instance.is_running():
         ind = algorithm_instance.generate_individual()
 
-        ind.level = generate_lvl(1, model_path, ind.param_vector)
+        # ind.level = generate_lvl(1, model_path, ind.param_vector)
+        ind.level = generate_rnd_lvl((6, 6))
         ind.fitness = evaluate(ind, visualize, elite_map_config)
 
         algorithm_instance.return_evaluated_individual(ind)

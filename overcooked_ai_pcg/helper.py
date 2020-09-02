@@ -200,3 +200,12 @@ def run_overcooked_game(lvl_str, render=True):
 
 
     return total_sparse_reward
+
+def gen_int_rnd_lvl(size):
+    """
+    Randomly generate an unfixed integer level of specified size
+
+    Args:
+        size: 2D tuple of integers with format (height, width)
+    """
+    return np.random.randint(len(obj_types), size=size)
