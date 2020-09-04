@@ -1,5 +1,7 @@
 import itertools, math, copy
 import numpy as np
+import random
+# import mdptoolbox as mdp
 
 from overcooked_ai_py.mdp.actions import Action, Direction
 from overcooked_ai_py.planning.planners import Heuristic
@@ -37,7 +39,6 @@ class Agent(object):
     def a_probs_from_action(action):
         action_idx = Action.ACTION_TO_INDEX[action]
         return np.eye(Action.NUM_ACTIONS)[action_idx]
-
     @staticmethod
     def check_action_probs(action_probs, tolerance=1e-4):
         """Check that action probabilities sum to ≈ 1.0"""
@@ -125,6 +126,7 @@ class CoupledPlanningPair(AgentPair):
 
     def joint_action(self, state):
         # Reduce computation by half if both agents are coupled planning agents
+        print('CoupledPlanningPair::joint_action')
         joint_action_plan = self.a0.mlp.get_low_level_action_plan(state, self.a0.heuristic, delivery_horizon=self.a0.delivery_horizon, goal_info=True)
 
         if len(joint_action_plan) == 0:
@@ -410,7 +412,6 @@ class GreedyHumanModel(Agent):
                     new_state, _, _, _ = self.mlp.mdp.get_state_transition(state, j_a)
                     if new_state.player_positions != self.prev_state.player_positions:
                         unblocking_joint_actions.append(j_a)
-
                 chosen_action = unblocking_joint_actions[np.random.choice(len(unblocking_joint_actions))][
                     self.agent_index]
                 action_probs = self.a_probs_from_action(chosen_action)
@@ -489,6 +490,7 @@ class GreedyHumanModel(Agent):
         Effectively, will return a list of all possible locations Y in which the selected
         medium level action X can be performed.
         """
+        # print('GreedyHumanModel::ml_action')
         player = state.players[self.agent_index]
         other_player = state.players[1 - self.agent_index]
         am = self.mlp.ml_action_manager
@@ -551,3 +553,23 @@ class GreedyHumanModel(Agent):
             assert len(motion_goals) != 0
 
         return motion_goals
+
+class MdpPlanningAgent(Agent):
+
+    def __init__(self, other_agent, mdp_planner, env, delivery_horizon=1, logging_level=0):
+        self.other_agent = other_agent
+        self.delivery_horizon = delivery_horizon
+        self.mdp_planner = mdp_planner
+        self.env = env
+        self.logging_level = logging_level
+        
+    def action(self, state):
+        state_str = self.mdp_planner.gen_state_dict_key(state)
+
+        if state_str not in self.mdp_planner.policy_dict:
+            print('State = ', state_str, '; Not in dictionary. Action = Random')
+            action = random.choice(Action.ALL_ACTIONS)
+        else:
+            action = self.mdp_planner.policy_dict[state_str]
+        
+        return action, {}
