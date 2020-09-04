@@ -138,7 +138,6 @@ def run_trial(num_to_evaluate,
 
         # assign job to idle workers
         while len(idle_workers) > 0 and simulation <= num_to_evaluate:
-            print("idle workers: " + str(idle_workers))
             ind = algorithm_instance.generate_individual()
             print("Starting simulation: %d/%d on worker %d"
                 % (simulation, num_to_evaluate, idle_workers[0]))

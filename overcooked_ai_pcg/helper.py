@@ -8,6 +8,7 @@ from overcooked_ai_py.mdp.overcooked_mdp import OvercookedGridworld
 from overcooked_ai_py.mdp.overcooked_env import OvercookedEnv
 from overcooked_ai_py.planning.planners import MediumLevelPlanner
 from overcooked_ai_py.agents.agent import *
+from overcooked_ai_py.planning.planners import Heuristic
 from overcooked_ai_py import read_layout_dict
 from overcooked_ai_py import LAYOUTS_DIR
 from overcooked_ai_pcg import ERR_LOG_PIC, G_PARAM_FILE
@@ -137,14 +138,14 @@ def setup_env_from_grid(layout_grid):
         layout_grid: list of string each representing a row of layout
     """
     config = {
-        "start_order_list": ['onion'] * 3,
-        "cook_time": 20,
+        "start_order_list": ['onion'] * 2,
+        "cook_time": 10,
         "num_items_for_soup": 3,
         "delivery_reward": 20,
         "rew_shaping_params": None
     }
     mdp = OvercookedGridworld.from_grid(layout_grid, config)
-    env = OvercookedEnv.from_mdp(mdp, info_level = 0, horizon = 200)
+    env = OvercookedEnv.from_mdp(mdp, info_level = 0, horizon = 100)
 
     base_params = {
         'start_orientations': False,
@@ -154,15 +155,39 @@ def setup_env_from_grid(layout_grid):
         'counter_pickup': [],
         'same_motion_goals': True
     }
+    start_time = time.time()
+    # # Set up 1: two coupled planning agent
     # mlp_planner1 = MediumLevelPlanner(mdp, base_params)
-    mlp_planner2 = MediumLevelPlanner(mdp, base_params)
+    # mlp_planner2 = MediumLevelPlanner(mdp, base_params)
 
     # agent1 = CoupledPlanningAgent(mlp_planner1)
     # agent2 = CoupledPlanningAgent(mlp_planner2)
 
-    agent1 = StayAgent()
-    agent2 = GreedyHumanModel(mlp_planner2, env)
+    # # Set up 2: Stayagent + GreedyHumanModel
+    # mlp_planner = MediumLevelPlanner(mdp, base_params)
+    # agent1 = StayAgent()
+    # agent2 = GreedyHumanModel(mlp_planner, env)
 
+    # Set up 3: Fixed plan agents
+    mlp_planner = MediumLevelPlanner(mdp, base_params)
+    joint_plan = \
+        mlp_planner.get_low_level_action_plan(
+            env.state,
+            Heuristic(mlp_planner.mp).simple_heuristic,
+            delivery_horizon=2,
+            goal_info=True)
+
+    plan1 = []
+    plan2 = []
+    for joint_action in joint_plan:
+        action1, action2 = joint_action
+        plan1.append(action1)
+        plan2.append(action2)
+
+    agent1 = FixedPlanAgent(plan1)
+    agent2 = FixedPlanAgent(plan2)
+
+    print("preprocess take %d" % (time.time() - start_time))
     agent1.set_agent_index(0)
     agent2.set_agent_index(1)
     agent1.set_mdp(mdp)

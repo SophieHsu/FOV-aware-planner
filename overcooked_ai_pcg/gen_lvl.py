@@ -37,15 +37,15 @@ def generate_lvl(batch_size, model_path, latent_vector = None):
     im = np.argmax( im, axis = 1)
     lvl_int = im[0]
 
-    # print("Before repair:")
-    # print(lvl_number2str(lvl_int))
+    print("Before repair:")
+    print(lvl_number2str(lvl_int))
 
     # print("Start MILP repair...")
     lvl_repaired = repair_lvl(lvl_int)
     lvl_str = lvl_number2str(lvl_repaired)
 
-    # print("After repair:")
-    # print(lvl_str)
+    print("After repair:")
+    print(lvl_str)
     return lvl_str
 
 def generate_rnd_lvl(size):
@@ -75,11 +75,17 @@ def main():
     #              X1  O
     #              XXDSX
     #              """
+    # lvl_str = """XXXPPXXX
+    #              X  2   X
+    #              D XXXX S
+    #              X  1   X
+    #              XXXOOXXX
+    #              """
     # lvl_str = generate_rnd_lvl((6, 6))
 
     grid = [layout_row.strip() for layout_row in lvl_str.split("\n")][:-1]
 
-    run_overcooked_game(lvl_str, render=False)
+    run_overcooked_game(lvl_str, render=True)
 
 
 if __name__ == "__main__":
