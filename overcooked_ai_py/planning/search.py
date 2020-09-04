@@ -139,7 +139,8 @@ class Graph(object):
             decoder: Dictionary mapping each adj mtx index to a graph node key
         """
         self.sparse_adjacency_matrix = scipy.sparse.csr_matrix(dense_adjacency_matrix)
-        self.distance_matrix = self.shortest_paths(dense_adjacency_matrix)
+        self.distance_matrix, self.predecessors = \
+             scipy.sparse.csgraph.floyd_warshall(dense_adjacency_matrix, return_predecessors=True, overwrite=True)
         self._encoder = encoder
         self._decoder = decoder
         start_time = time.time()
@@ -153,14 +154,6 @@ class Graph(object):
         else:
             self._ccs = self._get_connected_components()
             return self._ccs
-
-    def shortest_paths(self, dense_adjacency_matrix):
-        """
-        Uses scipy's implementation of shortest paths to compute a distance
-        matrix between all elements of the graph
-        """
-        csgraph = scipy.sparse.csgraph.csgraph_from_dense(dense_adjacency_matrix)
-        return scipy.sparse.csgraph.shortest_path(csgraph)
 
     def dist(self, node1, node2):
         """
@@ -204,24 +197,15 @@ class Graph(object):
         """
         assert start_index is not None
 
-        if start_index == goal_index:
-            return [goal_index]
+        traceback_path = []
+        cur_index = goal_index
+        while cur_index != start_index:
+            traceback_path.append(cur_index)
+            cur_index = self.predecessors[start_index][cur_index]
+        traceback_path.append(start_index)
+        traceback_path.reverse()
 
-        successors = self._get_children(start_index)
-
-        # NOTE: Currently does not support multiple equally costly paths
-        best_index = None
-        smallest_dist = np.inf
-        for s in successors:
-            curr_dist = self.distance_matrix[s][goal_index]
-            if curr_dist < smallest_dist:
-                best_index = s
-                smallest_dist = curr_dist
-
-        if best_index is None:
-            raise NotConnectedError("No path could be found from {} to {}".format(self._decoder[start_index], self._decoder[goal_index]))
-
-        return [start_index] + self._get_node_index_path(best_index, goal_index)
+        return traceback_path
 
     def _get_connected_components(self):
         num_ccs, cc_labels = scipy.sparse.csgraph.connected_components(self.sparse_adjacency_matrix)
