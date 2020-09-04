@@ -1,6 +1,6 @@
 import itertools, math, copy
 import numpy as np
-
+import random
 from overcooked_ai_py.mdp.actions import Action, Direction
 from overcooked_ai_py.planning.planners import Heuristic
 from overcooked_ai_py.planning.search import SearchTree
@@ -551,3 +551,24 @@ class GreedyHumanModel(Agent):
             assert len(motion_goals) != 0
 
         return motion_goals
+
+
+class MdpPlanningAgent(Agent):
+
+    def __init__(self, other_agent, mdp_planner, env, delivery_horizon=1, logging_level=0):
+        self.other_agent = other_agent
+        self.delivery_horizon = delivery_horizon
+        self.mdp_planner = mdp_planner
+        self.env = env
+        self.logging_level = logging_level
+        
+    def action(self, state):
+        state_str = self.mdp_planner.gen_state_dict_key(state)
+
+        if state_str not in self.mdp_planner.policy_dict:
+            print('State = ', state_str, ';\nNot in dictionary. Action = Random')
+            action = random.choice(Action.ALL_ACTIONS)
+        else:
+            action = self.mdp_planner.policy_dict[state_str]
+        
+        return action, {}
