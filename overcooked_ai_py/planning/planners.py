@@ -1,7 +1,6 @@
 import itertools, os
 import numpy as np
 import pickle, time
-import math
 from overcooked_ai_py.utils import pos_distance, manhattan_distance
 from overcooked_ai_py.planning.search import SearchTree, Graph
 from overcooked_ai_py.mdp.actions import Action, Direction
@@ -12,8 +11,7 @@ from overcooked_ai_py.data.planners import load_saved_action_manager, PLANNERS_D
 # Run planning logic with additional checks and
 # computation to prevent or identify possible minor errors
 SAFE_RUN = False
-LOGUNIT = 500
-TRAINNINGUNIT = 5000
+
 
 NO_COUNTERS_PARAMS = {
         'start_orientations': False,
@@ -667,7 +665,9 @@ class MediumLevelActionManager(object):
     
     Args:
         mdp (OvercookedGridWorld): gridworld of interest
-        start_orientations (bool): whether the JointMotionPlanner should store plans for all starting positions & orientations or just for unique starting positions
+        start_orientations (bool): whether the JointMotionPlanner should store plans for 
+                                   all starting positions & orientations or just for unique 
+                                   starting positions
     """
 
     def __init__(self, mdp, params):
@@ -846,7 +846,6 @@ class MediumLevelActionManager(object):
                 possible_motion_goals.append(motion_goal)
         return possible_motion_goals
 
-
 class MediumLevelPlanner(object):
     """
     A planner that computes optimal plans for two agents to deliver a certain number of dishes 
@@ -912,8 +911,6 @@ class MediumLevelPlanner(object):
         Returns:
             full_joint_action_plan (list): joint actions to reach goal
         """
-
-        print('MediumLevelPlanner::get_low_level_action_plan')
         start_state = start_state.deepcopy()
         ml_plan, cost = self.get_ml_plan(start_state, h_fn, delivery_horizon=delivery_horizon, debug=debug)
 
@@ -977,7 +974,6 @@ class MediumLevelPlanner(object):
                 [(joint_action, successor_state), ..., (joint_action, goal_state)]
             cost (int): A* Search cost
         """
-        print('get_ml_plan')
         start_state = start_state.deepcopy()
         if start_state.order_list is None:
             start_state.order_list = ["any"] * delivery_horizon
@@ -1092,7 +1088,6 @@ class MediumLevelPlanner(object):
             assert False, "state {} \t action {}".format(state, action)
             successor_state = state
         return successor_state, joint_action
-
 
 class HighLevelAction:
     """A high level action is given by a set of subsequent motion goals"""
@@ -1539,313 +1534,3 @@ class Heuristic(object):
             print(str(env) + "HEURISTIC: {}".format(heuristic_cost))
 
         return heuristic_cost
-
-
-
-class MdpPlanner(MediumLevelPlanner):
-
-    def __init__(self, mdp, mlp_params, ml_action_manager=None, state_dict = {}, value_dict = {}, policy_dict = {}, num_rounds = 0, epsilon=0.0001, discount_factor=0.98):
-        super().__init__(mdp, mlp_params, ml_action_manager=ml_action_manager)
-        self.epsilon = epsilon
-        self.discount_factor = discount_factor
-        self.state_dict = state_dict
-        self.value_dict = value_dict
-        self.policy_dict = policy_dict
-        self.num_rounds = num_rounds
-        self.planner_name = 'mdp'
-
-    @staticmethod
-    def from_mdp_planner_file(filename):
-        with open(os.path.join(PLANNERS_DIR, filename), 'rb') as f:
-            mdp_planner = pickle.load(f)
-            mdp = mdp_planner.mdp
-            params = mdp_planner.params
-            mlp_action_manager = mdp_planner.ml_action_manager
-            state_dict = mdp_planner.state_dict
-            value_dict = mdp_planner.value_dict
-            policy_dict = mdp_planner.policy_dict
-            num_rounds = mdp_planner.num_rounds
-            return MdpPlanner(mdp, params, mlp_action_manager, state_dict, value_dict, policy_dict, num_rounds)
-    
-    @staticmethod
-    def from_pickle_or_compute(mdp, other_agent, other_agent_index, mlp_params, custom_filename=None, force_compute_all=False, info=True, force_compute_more=False):
-        assert isinstance(mdp, OvercookedGridworld)
-
-        filename = custom_filename if custom_filename is not None else mdp.layout_name + '_mdp.pkl'
-
-        if force_compute_all:
-            mdp_planner = MdpPlanner(mdp, mlp_params)
-            mdp_planner.compute_mdp_policy(other_agent, other_agent_index, filename)
-            return mdp_planner
-        
-        try:
-            mdp_planner = MdpPlanner.from_mdp_planner_file(filename)
-            
-            if force_compute_more:
-                print("Stored mdp_planner computed ", str(mdp_planner.num_rounds), " rounds. Compute another " + str(TRAINNINGUNIT) + " more...")
-                mdp_planner.compute_mdp_policy(other_agent, other_agent_index, filename)
-                return mdp_planner
-
-        except (FileNotFoundError, ModuleNotFoundError, EOFError, AttributeError) as e:
-            print("Recomputing planner due to:", e)
-            mdp_planner = MdpPlanner(mdp, mlp_params)
-            mdp_planner.compute_mdp_policy(other_agent, other_agent_index, filename)
-            return mdp_planner
-
-        if info:
-            print("Loaded MdpPlanner from {}".format(os.path.join(PLANNERS_DIR, filename)))
-
-        return mdp_planner
-
-    def gen_state_dict_key(self, state):
-        # a0 pos, a0 dir, a0 hold, a1 pos, a1 dir, a1 hold, len(order_list)
-        player0 = state.players[0]
-        player1 = state.players[1]
-
-        p0_obj = None
-        p1_obj = None
-        if player0.held_object is not None:
-            p0_obj = player0.held_object.name
-        if player1.held_object is not None:
-            p1_obj = player1.held_object.name
-
-        obj_str = str(None)
-        if state.objects is not None and len(state.objects) > 0:
-            obj_state = list(state.objects.values())[0]
-            obj_str = str(obj_state.name)+','+str(obj_state.state)
-
-        state_str = \
-        str(player0.position)+','+str(player0.orientation)+','+str(p0_obj)+','+ \
-        str(player1.position)+','+str(player1.orientation)+','+str(p1_obj)+','+ \
-        obj_str+','+ \
-        str(len(state.order_list))
-
-        return state_str
-
-    def get_all_start_states(self):
-        start_state = self.mdp.get_standard_start_state()
-        state_str = self.gen_state_dict_key(start_state)
-        self.state_dict[state_str] = start_state
-        self.value_dict[state_str] = 0.0
-        self.policy_dict[state_str] = Action.ALL_ACTIONS[0]
-
-    def embedded_mdp_step(self, state, action, other_agent_action, other_agent_index):
-        if other_agent_index == 0:
-            joint_action = (other_agent_action, action)
-        else:
-            joint_action = (action, other_agent_action)
-        if not self.mdp.is_terminal(state):
-            results, sparse_reward, shaped_reward, _ = self.mdp.get_state_transition(state, joint_action)
-            successor_state = results
-        else:
-            print("Tried to find successor of terminal")
-            assert False, "state {} \t action {}".format(state, action)
-            successor_state = state
-        return successor_state, joint_action, sparse_reward, shaped_reward
-
-    def one_step_lookahead(self, next_state, joint_action, sparse_reward, shaped_reward):
-        # print('##### one_step_lookahead() #####')
-        """
-        NOTE: Sparse reward is given only when soups are delivered, 
-        shaped reward is given only for completion of subgoals 
-        (not soup deliveries).
-        """
-        next_state_str = self.gen_state_dict_key(next_state)
-        reward = sparse_reward + shaped_reward
-
-        # add new state into state dictionaries
-        if next_state_str not in self.state_dict and next_state.order_list is not None:
-            self.state_dict[next_state_str] = next_state
-            self.value_dict[next_state_str] = 0.0
-            self.policy_dict[next_state_str] = Action.ALL_ACTIONS[0] #default
-
-        prob = 1.0
-        v = prob * (reward + self.discount_factor * self.value_dict[next_state_str])
-
-        return v
-
-
-    def value_iteration(self, other_agent, filename):
-        #while not the optimal policy
-        count = 0
-        while True:
-            #for stopping condition
-            delta = 0.0
-            #loop over state space        
-            for state_str, state in list(self.state_dict.items()):
-                if not self.mdp.is_terminal(state):
-                    actions_values = np.zeros(Action.NUM_ACTIONS)
-
-                    #loop over possible actions
-                    other_agent_action, _ = other_agent.action(state)
-                    successors = []
-                    for i, a in enumerate(Action.ALL_ACTIONS):
-                        successor_state, joint_action, sparse_reward, shaped_reward = self.embedded_mdp_step(state, a, other_agent_action, other_agent.agent_index)
-                        #apply bellman eqn to get actions values
-                        actions_values[i] = self.one_step_lookahead(successor_state, joint_action, sparse_reward[1-(other_agent.agent_index)], shaped_reward[1-(other_agent.agent_index)])
-
-                    best_action_value = max(actions_values)
-
-                    delta = max(delta, abs(best_action_value - self.value_dict[state_str]))
-
-                    #apply bellman optimality eqn
-                    self.value_dict[state_str] = best_action_value
-
-                    #update the policy
-                    best_action = np.argmax(actions_values)
-                    self.policy_dict[state_str] = Action.ALL_ACTIONS[best_action]
-
-            count += 1
-            if(count % 10 == 0):
-                for p_key, p_value in self.policy_dict.items():
-                    print(p_value, end='\t')
-                print('\nCount =', count, len(self.state_dict), delta, self.epsilon)
-            if(count % LOGUNIT == 0):
-                print(len(self.state_dict))
-                self.num_rounds += LOGUNIT
-                output_filename = self.mdp.layout_name+'_'+self.planner_name+'_'+str(self.num_rounds)+".pkl"
-                output_mdp_path = os.path.join(PLANNERS_DIR, output_filename)
-
-                self.save_to_file(output_mdp_path)
-            #if optimal value function
-            if((delta < self.epsilon) and (count > 100)) or count > TRAINNINGUNIT:
-                break
-        
-    def save_to_file(self, filename):
-        with open(filename, 'wb') as output:
-            pickle.dump(self, output, pickle.HIGHEST_PROTOCOL)
-
-    def compute_mdp_policy(self, other_agent, other_agent_index, filename):
-        other_agent.agent_index = other_agent_index
-        self.get_all_start_states()
-        self.value_iteration(other_agent, filename)
-
-        print("Policy Probability Distribution:")
-        print(self.policy_dict)
-        print("")
-
-        # self.save_to_file(output_mdp_path)
-        return 
-
-
-class SoftmaxMdpPlanner(MdpPlanner):
-
-    def __init__(self, mdp, mlp_params, ml_action_manager=None, state_dict = {}, value_dict = {}, policy_dict = {}, num_rounds = 0, epsilon=0.0001, discount_factor=1.0):
-        super().__init__(mdp, mlp_params, ml_action_manager, state_dict, value_dict, policy_dict, num_rounds, epsilon, discount_factor)
-        self.planner_name = 'softmax_mdp'
-
-    def one_step_lookahead(self, next_state, joint_action, sparse_reward, shaped_reward):
-        """
-        NOTE: Sparse reward is given only when soups are delivered, 
-        shaped reward is given only for completion of subgoals 
-        (not soup deliveries).
-        """
-        next_state_str = self.gen_state_dict_key(next_state)
-        reward = sparse_reward + shaped_reward
-
-        # add new state into state dictionaries
-        if next_state_str not in self.state_dict and next_state.order_list is not None:
-            self.state_dict[next_state_str] = next_state
-            self.value_dict[next_state_str] = 0.0
-            self.policy_dict[next_state_str] = Action.ALL_ACTIONS[0] #default
-
-        prob = 1.0
-        v = prob * (reward + self.discount_factor * self.value_dict[next_state_str])
-
-        return v
-
-    @staticmethod
-    def from_pickle_or_compute(mdp, other_agent, other_agent_index, mlp_params, custom_filename=None, force_compute_all=False, info=True, force_compute_more=False):
-        assert isinstance(mdp, OvercookedGridworld)
-
-        filename = custom_filename if custom_filename is not None else mdp.layout_name + '_mdp.pkl'
-
-        if force_compute_all:
-            mdp_planner = SoftmaxMdpPlanner(mdp, mlp_params)
-            mdp_planner.compute_mdp_policy(other_agent, other_agent_index, filename)
-            return mdp_planner
-        
-        try:
-            mdp_planner = SoftmaxMdpPlanner.from_mdp_planner_file(filename)
-            
-            if force_compute_more:
-                print("Stored mdp_planner computed ", str(mdp_planner.num_rounds), " rounds. Compute another " + str(TRAINNINGUNIT) + " more...")
-                mdp_planner.compute_mdp_policy(other_agent, other_agent_index, filename)
-                return mdp_planner
-
-        except (FileNotFoundError, ModuleNotFoundError, EOFError, AttributeError) as e:
-            print("Recomputing planner due to:", e)
-            mdp_planner = SoftmaxMdpPlanner(mdp, mlp_params)
-            mdp_planner.compute_mdp_policy(other_agent, other_agent_index, filename)
-            return mdp_planner
-
-        if info:
-            print("Loaded MdpPlanner from {}".format(os.path.join(PLANNERS_DIR, filename)))
-
-        return mdp_planner
-
-    @staticmethod
-    def softmax(x):
-        return math.log(np.sum(np.exp(x), axis=0))
-        
-    def value_iteration(self, other_agent, filename):
-
-        #while not the optimal policy
-        count = 0
-        init_num_rounds = self.num_rounds
-        while True:
-            #for stopping condition
-            delta = 0.0
-
-            #loop over state space        
-            for state_str, state in list(self.state_dict.items()):
-                if not self.mdp.is_terminal(state):
-                    # print('state s =', state_str)
-                    actions_values = np.zeros(Action.NUM_ACTIONS)
-
-                    #loop over possible actions
-                    other_agent_action, _ = other_agent.action(state)
-                    successors = []
-                    for i, a in enumerate(Action.ALL_ACTIONS):
-                        successor_state, joint_action, sparse_reward, shaped_reward = self.embedded_mdp_step(state, a, other_agent_action, other_agent.agent_index)
-                        #apply bellman eqn to get actions values
-                        actions_values[i] = self.one_step_lookahead(successor_state, joint_action, sparse_reward[1-(other_agent.agent_index)], shaped_reward[1-(other_agent.agent_index)])
-
-                    #pick the best action
-                    best_action_value = self.softmax(actions_values) #max(actions_values)
-
-                    #get the biggest difference between best action value and our old value function
-                    delta = max(delta, abs(best_action_value - self.value_dict[state_str]))
-
-                    #apply bellman optimality eqn
-                    self.value_dict[state_str] = best_action_value
-
-                    #to update the policy
-                    best_action = np.argmax(actions_values)
-
-                    #update the policy
-                    self.policy_dict[state_str] = Action.ALL_ACTIONS[best_action]
-
-            count += 1
-            if(count % 10 == 0):
-                for p_key, p_value in self.value_dict.items():
-                    print(p_value, end='\t')
-                # for p_key, p_value in self.policy_dict.items():
-                #     print(p_value, end='\t')
-                print('\nIn softmax')
-                print('\nCount =', count, len(self.state_dict), delta, self.epsilon)
-            if(count % LOGUNIT == 0):
-                print(len(self.state_dict))
-                self.num_rounds += LOGUNIT
-                output_filename = self.mdp.layout_name+'_'+self.planner_name+'_'+str(self.num_rounds)+".pkl"
-                output_mdp_path = os.path.join(PLANNERS_DIR, output_filename)
-                self.save_to_file(output_mdp_path)
-            #if optimal value function
-            if((delta < self.epsilon) and (count > 100)) or count > TRAINNINGUNIT:
-                self.num_rounds = init_num_rounds+count
-                output_filename = self.mdp.layout_name+'_'+self.planner_name+'_'+str(self.num_rounds)+".pkl"
-                output_mdp_path = os.path.join(PLANNERS_DIR, output_filename)
-                self.save_to_file(output_mdp_path)
-                break
-        
-        # return policy, value_dict
