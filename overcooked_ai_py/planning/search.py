@@ -26,6 +26,7 @@ class SearchTree(object):
         """
         Performs a A* Graph Search to find a path to a goal state
         """
+        print('A_star_graph_search')
         start_time = time.time()
         iter_count = 0
         seen = set()
