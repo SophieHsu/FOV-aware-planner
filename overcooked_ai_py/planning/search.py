@@ -139,7 +139,8 @@ class Graph(object):
             decoder: Dictionary mapping each adj mtx index to a graph node key
         """
         self.sparse_adjacency_matrix = scipy.sparse.csr_matrix(dense_adjacency_matrix)
-        self.distance_matrix, self.predecessors = scipy.sparse.csgraph.floyd_warshall(dense_adjacency_matrix, return_predecessors=True)
+        self.distance_matrix, self.predecessors = \
+             scipy.sparse.csgraph.floyd_warshall(dense_adjacency_matrix, return_predecessors=True, overwrite=True)
         self._encoder = encoder
         self._decoder = decoder
         start_time = time.time()
@@ -202,8 +203,9 @@ class Graph(object):
             traceback_path.append(cur_index)
             cur_index = self.predecessors[start_index][cur_index]
         traceback_path.append(start_index)
+        traceback_path.reverse()
 
-        return traceback_path[::-1]
+        return traceback_path
 
     def _get_connected_components(self):
         num_ccs, cc_labels = scipy.sparse.csgraph.connected_components(self.sparse_adjacency_matrix)
