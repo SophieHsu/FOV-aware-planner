@@ -9,6 +9,7 @@ def run(config,
         model_path,):
     experiment_toml = toml.load(config)
     visualize = experiment_toml["Visualize"]
+    num_cores = experiment_toml["num_cores"]
     num_list = []
     workerID = workerID-1
     if workerID < 0:
@@ -20,7 +21,7 @@ def run(config,
         # determine which trial to run
         for trial_index in range(len(num_list)):
             if workerID < num_list[trial_index]:
-                start_search(workerID+1, trial_index, experiment_toml, model_path, visualize)
+                start_search(workerID+1, trial_index, experiment_toml, model_path, visualize, num_cores)
                 print("workerID " + str(workerID) + " finished")
                 break
             workerID = workerID - num_list[trial_index]

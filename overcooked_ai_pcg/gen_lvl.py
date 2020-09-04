@@ -37,15 +37,15 @@ def generate_lvl(batch_size, model_path, latent_vector = None):
     im = np.argmax( im, axis = 1)
     lvl_int = im[0]
 
-    print("Before repair:")
-    print(lvl_number2str(lvl_int))
+    # print("Before repair:")
+    # print(lvl_number2str(lvl_int))
 
-    print("Start MILP repair...")
+    # print("Start MILP repair...")
     lvl_repaired = repair_lvl(lvl_int)
     lvl_str = lvl_number2str(lvl_repaired)
 
-    print("After repair:")
-    print(lvl_str)
+    # print("After repair:")
+    # print(lvl_str)
     return lvl_str
 
 def generate_rnd_lvl(size):
@@ -57,25 +57,25 @@ def generate_rnd_lvl(size):
     """
     rnd_lvl_int = gen_int_rnd_lvl(size)
 
-    print("Before repair:")
-    print(lvl_number2str(rnd_lvl_int))
+    # print("Before repair:")
+    # print(lvl_number2str(rnd_lvl_int))
 
-    print("Start MILP repair...")
+    # print("Start MILP repair...")
     lvl_repaired = repair_lvl(rnd_lvl_int)
     lvl_str = lvl_number2str(lvl_repaired)
 
-    print("After repair:")
-    print(lvl_str)
+    # print("After repair:")
+    # print(lvl_str)
     return lvl_str
 
 def main():
-    # lvl_str = generate_lvl(1, os.path.join(GAN_TRAINING_DIR, "netG_epoch_49999_999.pth"))
+    lvl_str = generate_lvl(1, os.path.join(GAN_TRAINING_DIR, "netG_epoch_49999_999.pth"))
     # lvl_str = """XXPXX
     #              T  2T
     #              X1  O
     #              XXDSX
     #              """
-    lvl_str = generate_rnd_lvl((6, 6))
+    # lvl_str = generate_rnd_lvl((6, 6))
 
     grid = [layout_row.strip() for layout_row in lvl_str.split("\n")][:-1]
 

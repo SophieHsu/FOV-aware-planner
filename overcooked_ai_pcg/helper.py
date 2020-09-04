@@ -157,8 +157,6 @@ def setup_env_from_grid(layout_grid):
     # mlp_planner1 = MediumLevelPlanner(mdp, base_params)
     mlp_planner2 = MediumLevelPlanner(mdp, base_params)
 
-    print("hello")
-
     # agent1 = CoupledPlanningAgent(mlp_planner1)
     # agent2 = CoupledPlanningAgent(mlp_planner2)
 
@@ -192,9 +190,9 @@ def run_overcooked_game(lvl_str, render=True):
         if render:
             env.render()
             time.sleep(0.5)
-        print("start compute actions")
+        # print("start compute actions")
         joint_action = (agent1.action(env.state)[0], agent2.action(env.state)[0])
-        print(joint_action)
+        # print(joint_action)
         next_state, timestep_sparse_reward, done, info = env.step(joint_action)
         total_sparse_reward += timestep_sparse_reward
 

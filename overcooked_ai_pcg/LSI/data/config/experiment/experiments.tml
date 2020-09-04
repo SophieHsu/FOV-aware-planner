@@ -1,4 +1,5 @@
 Visualize=false
+num_cores=8
 
 [[Trials]]
 num_trials=5
