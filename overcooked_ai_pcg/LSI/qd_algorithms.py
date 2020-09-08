@@ -64,7 +64,7 @@ class FeatureMap:
       return replaced_elite
 
    def get_random_elite(self):
-      pos = random.randint(0, len(self.elite_indices)-1)
+      pos = np.random.randint(0, len(self.elite_indices)-1)
       index = self.elite_indices[pos]
       return self.elite_map[index]
 
