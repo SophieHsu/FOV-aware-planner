@@ -164,7 +164,7 @@ def run_trial(num_to_evaluate,
         time.sleep(1)
 
     finish_time = time.time()
-    print("Total time: " + str(finish_time - start_time) + " seconds")
+    print("Total evaluation time: " + str(finish_time - start_time) + " seconds")
 
 
 def start_search(sim_number,

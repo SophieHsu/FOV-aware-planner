@@ -82,11 +82,15 @@ class OvercookedEvaluator(Process):
             ind (Individual): individual instance
         """
         # generate new level
-        ind.level = generate_lvl(1, self.model_path, ind.param_vector)
-        # ind.level = generate_rnd_lvl((6, 6))
+        ind.level = generate_lvl(1, self.model_path,
+                                 ind.param_vector,
+                                 worker_id=self.id)
+        # ind.level = generate_rnd_lvl((6, 8), worker_id=self.id)
 
         # run simulation
-        ind.fitness = run_overcooked_game(ind.level, render=self.visualize)
+        ind.fitness = run_overcooked_game(ind.level,
+                                          render=self.visualize,
+                                          worker_id=self.id)
 
         # calculate bc out of the game
         ind.features = []
@@ -97,5 +101,5 @@ class OvercookedEvaluator(Process):
             bc_val = bc_fn(ind)
             ind.features.append(bc_val)
         ind.features = tuple(ind.features)
-        print("Game end; fitness =", ind.fitness)
+        print("worker_id(%d): Game end; fitness = %d" % (self.id, ind.fitness))
         return ind

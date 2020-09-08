@@ -130,7 +130,7 @@ def plot_err(average_errG_log,
     plt.savefig(ERR_LOG_PIC)
     plt.show()
 
-def setup_env_from_grid(layout_grid):
+def setup_env_from_grid(layout_grid, worker_id=0):
     """
     Set up random agents and overcooked env to run demo game.
 
@@ -169,7 +169,9 @@ def setup_env_from_grid(layout_grid):
     # agent2 = GreedyHumanModel(mlp_planner, env)
 
     # Set up 3: Fixed plan agents
+    print("worker(%d): Pre-constructing graph..." % (worker_id))
     mlp_planner = MediumLevelPlanner(mdp, base_params)
+    print("worker(%d): Planning..." % (worker_id))
     joint_plan = \
         mlp_planner.get_low_level_action_plan(
             env.state,
@@ -187,7 +189,8 @@ def setup_env_from_grid(layout_grid):
     agent1 = FixedPlanAgent(plan1)
     agent2 = FixedPlanAgent(plan2)
 
-    print("preprocess take %d" % (time.time() - start_time))
+    print("worker(%d): Preprocess take %d seconds"
+        % (worker_id, time.time() - start_time))
     agent1.set_agent_index(0)
     agent2.set_agent_index(1)
     agent1.set_mdp(mdp)
@@ -203,12 +206,12 @@ def read_gan_param():
         G_params = json.load(f)
     return G_params
 
-def run_overcooked_game(lvl_str, render=True):
+def run_overcooked_game(lvl_str, render=True, worker_id=0):
     """
     Run one turn of overcooked game and return the sparse reward as fitness
     """
     grid = lvl_str2grid(lvl_str)
-    agent1, agent2, env = setup_env_from_grid(grid)
+    agent1, agent2, env = setup_env_from_grid(grid, worker_id=worker_id)
     done = False
     total_sparse_reward = 0
     while not done:
