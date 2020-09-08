@@ -207,6 +207,12 @@ def repair_lvl(np_lvl):
     mdl.add_constraint(sum(objs[obj_types.index("P")]) >= 1)
     mdl.add_constraint(sum(objs[obj_types.index("S")]) >= 1)
 
+    # Upper bound number of onion, dish plate, pot, and serve point
+    mdl.add_constraint(sum(objs[obj_types.index("O")]) <= 2)
+    mdl.add_constraint(sum(objs[obj_types.index("D")]) <= 2)
+    mdl.add_constraint(sum(objs[obj_types.index("P")]) <= 2)
+    mdl.add_constraint(sum(objs[obj_types.index("S")]) <= 4)
+
     # reachability
     source_labels = "1"
     sink_labels = "ODPS "
