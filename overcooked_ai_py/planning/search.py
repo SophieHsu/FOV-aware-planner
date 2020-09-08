@@ -14,7 +14,7 @@ class SearchTree(object):
         heuristic_fn (func): Takes in a state and returns a heuristic value
     """
 
-    def __init__(self, root, goal_fn, expand_fn, heuristic_fn, max_iter_count=10e6, debug=False):
+    def __init__(self, root, goal_fn, expand_fn, heuristic_fn, max_iter_count=10e8, debug=False):
         self.debug = debug
         self.root = root
         self.is_goal = goal_fn
