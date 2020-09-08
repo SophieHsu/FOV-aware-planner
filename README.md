@@ -110,53 +110,49 @@ The program will generate a level from random latent vector sampled from normal 
 To run LSI experiments, run the following:
 ```bash
 cd overcooked_ai_pcg/LSI
-python run_search.py -w <workerID> -c <exp_config_file_path>
+python run_search.py -c <exp_config_file_path>
 ```
 
-`workerID` is a positive integer specifying which trial in the experiment to run. The ID would be related to `num_trials` field of the experiment config file. For example, for the following experiment config file:
-
-```
-Visualize=false
-
-[[Trials]]
-num_trials=5
-trial_config="RANDOM_demo.tml"
-
-[[Trials]]
-num_trials=5
-trial_config="MAPELITES_demo.tml"
-```
-
-`workerID` from `1` to `5` would be running Random search, while `workerID` from `6` to `10` would be running MAP-Elites QD algorithm.
-
-`exp_config_file_path` is the filepath to the experiment config file. It is default to be `overcooked_ai_pcg/LSI/data/config/experiment/experiments.tml`
+`exp_config_file_path` is the filepath to the experiment config file. It is default to be `overcooked_ai_pcg/LSI/data/config/experiment/MAPELITES_demo.tml`
 
 #### LSI config files
 
-There are four kinds of config files, each configuring different components of the LSI experiments.
+There are three kinds of config files, each configuring different components of the LSI experiments.
 
 ##### `experiment` config files
 They are under `overcooked_ai_pcg/LSI/data/config/experiment`.
 
-They are the entry points of the config files. An experiment includes a list of paths to trial config files.
+An experiment config file contains the following required fields:
+```
+visualize (bool): to visualize the evaluations or not
+num_cores (int): number of processes that runs the evaluations
+num_simulations (int): total number of evaluations/simulations to run
+algorithm_config (string): file name of the algorithm config file
+elite_map_config (string): file name of the elite map config file
+```
 
-##### `trial` config files
-They are under `overcooked_ai_pcg/LSI/data/config/trials`.
-
-A trial config file contains algorithm, name of the trial, number of evaluations to run, and paths of algorithm and feature map config files of the trail to run.
-
-The name of the trial config files strictly follows the format of `<algorithm name>_<elite map name>`.
+The experiment config files are the entry points each LSI experiments.
 
 ##### `algorithm` config files
 They are under `overcooked_ai_pcg/LSI/data/config/algorithms`.
 
-An algorithm config file contains hyper params of the algorithm to run. For example, for MAP-Elites, they are initial population and mutation power.
+An algorithm config file contains the following required fields:
+```
+name (string): name of the algorithm used for deciding which
+               algorithm instance to intialize at run time.
+```
+
+It also contains hyper params of the algorithm to run. For example, for MAP-Elites, they are initial population and mutation power.
 
 ##### `elite_map` config files
 They are under `overcooked_ai_pcg/LSI/data/config/elite_map`.
 
-An elite map config file contains the names and the range of the behavior characteristics to be used for the QD algorithms.
-
+An elite map config file contains an array of behavior characteristics (bc). Each bc contains the following required fields:
+```
+low (int/double): lower bound of the bc
+high (int/double): upper bound of the bc
+resolution (int): resolution (how many sections to divide) for the bc
+```
 
 ### Making More GAN Training Data
 
