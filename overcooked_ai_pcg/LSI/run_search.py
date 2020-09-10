@@ -1,8 +1,162 @@
 import os
 import toml
+import time
 import argparse
-from overcooked_ai_pcg.LSI.search import *
+from collections import OrderedDict
+from multiprocessing.managers import BaseManager
+from overcooked_ai_pcg.LSI.qd_algorithms import *
+from overcooked_ai_pcg.LSI.evaluator import *
 from overcooked_ai_pcg import GAN_TRAINING_DIR, LSI_CONFIG_EXP_DIR, LSI_CONFIG_ALGO_DIR, LSI_CONFIG_MAP_DIR
+
+
+# multiprocessing related variables
+global evaluators_list, idle_workers, running_workers, worker_list
+evaluators_list = []
+idle_workers = []
+running_workers = []
+worker_list = []
+
+def assign_eval_task(ind, worker_id, sim_id):
+    """
+    Assign evaluation task to a worker by setting relevant variables
+
+    Args:
+        ind (Individual): Individual instance to be evaluated
+        worker_id (int): id of the worker
+        sim_id (int): index of the simulation/evaluation job
+    """
+    worker_list[worker_id].set_ind(ind)
+    worker_list[worker_id].set_sim_id(sim_id)
+    worker_list[worker_id].set_status(Status.EVALUATING)
+
+def init_workers(visualize, elite_map_config, num_cores, model_path):
+    """
+    Initialize specified number of workers and processes
+
+    Args:
+        visualize (bool): render the game or not
+        elite_map_config: toml config object of the feature maps
+        num_cores (int): number of processes to run
+        model_path (string): file path to the GAN model
+    """
+    BaseManager.register('Worker', Worker)
+    manager = BaseManager()
+    manager.start()
+    # starting process
+    for id in range(0, num_cores):
+        worker = manager.Worker(id)
+        worker_list.append(worker)
+        idle_workers.append(worker.get_id())
+        evaluator = OvercookedEvaluator(id, worker,
+                                        visualize,
+                                        elite_map_config,
+                                        model_path)
+        evaluator.start()
+        evaluators_list.append(evaluator)
+
+def worker_has_finished(worker_id):
+    """
+    Determine whether the worker has finished evaluating
+
+    Args:
+        worker_id (int): id of the worker
+    """
+    if worker_list[worker_id].get_status() == Status.IDLE:
+        return True
+    else:
+        return False
+
+def terminate_all_workers(num_cores):
+    """
+    Appropriately terminate all workers/processes
+
+    Args:
+        num_cores (int): number of processes to run
+    """
+    for id in range(num_cores):
+        worker_list[id].set_status(Status.TERMINATING)
+        evaluators_list[id].join()
+
+def search(num_simulations,
+           algorithm_config,
+           elite_map_config,
+           model_path,
+           visualize,
+           num_cores):
+    """
+    Run search with the specified algorithm and elite map
+
+    Args:
+        num_simulations (int): total number of evaluations of QD algorithm to run.
+        algorithm_config: toml config object of QD algorithm
+        elite_map_config: toml config object of the feature maps
+        model_path (string): file path to the GAN model
+        visualize (bool): render the game or not
+        num_cores (int): number of processes to run
+    """
+
+    # config feature map
+    feature_ranges = []
+    resolutions = []
+    for bc in elite_map_config["Map"]["Features"]:
+        feature_ranges.append((bc["low"],bc["high"]))
+        resolutions.append(bc["resolution"])
+    feature_map = FeatureMap(num_simulations, feature_ranges, resolutions)
+
+    # config algorithm instance
+    algorithm_name = algorithm_config["name"]
+    if algorithm_name == "MAPELITES":
+        print("Start Running MAPELITES")
+        mutation_power = algorithm_config["mutation_power"]
+        initial_population = algorithm_config["initial_population"]
+        algorithm_instance = MapElitesAlgorithm(mutation_power,
+                                                initial_population,
+                                                num_simulations,
+                                                feature_map,)
+    elif algorithm_name=="RANDOM":
+        print("Start Running RANDOM")
+        algorithm_instance=RandomGenerator(num_simulations,
+                                           feature_map,)
+
+
+    # run search
+    start_time = time.time()
+    simulation = 1
+    init_workers(visualize, elite_map_config, num_cores, model_path)
+    while algorithm_instance.is_running():
+        # print("Looking for idle workers")
+
+        # assign job to idle workers
+        while len(idle_workers) > 0 and simulation <= num_simulations:
+            ind = algorithm_instance.generate_individual()
+            print("Starting simulation: %d/%d on worker %d"
+                % (simulation, num_simulations, idle_workers[0]))
+
+            worker_id = idle_workers.pop(0)
+            assign_eval_task(ind, worker_id, simulation)
+            running_workers.append(worker_id)
+
+            simulation += 1
+
+        # find done workers
+        num_running_workers = len(running_workers)
+        for _ in range(num_running_workers):
+            worker_id = running_workers.pop(0)
+            if worker_has_finished(worker_id):
+                worker = worker_list[worker_id]
+                evaluated_ind = worker.get_ind()
+                algorithm_instance.return_evaluated_individual(evaluated_ind)
+                idle_workers.append(worker_id)
+                print("Finished simulation: %d/%d"
+                      % (worker.get_sim_id(), num_simulations))
+            else:
+                running_workers.append(worker_id)
+        time.sleep(1)
+
+    finish_time = time.time()
+    print("Total evaluation time: " + str(finish_time - start_time) + " seconds")
+    terminate_all_workers(num_cores)
+
 
 def run(config,
         model_path,):

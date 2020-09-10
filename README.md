@@ -149,10 +149,13 @@ They are under `overcooked_ai_pcg/LSI/data/config/elite_map`.
 
 An elite map config file contains an array of behavior characteristics (bc). Each bc contains the following required fields:
 ```
+name (string): name of the bc
 low (int/double): lower bound of the bc
 high (int/double): upper bound of the bc
 resolution (int): resolution (how many sections to divide) for the bc
 ```
+
+Note that the name should match the name of the function to calculate the bc in `overcooked_ai_pcg/LSI/bc_calculate.py`
 
 ### Making More GAN Training Data
 
