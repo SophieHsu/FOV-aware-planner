@@ -99,8 +99,8 @@ It uses [cplex optimizer of IBM](https://www.ibm.com/analytics/cplex-optimizer).
 To use trained GAN and the MILP solver to generate Overcooked-AI levels, run the following:
 
 ```bash
-cd overcooked_ai_pcg/GAN_training
-python gen_gan.py
+cd overcooked_ai_pcg/
+python gen_lvl.py
 ```
 
 The program will generate a level from random latent vector sampled from normal distribution and then use MILP solver defined in `overcooked_ai_pcg/milp_repair.py` to fix the level.
