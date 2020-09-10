@@ -25,7 +25,7 @@ class Worker(object):
 
     def get_status(self):
         return self._status
-    
+
     def set_status(self, status):
         self._status = status
 
@@ -101,5 +101,5 @@ class OvercookedEvaluator(Process):
             bc_val = bc_fn(ind)
             ind.features.append(bc_val)
         ind.features = tuple(ind.features)
-        print("worker_id(%d): Game end; fitness = %d" % (self.id, ind.fitness))
+        print("worker(%d): Game end; fitness = %d" % (self.id, ind.fitness))
         return ind

@@ -8,11 +8,11 @@ def bc_demo1(ind):
 def bc_demo2(ind):
     return np.random.rand() * 5
 
-def pot_onion_shortest_dist(lvl_str):
-    return shortest_dist('P', 'O', lvl_str)
+def pot_onion_shortest_dist(ind):
+    return shortest_dist('P', 'O', ind.level)
 
-def pot_serve_shortest_dist(lvl_str):
-    return shortest_dist('P', 'S', lvl_str)
+def pot_serve_shortest_dist(ind):
+    return shortest_dist('P', 'S', ind.level)
 
 def shortest_dist(terrain1, terrain2, lvl_str):
     """
@@ -50,18 +50,3 @@ def shortest_dist(terrain1, terrain2, lvl_str):
                             q.put((n_x, n_y))
                             dist_matrix[n_x, n_y] = dist_matrix[x, y] + 1
     return shortest
-
-
-ans = shortest_dist('P', 'O',
-                    lvl_str = """XXXXXXXXXXXXXXX
-                                 X 1     XX    D
-                                 X  X2XXXXXXXX S
-                                 X XX     XXXX X
-                                 X         X   X
-                                 X        O X  X
-                                 X  XXXXXXX    X
-                                 X  XXXX  PXXX X
-                                 X          X  X
-                                 XXXXXXXXXXXXXXX
-                                """)
-print(ans)

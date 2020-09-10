@@ -4,6 +4,7 @@ import time
 import argparse
 from collections import OrderedDict
 from multiprocessing.managers import BaseManager
+from overcooked_ai_pcg.LSI.logger import *
 from overcooked_ai_pcg.LSI.qd_algorithms import *
 from overcooked_ai_pcg.LSI.evaluator import *
 from overcooked_ai_pcg import GAN_TRAINING_DIR, LSI_CONFIG_EXP_DIR, LSI_CONFIG_ALGO_DIR, LSI_CONFIG_MAP_DIR
@@ -118,6 +119,12 @@ def search(num_simulations,
         algorithm_instance=RandomGenerator(num_simulations,
                                            feature_map,)
 
+    # create loggers
+    individual_log = RunningIndividualLog("individuals_log.csv",
+                                          elite_map_config)
+    elite_map_log = FrequentMapLog("elite_map.csv",
+                                   len(elite_map_config["Map"]["Features"]))
+    map_summary_log = MapSummaryLog("map_summary.csv")
 
     # run search
     start_time = time.time()
@@ -143,12 +150,23 @@ def search(num_simulations,
         for _ in range(num_running_workers):
             worker_id = running_workers.pop(0)
             if worker_has_finished(worker_id):
+                # receive done individual
                 worker = worker_list[worker_id]
                 evaluated_ind = worker.get_ind()
                 algorithm_instance.return_evaluated_individual(evaluated_ind)
+
+                # log result
+                individual_log.log_individual(evaluated_ind)
+                elite_map_log.log_map(algorithm_instance.feature_map)
+                map_summary_log.log_summary(algorithm_instance.feature_map,
+                                            algorithm_instance.individuals_evaluated)
+
+                # deal with workers
                 idle_workers.append(worker_id)
-                print("Finished simulation: %d/%d"
-                      % (worker.get_sim_id(), num_simulations))
+                print("""Finished simulation: %d\nTotal simulation done: %d/%d"""
+                      % (worker.get_sim_id(),
+                         algorithm_instance.individuals_evaluated,
+                         num_simulations))
             else:
                 running_workers.append(worker_id)
         time.sleep(1)
