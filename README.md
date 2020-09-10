@@ -213,6 +213,7 @@ Note: These are also the constraints that the MILP solver is trying to satisfy.
 - `LSI/`:
   - `bc_calculate.py`: Relevant functions to calculate behavior characteristics
   - `qd_algorithms.py`: Implementations of QD algorithms
-  - `search.py`: Relevant functions to run the LSI search
   - `run_search.py`: Script to run LSI search
-  - `data/`: config and log data and LSI experiment
+  - `evaluator.py`: Overcooked game evaluator
+  - `logger.py`: LSI experiment data loggers
+  - `data/`: config and log data of LSI experiment
