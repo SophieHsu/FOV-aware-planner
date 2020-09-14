@@ -1,6 +1,6 @@
 import itertools, os
 import numpy as np
-import pickle, time
+import pickle, time, random
 import math
 from overcooked_ai_py.utils import pos_distance, manhattan_distance
 from overcooked_ai_py.planning.search import SearchTree, Graph
@@ -9,13 +9,16 @@ from overcooked_ai_py.mdp.overcooked_mdp import OvercookedState, PlayerState, Ov
 from overcooked_ai_py.mdp.overcooked_env import OvercookedEnv
 from overcooked_ai_py.data.planners import load_saved_action_manager, PLANNERS_DIR
 
+# to measure exec time 
+from timeit import default_timer as timer
+
 # Run planning logic with additional checks and
 # computation to prevent or identify possible minor errors
 SAFE_RUN = False
 LOGUNIT = 500
 TRAINNINGUNIT = 5000
 SOFTMAX_T = 10 # higher cause the actions to be nearly equiprobable
-MAX_NUM_STATES = 20000
+MAX_NUM_STATES = 19000
 
 NO_COUNTERS_PARAMS = {
         'start_orientations': False,
@@ -34,7 +37,6 @@ NO_COUNTERS_START_OR_PARAMS = {
     'counter_pickup': [],
     'same_motion_goals': True
 }
-
 
 class MotionPlanner(object):
     """A planner that computes optimal plans for a single agent to 
@@ -1552,7 +1554,7 @@ class MdpPlanner(MediumLevelPlanner):
         self.state_idx_dict = state_idx_dict
         self.state_dict = state_dict
 
-        self.num_joint_action = (Action.NUM_ACTIONS * Action.NUM_ACTIONS)
+        self.num_joint_action = (Action.NUM_ACTIONS)# * Action.NUM_ACTIONS)
         self.num_states = num_states
         self.num_rounds = num_rounds
         self.planner_name = 'mdp'
@@ -1564,7 +1566,6 @@ class MdpPlanner(MediumLevelPlanner):
         self.value_matrix = value_matrix if transition_matrix is not None else np.zeros((MAX_NUM_STATES), dtype=float)
         self.epsilon = epsilon
         self.discount = discount
-
 
     @staticmethod
     def from_mdp_planner_file(filename):
@@ -1642,10 +1643,10 @@ class MdpPlanner(MediumLevelPlanner):
         str(player1.position)+','+str(player1.orientation)+','+str(p1_obj)+','+ \
         obj_str+','+ \
         str(len(state.order_list))
+        # print('obj_str =', obj_str)
 
         return state_str
 
-    
     def get_joint_action_array():
         joint_actions = []
         for i0, a0 in enumerate(Action.ALL_ACTIONS):
@@ -1658,37 +1659,52 @@ class MdpPlanner(MediumLevelPlanner):
         joint_actions = get_joint_action_array()
         return joint_actions[joint_action_idx][agent_idx]
 
-    def init_all_states(self, start_states_strs, start_states, joint_actions=get_joint_action_array()):
+    def overload_trans_matrix(self):
+        return len(self.state_dict) >= MAX_NUM_STATES-1
+
+    def init_all_states(self, start_states_strs, start_states, other_agent, actions=Action.ALL_ACTIONS): # joint_actions=get_joint_action_array()):
 
         # find successor states from all start states with all actions avaliable to two agents
-        successors = np.empty((0,2), dtype=object)
-        
-        for start_str, start_obj in zip(start_states_strs, start_states):
+        # successors = np.empty((0,2), dtype=object)
+        successors = {}
+        init_num_states = len(self.state_idx_dict)
+        sub_start_states = random.sample(list(start_states), min(100, len(start_states)))
+        sub_start_states_str = random.sample(list(start_states_strs), min(100, len(start_states)))
+
+        for start_str, start_obj in zip(sub_start_states_str, sub_start_states):
             if not self.mdp.is_terminal(start_obj):
-                for ja_idx, joint_action in enumerate(joint_actions):
-                    successor_state, sparse_reward, shaped_reward, _ = self.mdp.get_state_transition(start_obj, joint_action)
+                other_agent_action, _ = other_agent.action(start_obj)
+                for a_idx, action in enumerate(actions):
+                    successor_state, _, sparse_reward, shaped_reward = self.embedded_mdp_step(start_obj, action, other_agent_action, other_agent.agent_index) # self.mdp.get_state_transition(start_obj, joint_action)
 
                     parent_state_idx = self.state_idx_dict[start_str]
                     add_state_str = self.gen_state_dict_key(successor_state)
                     total_reward = sum(sparse_reward+shaped_reward)
 
-                    if add_state_str not in self.state_dict.keys():
+                    if add_state_str not in self.state_dict.keys() and successor_state.order_list is not None:
                         self.state_idx_dict[add_state_str] = self.get_state_dict_length()
                         self.state_dict[add_state_str] = successor_state
                         add_state_idx = self.state_idx_dict[add_state_str]
 
-                        self.transition_matrix[ja_idx][parent_state_idx][add_state_idx] = 1.0
-                        self.reward_matrix[ja_idx][parent_state_idx] = total_reward
+                        # if add_state_idx >= transition_matrix.shape[-1]:
+                        #     add_trans_array = np.array((self.num_joint_action,transition_matrix.shape[-1]+1), dtype=float)
+                        #     add_trans_array[ja_idx][add_state_idx]
+                        #     transition_matrix = np.append(transition_matrix, np.atleast_3d(add_trans_array))
 
-                        successors = np.append(successors, np.array([[add_state_str, successor_state]]), axis=0)
-                        print(len(successors), successors.shape)
 
-                        print(len(start_states))
+                        self.transition_matrix[a_idx][parent_state_idx][add_state_idx] = 1.0
+                        self.reward_matrix[a_idx][parent_state_idx] = total_reward
 
-        if len(successors) > 0:
-            print(successors.shape)
-            tmp = input()
-            self.init_all_states(successors[:,0], successors[:,1])
+                    successors[add_state_str] = successor_state
+                    # successors = np.append(successors, np.array([[add_state_str, successor_state]]), axis=0)
+
+                    if self.overload_trans_matrix():
+                        print('State numbers reaches matrix maximum limit.')
+                        return
+
+        if len(self.state_idx_dict) - init_num_states > 0:
+            print(len(self.state_dict))
+            self.init_all_states(successors.keys(), successors.values(), other_agent)
 
         return    
 
@@ -1711,6 +1727,8 @@ class MdpPlanner(MediumLevelPlanner):
         state_str = self.gen_state_dict_key(start_state)
         self.state_dict[state_str] = start_state
         self.state_idx_dict[state_str] = 0
+
+        return list(self.state_dict.keys()).copy(), list(self.state_dict.values()).copy()
 
     def embedded_mdp_step(self, state, action, other_agent_action, other_agent_index):
         if other_agent_index == 0:
@@ -1752,13 +1770,9 @@ class MdpPlanner(MediumLevelPlanner):
         if V is None:
             V = self.value_matrix
 
-        Q = np.empty((self.num_joint_action, self.num_states, self.num_states))
+        Q = np.empty((self.num_joint_action, self.num_states))
         for a in range(self.num_joint_action):
-            print(Q.shape)
-            print(self.reward_matrix[a][:self.num_states].shape)
-            print(self.transition_matrix[a][:self.num_states][:self.num_states].shape)
-            print(V[:self.num_states].shape)
-            Q[a] = self.reward_matrix[a][:self.num_states] + self.discount * self.transition_matrix[a][:self.num_states][:self.num_states].dot(V[:self.num_states])
+            Q[a] = self.reward_matrix[a][:self.num_states] + self.discount * self.transition_matrix[a,:self.num_states,:self.num_states].dot(V[:self.num_states])
 
         return Q.max(axis=0), Q.argmax(axis=0)
 
@@ -1784,14 +1798,16 @@ class MdpPlanner(MediumLevelPlanner):
 
         iter_count = 0
         while True:
-            V_prev = self.value_matrix.copy()
+            V_prev = self.value_matrix[:self.num_states].copy()
 
             self.value_matrix, self.policy_matrix = self.bellman_operator()
 
-            variation = get_span(self.value_matrix-V_prev)
+            variation = self.get_span(self.value_matrix-V_prev)
+            print('Variation =',  variation, ', Threshold =', thresh)
 
             if variation < thresh:
                 self.log_value_iter(iter_count)
+                break
             elif iter_count % LOGUNIT == 0:
                 self.log_value_iter(iter_count)
             else:
@@ -1806,21 +1822,33 @@ class MdpPlanner(MediumLevelPlanner):
             pickle.dump(self, output, pickle.HIGHEST_PROTOCOL)
 
     def compute_mdp_policy(self, other_agent, other_agent_index, filename):
+        start = timer() 
 
+        ALL_START = False
         # initiate all state, transition, reward for array operations
-        start_states = self.get_all_start_states()
-        start_states_strs, start_states = self.init_all_start_states(start_states)
-        self.init_all_states(start_states_strs, start_states)
-        self.num_states = len(self.state_dict)
-        print('Total states =', self.num_states)
+        start_states = None; start_states_strs = None
+        if ALL_START == True:
+            start_states = self.get_all_start_states()
+            start_states_strs, start_states = self.init_all_start_states(start_states)
+        else:
+            start_states_strs, start_states = self.get_standard_start_states()
 
         other_agent.agent_index = other_agent_index
         self.agent_index = 1 - other_agent.agent_index
+
+        self.init_all_states(start_states_strs, start_states, other_agent)
+        self.num_states = len(self.state_dict)
+        print('Total states =', self.num_states)
+
         self.value_iteration(other_agent, filename)
 
         print("Policy Probability Distribution = ")
-        print(self.policy_matrix, '\n')
+        # print(self.policy_matrix.tolist(), '\n')
+        print(self.policy_matrix.shape)
 
+        print("without GPU:", timer()-start)
+
+        tmp = input()
         # self.save_to_file(output_mdp_path)
         return 
 
