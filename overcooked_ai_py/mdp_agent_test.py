@@ -7,7 +7,7 @@ from argparse import ArgumentParser
 from overcooked_ai_py.mdp.overcooked_mdp import OvercookedGridworld, OvercookedState, Direction, Action, PlayerState, ObjectState
 from overcooked_ai_py.mdp.overcooked_env import OvercookedEnv
 from overcooked_ai_py.agents.agent import AgentPair, StayAgent, EmbeddedPlanningAgent, RandomAgent, AgentFromPolicy, GreedyHumanModel, CoupledPlanningAgent, MdpPlanningAgent
-from overcooked_ai_py.planning.planners import MediumLevelPlanner, NO_COUNTERS_PARAMS, MdpPlanner, PLANNERS_DIR
+from overcooked_ai_py.planning.planners import MediumLevelPlanner, NO_COUNTERS_PARAMS, MdpPlanner, PLANNERS_DIR, SoftmaxMdpPlanner
 from overcooked_ai_py.mdp.layout_generator import LayoutGenerator
 from overcooked_ai_py.utils import load_dict_from_file
 
@@ -135,16 +135,35 @@ class App:
 if __name__ == "__main__" :
 
 
-    scenario_1_mdp = OvercookedGridworld.from_layout_name('scenario1_s', start_order_list=['any'], cook_time=2)
+    scenario_1_mdp = OvercookedGridworld.from_layout_name('five_by_five', start_order_list=['any'], cook_time=2)
+    # start_state = OvercookedState(
+    #     [P((2, 1), s, Obj('onion', (2, 1))),
+    #      P((3, 2), s)],
+    #     {}, order_list=['onion','onion'])
     env = OvercookedEnv.from_mdp(scenario_1_mdp)
 
-    mlp = MediumLevelPlanner.from_pickle_or_compute(scenario_1_mdp, NO_COUNTERS_PARAMS, force_compute=True)
-    a0 = GreedyHumanModel(mlp)
-
     ## create an MDP plan that acts as a look up map for agent inputs
-    mdp_planner = MdpPlanner.from_pickle_or_compute(scenario_1_mdp, a0, 0, NO_COUNTERS_PARAMS, force_compute_all = False, force_compute_more=False)#, custom_filename='scenario1_s_mdp_1000.pkl')
-    a1 = MdpPlanningAgent(a0, mdp_planner, env)
+    # mdpPlan = MdpPlanner(scenario_1_mdp, env)
+    mlp = MediumLevelPlanner.from_pickle_or_compute(scenario_1_mdp, NO_COUNTERS_PARAMS, force_compute=True)
 
+    a0 = GreedyHumanModel(mlp)
+    # a1 = EmbeddedPlanningAgent(a0, mlp, env)
+    mdp_planner = MdpPlanner.from_pickle_or_compute(scenario_1_mdp, a0, 0, NO_COUNTERS_PARAMS, force_compute_all = False, force_compute_more=False)#, custom_filename='scenario1_s_mdp_500.pkl')
+
+    a1 = MdpPlanningAgent(a0, mdp_planner, env)
     agent_pair = AgentPair(a0, a1)
+    # a2 = MdpPlanningAgent(a0, mdp_planner, env)
+
     
     s_t, joint_a_t, r_t, done_t = env.run_agents(agent_pair, include_final_state=True, display=DISPLAY)
+
+    # print(s_t, joint_a_t, r_t, done_t)
+
+    # mdp = OvercookedGridworld.from_layout_name("small_corridor")
+    # env = OvercookedEnv.from_mdp(mdp)
+    # # agentMdp = Mdp
+    # mlp = MediumLevelPlanner.from_pickle_or_compute(mdp, NO_COUNTERS_PARAMS, force_compute=True)
+    # comp_agent = EmbeddedPlanningAgent(mlp)
+    # comp_agent2 = EmbeddedPlanningAgent(mlp)
+    # theApp = App(env, a0, a1, player_idx=0, slow_time=False)
+    # theApp.on_execute()

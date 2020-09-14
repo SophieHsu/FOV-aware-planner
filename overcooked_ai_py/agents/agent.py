@@ -565,10 +565,11 @@ class MdpPlanningAgent(Agent):
     def action(self, state):
         state_str = self.mdp_planner.gen_state_dict_key(state)
 
-        if state_str not in self.mdp_planner.policy_dict:
+        if state_str not in self.mdp_planner.state_idx_dict:
             print('State = ', state_str, ';\nNot in dictionary. Action = Random')
             action = random.choice(Action.ALL_ACTIONS)
         else:
-            action = self.mdp_planner.policy_dict[state_str]
+            joint_action_idx = self.mdp_planner.policy_matrix[self.mdp_planner.state_idx_dict(state_str)]
+            action = self.mdp_planner.rev_joint_action_idx(joint_action_idx, self.mdp_planner.agent_index)
         
         return action, {}
