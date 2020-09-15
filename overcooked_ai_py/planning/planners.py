@@ -1560,10 +1560,10 @@ class MdpPlanner(MediumLevelPlanner):
         self.planner_name = 'mdp'
         self.agent_index = 0
 
-        self.transition_matrix = transition_matrix if transition_matrix is not None else np.empty((self.num_joint_action, MAX_NUM_STATES, MAX_NUM_STATES), dtype=float)
-        self.reward_matrix = reward_matrix if transition_matrix is not None else np.empty((self.num_joint_action, MAX_NUM_STATES), dtype=float)
-        self.policy_matrix = policy_matrix if transition_matrix is not None else np.zeros((MAX_NUM_STATES), dtype=int)
-        self.value_matrix = value_matrix if transition_matrix is not None else np.zeros((MAX_NUM_STATES), dtype=float)
+        self.transition_matrix = transition_matrix if transition_matrix is not None else np.zeros((self.num_joint_action, MAX_NUM_STATES, MAX_NUM_STATES), dtype=float)
+        self.reward_matrix = reward_matrix if reward_matrix is not None else np.zeros((self.num_joint_action, MAX_NUM_STATES), dtype=float)
+        self.policy_matrix = policy_matrix if policy_matrix is not None else np.zeros((MAX_NUM_STATES), dtype=int)
+        self.value_matrix = value_matrix if value_matrix is not None else np.zeros((MAX_NUM_STATES), dtype=float)
         self.epsilon = epsilon
         self.discount = discount
 
@@ -1571,22 +1571,22 @@ class MdpPlanner(MediumLevelPlanner):
     def from_mdp_planner_file(filename):
         with open(os.path.join(PLANNERS_DIR, filename), 'rb') as f:
             mdp_planner = pickle.load(f)
-            mdp = mdp_planner.mdp
-            params = mdp_planner.params
-            mlp_action_manager = mdp_planner.ml_action_manager
+            mdp = mdp_planner[0]
+            params = mdp_planner[1]
+            mlp_action_manager = mdp_planner[2]
             
-            state_idx_dict = mdp_planner.state_idx_dict
-            state_dict = mdp_planner.state_dict
+            state_idx_dict = mdp_planner[3]
+            state_dict = mdp_planner[4]
 
-            transition_matrix = mdp_planner.transition_matrix
-            reward_matrix = mdp_planner.reward_matrix
-            policy_matrix = mdp_planner.policy_matrix
-            value_matrix = mdp_planner.value_matrix
+            # transition_matrix = mdp_planner.transition_matrix
+            # reward_matrix = mdp_planner.reward_matrix
+            policy_matrix = mdp_planner[5]
+            # value_matrix = mdp_planner.value_matrix
             
-            num_states = mdp_planner.num_states
-            num_rounds = mdp_planner.num_rounds
+            # num_states = mdp_planner.num_states
+            # num_rounds = mdp_planner.num_rounds
             
-            return MdpPlanner(mdp, params, mlp_action_manager, state_dict, state_idx_dict, transition_matrix, reward_matrix, policy_matrix, value_matrix, num_states, num_rounds)
+            return MdpPlanner(mdp, params, mlp_action_manager, state_dict, state_idx_dict, policy_matrix=policy_matrix)
     
     @staticmethod
     def from_pickle_or_compute(mdp, other_agent, other_agent_index, mlp_params, custom_filename=None, force_compute_all=False, info=True, force_compute_more=False):
@@ -1662,16 +1662,12 @@ class MdpPlanner(MediumLevelPlanner):
     def overload_trans_matrix(self):
         return len(self.state_dict) >= MAX_NUM_STATES-1
 
-    def init_all_states(self, start_states_strs, start_states, other_agent, actions=Action.ALL_ACTIONS): # joint_actions=get_joint_action_array()):
-
-        # find successor states from all start states with all actions avaliable to two agents
-        # successors = np.empty((0,2), dtype=object)
-        successors = {}
+    def search_branches(self, start_states_strs, start_states, other_agent, actions=Action.ALL_ACTIONS):
+        successors = {}; new_successors = {}
         init_num_states = len(self.state_idx_dict)
-        sub_start_states = random.sample(list(start_states), min(100, len(start_states)))
-        sub_start_states_str = random.sample(list(start_states_strs), min(100, len(start_states)))
-
-        for start_str, start_obj in zip(sub_start_states_str, sub_start_states):
+        print('init_num_states =', init_num_states)
+        
+        for start_str, start_obj in zip(start_states_strs, start_states):
             if not self.mdp.is_terminal(start_obj):
                 other_agent_action, _ = other_agent.action(start_obj)
                 for a_idx, action in enumerate(actions):
@@ -1693,27 +1689,67 @@ class MdpPlanner(MediumLevelPlanner):
 
 
                         self.transition_matrix[a_idx][parent_state_idx][add_state_idx] = 1.0
-                        self.reward_matrix[a_idx][parent_state_idx] = total_reward
+                        self.reward_matrix[a_idx][parent_state_idx] += total_reward
 
-                    successors[add_state_str] = successor_state
+                        successors[add_state_str] = successor_state
+                    # else:
+                    #     successors[add_state_str] = successor_state
                     # successors = np.append(successors, np.array([[add_state_str, successor_state]]), axis=0)
 
                     if self.overload_trans_matrix():
                         print('State numbers reaches matrix maximum limit.')
                         return
 
+        #dfs
+        print('successors =', len(successors), '; new_states =', len(self.state_idx_dict) - init_num_states)
         if len(self.state_idx_dict) - init_num_states > 0:
-            print(len(self.state_dict))
-            self.init_all_states(successors.keys(), successors.values(), other_agent)
+            print('len(successors) =', len(successors))
+            # sub_start_states_str = random.sample(list(successors.keys()), min(100, len(successors)))
+            sub_start_dict = {}
+            # for key in sub_start_states_str:
+            #     sub_start_dict[key] = successors[key]
+            #     successors.pop(key)
+
+            if len(sub_start_dict) <= 0:
+                sub_start_dict = successors
+
+            self.search_branches(sub_start_dict.keys(), sub_start_dict.values(), other_agent)
 
         return    
+
+    def init_all_states(self, start_dict, other_agent): # joint_actions=get_joint_action_array()):
+
+        # find successor states from all start states with all actions avaliable to two agents
+        # successors = np.empty((0,2), dtype=object)
+
+        
+        remaining_start_dict = start_dict.copy()
+        print('start of remaining_start_dict =', len(remaining_start_dict))
+
+        while True:
+            sub_start_states_str = random.sample(list(remaining_start_dict.keys()), min(100, len(remaining_start_dict)))
+            sub_start_dict = {}
+            for key in sub_start_states_str:
+                sub_start_dict[key] = remaining_start_dict[key]
+                remaining_start_dict.pop(key)
+            
+            self.search_branches(sub_start_dict.keys(), sub_start_dict.values(), other_agent)
+
+            print('remaining_start_dict =', len(remaining_start_dict))
+
+            if len(remaining_start_dict) <= 0 or self.overload_trans_matrix():
+                break
+
+        # print('max of transition matrix (should not exceed 1) =', self.transition_matrix[self.transition_matrix>1.0])
+
+        return
 
     def init_all_start_states(self, start_states):
         for state in start_states:
             self.state_idx_dict[self.gen_state_dict_key(state)] = len(self.state_dict)
             self.state_dict[self.gen_state_dict_key(state)] = state
 
-        return list(self.state_dict.keys()).copy(), list(self.state_dict.values()).copy()
+        return list(self.state_dict.keys()).copy(), list(self.state_dict.values()).copy(), self.state_dict.copy()
 
     def get_all_start_states(self):
         players_start_states = self.mdp.get_valid_joint_player_positions_and_orientations()
@@ -1728,7 +1764,7 @@ class MdpPlanner(MediumLevelPlanner):
         self.state_dict[state_str] = start_state
         self.state_idx_dict[state_str] = 0
 
-        return list(self.state_dict.keys()).copy(), list(self.state_dict.values()).copy()
+        return list(self.state_dict.keys()).copy(), list(self.state_dict.values()).copy(), self.state_dict.copy()
 
     def embedded_mdp_step(self, state, action, other_agent_action, other_agent_index):
         if other_agent_index == 0:
@@ -1770,21 +1806,25 @@ class MdpPlanner(MediumLevelPlanner):
         if V is None:
             V = self.value_matrix
 
-        Q = np.empty((self.num_joint_action, self.num_states))
+        Q = np.zeros((self.num_joint_action, self.num_states))
         for a in range(self.num_joint_action):
             Q[a] = self.reward_matrix[a][:self.num_states] + self.discount * self.transition_matrix[a,:self.num_states,:self.num_states].dot(V[:self.num_states])
+
+            # print(list(Q.max(axis=0)))
+            # tmp = input()
 
         return Q.max(axis=0), Q.argmax(axis=0)
 
     @staticmethod
     def get_span(arr):
+        print('in get span arr.max():', arr.max(), ' - arr.min():', arr.min(), ' = ', (arr.max()-arr.min()))
         return arr.max()-arr.min()
 
     def log_value_iter(self, iter_count):
         self.num_rounds = iter_count
         output_filename = self.mdp.layout_name+'_'+self.planner_name+'_'+str(self.num_rounds)+".pkl"
         output_mdp_path = os.path.join(PLANNERS_DIR, output_filename)
-        self.save_to_file(output_mdp_path)
+        self.save_policy_to_file(output_mdp_path)
 
         return
 
@@ -1816,6 +1856,11 @@ class MdpPlanner(MediumLevelPlanner):
             iter_count += 1
             
         return
+
+    def save_policy_to_file(self, filename):
+        with open(filename, 'wb') as output:
+            mdp_plan = [self.mdp, self.params, self.ml_action_manager, self.state_idx_dict, self.state_dict, self.policy_matrix]
+            pickle.dump(mdp_plan, output, pickle.HIGHEST_PROTOCOL)
         
     def save_to_file(self, filename):
         with open(filename, 'wb') as output:
@@ -1829,14 +1874,14 @@ class MdpPlanner(MediumLevelPlanner):
         start_states = None; start_states_strs = None
         if ALL_START == True:
             start_states = self.get_all_start_states()
-            start_states_strs, start_states = self.init_all_start_states(start_states)
+            start_states_strs, start_states, start_dict = self.init_all_start_states(start_states)
         else:
-            start_states_strs, start_states = self.get_standard_start_states()
+            start_states_strs, start_states, start_dict = self.get_standard_start_states()
 
         other_agent.agent_index = other_agent_index
         self.agent_index = 1 - other_agent.agent_index
 
-        self.init_all_states(start_states_strs, start_states, other_agent)
+        self.init_all_states(start_dict, other_agent)
         self.num_states = len(self.state_dict)
         print('Total states =', self.num_states)
 

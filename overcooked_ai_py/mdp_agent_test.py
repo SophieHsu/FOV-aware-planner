@@ -3,6 +3,7 @@ import pygame
 # matplotlib.use('TkAgg')
 # import matplotlib.pyplot as plt
 from argparse import ArgumentParser
+import numpy as np
 
 from overcooked_ai_py.mdp.overcooked_mdp import OvercookedGridworld, OvercookedState, Direction, Action, PlayerState, ObjectState
 from overcooked_ai_py.mdp.overcooked_env import OvercookedEnv
@@ -134,6 +135,7 @@ class App:
 
 if __name__ == "__main__" :
 
+    # np.random.seed(0)
 
     scenario_1_mdp = OvercookedGridworld.from_layout_name('five_by_five', start_order_list=['any'], cook_time=2)
     # start_state = OvercookedState(
@@ -148,7 +150,7 @@ if __name__ == "__main__" :
 
     a0 = GreedyHumanModel(mlp)
     # a1 = EmbeddedPlanningAgent(a0, mlp, env)
-    mdp_planner = MdpPlanner.from_pickle_or_compute(scenario_1_mdp, a0, 0, NO_COUNTERS_PARAMS, force_compute_all = False, force_compute_more=False)#, custom_filename='scenario1_s_mdp_500.pkl')
+    mdp_planner = MdpPlanner.from_pickle_or_compute(scenario_1_mdp, a0, 0, NO_COUNTERS_PARAMS, force_compute_all = False, force_compute_more=False)#, custom_filename='five_by_five_mdp_d98_small.pkl')
 
     a1 = MdpPlanningAgent(a0, mdp_planner, env)
     agent_pair = AgentPair(a0, a1)
