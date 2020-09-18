@@ -1665,7 +1665,7 @@ class MdpPlanner(MediumLevelPlanner):
     def search_branches(self, start_states_strs, start_states, other_agent, actions=Action.ALL_ACTIONS):
         successors = {}; new_successors = {}
         init_num_states = len(self.state_idx_dict)
-        print('init_num_states =', init_num_states)
+        # print('init_num_states =', init_num_states)
         
         for start_str, start_obj in zip(start_states_strs, start_states):
             if not self.mdp.is_terminal(start_obj):
@@ -1699,13 +1699,16 @@ class MdpPlanner(MediumLevelPlanner):
                     if self.overload_trans_matrix():
                         print('State numbers reaches matrix maximum limit.')
                         return
+            else:
+                print('Reached end of one branch.')
 
         #dfs
-        print('successors =', len(successors), '; new_states =', len(self.state_idx_dict) - init_num_states)
+        # print('successors =', len(successors), '; new_states =', len(self.state_idx_dict) - init_num_states)
         if len(self.state_idx_dict) - init_num_states > 0:
-            print('len(successors) =', len(successors))
-            # sub_start_states_str = random.sample(list(successors.keys()), min(100, len(successors)))
+            # print('len(successors) =', len(successors))
             sub_start_dict = {}
+
+            # sub_start_states_str = random.sample(list(successors.keys()), min(25, len(successors)))
             # for key in sub_start_states_str:
             #     sub_start_dict[key] = successors[key]
             #     successors.pop(key)
@@ -1900,29 +1903,12 @@ class MdpPlanner(MediumLevelPlanner):
 
 class SoftmaxMdpPlanner(MdpPlanner):
 
-    def __init__(self, mdp, mlp_params, ml_action_manager=None, state_dict = {}, value_dict = {}, policy_dict = {}, num_rounds = 0, epsilon=0.0001, discount_factor=1.0):
-        super().__init__(mdp, mlp_params, ml_action_manager, state_dict, value_dict, policy_dict, num_rounds, epsilon, discount_factor)
+    def __init__(self, mdp, mlp_params, ml_action_manager=None, \
+        state_dict = {}, state_idx_dict = {}, transition_matrix = None, reward_matrix = None, policy_matrix = None, value_matrix = None, \
+        num_states = 0, num_rounds = 0, epsilon = 0.01, discount = 0.98):
+        super().__init__(mdp, mlp_params, ml_action_manager, state_dict, state_idx_dict, transition_matrix, reward_matrix, policy_matrix, value_matrix, num_states, num_rounds, epsilon, discount)
         self.planner_name = 'softmax_mdp'
 
-    def one_step_lookahead(self, next_state, joint_action, sparse_reward, shaped_reward):
-        """
-        NOTE: Sparse reward is given only when soups are delivered, 
-        shaped reward is given only for completion of subgoals 
-        (not soup deliveries).
-        """
-        next_state_str = self.gen_state_dict_key(next_state)
-        reward = sparse_reward + shaped_reward
-
-        # add new state into state dictionaries
-        if next_state_str not in self.state_dict and next_state.order_list is not None:
-            self.state_dict[next_state_str] = next_state
-            self.value_dict[next_state_str] = 0.0
-            self.policy_dict[next_state_str] = Action.ALL_ACTIONS[0] #default
-
-        prob = 1.0
-        v = prob * (reward + self.discount_factor * self.value_dict[next_state_str])
-
-        return v
 
     @staticmethod
     def from_pickle_or_compute(mdp, other_agent, other_agent_index, mlp_params, custom_filename=None, force_compute_all=False, info=True, force_compute_more=False):
@@ -1957,66 +1943,113 @@ class SoftmaxMdpPlanner(MdpPlanner):
     @staticmethod
     def softmax(values, temperature):
         # return math.log(np.sum(np.exp(x), axis=0))
-        return np.exp(-values * temperature) / np.sum(np.exp(-values * temperature))
+        return np.exp(values * temperature) / np.sum(np.exp(values * temperature))
 
     def get_boltzmann_action_idx(self, values, temperature):
         """Chooses index based on softmax probabilities obtained from value array"""
         values = np.array(values)
         softmax_probs = self.softmax(values, temperature)
         action_idx = np.random.choice(len(values), p=softmax_probs)
-        return action_idx, softmax_probs
+        return action_idx
+
+    def search_branches(self, start_states_strs, start_states, other_agent, actions=Action.ALL_ACTIONS):
+        successors = {}; new_successors = {}
+        init_num_states = len(self.state_idx_dict)
+        print('init_num_states =', init_num_states)
         
+        for start_str, start_obj in zip(start_states_strs, start_states):
+            if not self.mdp.is_terminal(start_obj):
+                other_agent_action, _ = other_agent.action(start_obj)
+                for a_idx, action in enumerate(actions):
+                    successor_state, _, sparse_reward, shaped_reward = self.embedded_mdp_step(start_obj, action, other_agent_action, other_agent.agent_index) # self.mdp.get_state_transition(start_obj, joint_action)
+
+                    parent_state_idx = self.state_idx_dict[start_str]
+                    add_state_str = self.gen_state_dict_key(successor_state)
+                    total_reward = sum(sparse_reward+shaped_reward)
+
+                    if add_state_str not in self.state_dict.keys() and successor_state.order_list is not None:
+                        self.state_idx_dict[add_state_str] = self.get_state_dict_length()
+                        self.state_dict[add_state_str] = successor_state
+                        add_state_idx = self.state_idx_dict[add_state_str]
+
+                        # if add_state_idx >= transition_matrix.shape[-1]:
+                        #     add_trans_array = np.array((self.num_joint_action,transition_matrix.shape[-1]+1), dtype=float)
+                        #     add_trans_array[ja_idx][add_state_idx]
+                        #     transition_matrix = np.append(transition_matrix, np.atleast_3d(add_trans_array))
+                        self.transition_matrix[a_idx][parent_state_idx][add_state_idx] = 1.0
+                        self.reward_matrix[a_idx][parent_state_idx] += total_reward
+
+                        successors[add_state_str] = successor_state
+                    # else:
+                    #     successors[add_state_str] = successor_state
+                    # successors = np.append(successors, np.array([[add_state_str, successor_state]]), axis=0)
+
+                    if self.overload_trans_matrix():
+                        print('State numbers reaches matrix maximum limit.')
+                        return
+
+        #dfs
+        print('successors =', len(successors), '; new_states =', len(self.state_idx_dict) - init_num_states)
+        if len(self.state_idx_dict) - init_num_states > 0:
+            print('len(successors) =', len(successors))
+            sub_start_dict = {}
+
+            # sub_start_states_str = random.sample(list(successors.keys()), min(100, len(successors)))
+            # for key in sub_start_states_str:
+            #     sub_start_dict[key] = successors[key]
+            #     successors.pop(key)
+
+            if len(sub_start_dict) <= 0:
+                sub_start_dict = successors
+
+            self.search_branches(sub_start_dict.keys(), sub_start_dict.values(), other_agent)
+
+        return 
+        
+    def bellman_operator(self, V=None):
+
+        if V is None:
+            V = self.value_matrix
+
+        Q = np.zeros((self.num_joint_action, self.num_states))
+        for a in range(self.num_joint_action):
+            Q[a] = self.reward_matrix[a][:self.num_states] + self.discount * self.transition_matrix[a,:self.num_states,:self.num_states].dot(V[:self.num_states])
+
+            # print(list(Q.max(axis=0)))
+            # tmp = input()
+
+        # softmax action selection for policy
+
+        policy = np.array([self.get_boltzmann_action_idx(q,10) for q in Q.T])
+
+        return Q.max(axis=0), policy # Q.argmax(axis=0)
+
+
     def value_iteration(self, other_agent, filename):
 
-        #while not the optimal policy
-        count = 0
-        init_num_rounds = self.num_rounds
+        # computation of threshold of variation for V for an epsilon-optimal policy
+        if self.discount < 1.0:
+            thresh = self.epsilon * (1 - self.discount) / self.discount
+        else:
+            thresh = self.epsilon
+
+        iter_count = 0
         while True:
-            #for stopping condition
-            delta = 0.0
+            V_prev = self.value_matrix[:self.num_states].copy()
 
-            #loop over state space        
-            for state_str, state in list(self.state_dict.items()):
-                if not self.mdp.is_terminal(state):
-                    # print('state s =', state_str)
-                    actions_values = np.zeros(Action.NUM_ACTIONS)
+            self.value_matrix, self.policy_matrix = self.bellman_operator()
 
-                    #loop over possible actions
-                    other_agent_action, _ = other_agent.action(state)
-                    for i, a in enumerate(Action.ALL_ACTIONS):
-                        successor_state, joint_action, sparse_reward, shaped_reward = self.embedded_mdp_step(state, a, other_agent_action, other_agent.agent_index)
-                        #apply bellman eqn to get actions values
-                        actions_values[i] = self.one_step_lookahead(successor_state, joint_action, sparse_reward[1-(other_agent.agent_index)], shaped_reward[1-(other_agent.agent_index)])
+            variation = self.get_span(self.value_matrix-V_prev)
+            print('Variation =',  variation, ', Threshold =', thresh)
 
-                    #pick the best action
-                    best_action_idx, _ = self.get_boltzmann_action_idx(actions_values, SOFTMAX_T) #max(actions_values)
-
-                    #get the biggest difference between best action value and our old value function
-                    delta = max(delta, abs(actions_values[best_action_idx] - self.value_dict[state_str]))
-
-                    #apply bellman optimality eqn
-                    self.value_dict[state_str] = actions_values[best_action_idx]
-
-                    #update the policy
-                    self.policy_dict[state_str] = Action.ALL_ACTIONS[best_action_idx]
-
-            count += 1
-            if(count % 10 == 0):
-                for p_key, p_value in self.value_dict.items():
-                    print(p_value, end='\t')
-                print('\nCount =', count, len(self.state_dict), delta, self.epsilon)
-            if(count % LOGUNIT == 0):
-                self.num_rounds += LOGUNIT
-                output_filename = self.mdp.layout_name+'_'+self.planner_name+'_'+str(self.num_rounds)+".pkl"
-                output_mdp_path = os.path.join(PLANNERS_DIR, output_filename)
-                self.save_to_file(output_mdp_path)
-
-            #if optimal value function
-            if((delta < self.epsilon) and (count > 100)) or count > TRAINNINGUNIT:
-                self.num_rounds = init_num_rounds+count
-                output_filename = self.mdp.layout_name+'_'+self.planner_name+'_'+str(self.num_rounds)+".pkl"
-                output_mdp_path = os.path.join(PLANNERS_DIR, output_filename)
-                self.save_to_file(output_mdp_path)
+            if variation < thresh:
+                self.log_value_iter(iter_count)
                 break
-        
-        # return policy, value_dict
+            elif iter_count % LOGUNIT == 0:
+                self.log_value_iter(iter_count)
+            else:
+                pass
+            
+            iter_count += 1
+            
+        return
