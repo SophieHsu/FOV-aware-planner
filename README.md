@@ -92,7 +92,7 @@ python train_gan.py --cuda
 
 The solver is defined in `overcooked_ai_pcg/milp_repair.py`.
 
-It uses [cplex optimizer of IBM](https://www.ibm.com/analytics/cplex-optimizer). Please follow the step [here](https://www.ibm.com/products/ilog-cplex-optimization-studio) to install **IBM ILOG CPLEX Optimization Studio** and the python interface of it.
+It uses [cplex optimizer of IBM](https://www.ibm.com/analytics/cplex-optimizer). Please follow the step [here](https://www.ibm.com/products/ilog-cplex-optimization-studio) to install **IBM ILOG CPLEX Optimization Studio** and the python interface of it. Once you have downloaded the installation file, this [guide](https://www.ibm.com/support/knowledgecenter/SSSA5P_12.10.0/ilog.odms.studio.help/Optimization_Studio/topics/COS_installing.html) may be helpful.
 
 ### Generate level using trained GAN and MILP solver
 
