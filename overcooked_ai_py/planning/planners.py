@@ -5,7 +5,7 @@ import math
 from overcooked_ai_py.utils import pos_distance, manhattan_distance
 from overcooked_ai_py.planning.search import SearchTree, Graph
 from overcooked_ai_py.mdp.actions import Action, Direction
-from overcooked_ai_py.mdp.overcooked_mdp import OvercookedState, PlayerState, OvercookedGridworld, EVENT_TYPES
+from overcooked_ai_py.mdp.overcooked_mdp import OvercookedState, PlayerState, OvercookedGridworld, EVENT_TYPES, SIMPLE_EVENT_TYPES
 from overcooked_ai_py.mdp.overcooked_env import OvercookedEnv
 from overcooked_ai_py.data.planners import load_saved_action_manager, PLANNERS_DIR
 
@@ -21,12 +21,12 @@ SOFTMAX_T = 10 # higher cause the actions to be nearly equiprobable
 MAX_NUM_STATES = 19000
 
 NO_COUNTERS_PARAMS = {
-        'start_orientations': False,
-        'wait_allowed': False,
-        'counter_goals': [],
-        'counter_drop': [],
-        'counter_pickup': [],
-        'same_motion_goals': True
+    'start_orientations': False,
+    'wait_allowed': False,
+    'counter_goals': [],
+    'counter_drop': [],
+    'counter_pickup': [],
+    'same_motion_goals': True
 }
 
 NO_COUNTERS_START_OR_PARAMS = {
@@ -110,11 +110,12 @@ class MotionPlanner(object):
         if goal_position not in self.mdp.get_valid_player_positions():
             return False
 
-        # Restricting goals to be facing a terrain feature
-        pos_of_facing_terrain = Action.move_in_direction(goal_position, goal_orientation)
-        facing_terrain_type = self.mdp.get_terrain_type_at_pos(pos_of_facing_terrain)
-        if facing_terrain_type == ' ' or (facing_terrain_type == 'X' and pos_of_facing_terrain not in self.counter_goals):
-            return False
+        ## temp commit since actions should not be limited to only sub-goals that complete a task, but should include actions such as wait and put down item and switch sub-goals, which do not always face a terrain with features.
+        # # Restricting goals to be facing a terrain feature
+        # pos_of_facing_terrain = Action.move_in_direction(goal_position, goal_orientation)
+        # facing_terrain_type = self.mdp.get_terrain_type_at_pos(pos_of_facing_terrain)
+        # if facing_terrain_type == ' ' or (facing_terrain_type == 'X' and pos_of_facing_terrain not in self.counter_goals):
+        #     return False
         return True
 
     def _compute_plan(self, start_motion_state, goal_motion_state):
@@ -1542,7 +1543,150 @@ class Heuristic(object):
         return heuristic_cost
 
 
+class MidiumLevelMdpPlanner(object):
+    def __init__(self, mdp, mlp_params, ml_action_manager=None):
 
+        self.mdp = mdp
+        self.params = mlp_params
+        self.ml_action_manager = ml_action_manager if ml_action_manager else MediumLevelActionManager(mdp, mlp_params)
+        self.jmp = self.ml_action_manager.joint_motion_planner
+        self.mp = self.jmp.motion_planner
+
+        self.state_idx_dict = state_idx_dict
+        self.state_dict = state_dict
+        # set states as 'player's object + medium level actions (get, place, deliver, put in pot)
+
+        self.num_joint_action = (Action.NUM_ACTIONS)# * Action.NUM_ACTIONS)
+        self.num_states = num_states
+        self.num_rounds = num_rounds
+        self.planner_name = 'mdp'
+        self.agent_index = 0
+
+        self.transition_matrix = transition_matrix if transition_matrix is not None else np.zeros((self.num_joint_action, MAX_NUM_STATES, MAX_NUM_STATES), dtype=float)
+        self.reward_matrix = reward_matrix if reward_matrix is not None else np.zeros((self.num_joint_action, MAX_NUM_STATES), dtype=float)
+        self.policy_matrix = policy_matrix if policy_matrix is not None else np.zeros((MAX_NUM_STATES), dtype=int)
+        self.value_matrix = value_matrix if value_matrix is not None else np.zeros((MAX_NUM_STATES), dtype=float)
+        self.epsilon = epsilon
+        self.discount = discount
+
+
+    def init_states(self, state_idx_dict=None, order_list=None):
+        print('In init_states()...')
+
+        if state_idx_dict is None:
+            tmp_state_key = SIMPLE_EVENT_TYPES.copy()
+            state_keys = []
+
+            # include soup ready state (boolean)
+            for i in range(2):
+                tmp_keys = [val+'_'+i for val in tmp_state_key]
+                state_keys = state_keys + tmp_keys
+            tmp_state_key = state_keys
+
+            # include order list items in state
+            for order in order_list:
+                prev_keys = tmp_state_key.copy()
+                tmp_keys = [i+'_'+order for i in prev_keys]
+                state_keys = state_keys + tmp_keys
+
+            self.state_idx_dict = {k:i for i, k in enumerate(state_keys)}
+
+        else:
+            self.state_idx_dict = state_idx_dict
+
+        # get state_dict = [(motion_goals)]
+
+
+        print('Initialize states:', self.state_idx_dict.items())
+        return
+
+    def init_actions(self, actions=None):
+        print('In init_actions()...')
+
+        if actions is None:
+            objects = ['onion', 'tomato', 'dish', 'soup', 'None']
+            common_actions = ['pickup', 'drop']
+            addition_actions = [('deliver','soup'), ('onion','potting'), ('tomato','potting')]
+
+            common_action_obj_pair = list(itertools.product(objects, common_actions))
+            self.actions = common_action_obj_pair + addition_actions
+        
+        else:
+            self.actions = actions
+
+        print('Initialize actions:', self.actions)
+        
+        return
+
+    def init_transition_matrix(self, transition_matrix=None):
+        self.transition_matrix = transition_matrix if transition_matrix is not None else np.zeros((len(self.actions), len(self.state_idx_dict), len(self.state_idx_dict)), dtype=float)
+
+        # loop through states to validate each state transition
+        for s0_key, s0_value in self.state_idx_dict.item():
+            mlp_state = self.encode_state_for_mlp(s0_key)
+
+    def state_to_motion_goals(self, state):
+        # state: obj + action + bool(soup nearly finish) + orders
+
+        counter_objects = self.mdp.get_counter_objects_dict(state, list(self.mdp.terrain_pos_dict['X']))
+        pot_states_dict = self.mdp.get_pot_states(state)
+
+        # NOTE: this most likely will fail in some tomato scenarios
+        soup_nearly_ready = state[2]
+        orders = state[3:]
+
+        if not state[0] == 'None':
+
+            other_has_dish = other_player.has_object() and other_player.get_object().name == 'dish'
+
+            if soup_nearly_ready and not other_has_dish:
+                motion_goals = self.ml_action_manager.pickup_dish_actions(counter_objects)
+            else:
+                next_order = None
+                if len(orders) > 1:
+                    next_order = orders[1]
+
+                if next_order == 'onion':
+                    # get onion feature shortest distance (from where?)
+
+                    # 
+                    motion_goals = self.ml_action_manager.pickup_onion_actions(counter_objects)
+                elif next_order == 'tomato':
+                    motion_goals = self.ml_action_manager.pickup_tomato_actions(counter_objects)
+                elif next_order is None or next_order == 'any':
+                    motion_goals = self.ml_action_manager.pickup_onion_actions(counter_objects) + self.ml_action_manager.pickup_tomato_actions(counter_objects)
+
+        else:
+            player_obj = state[0]
+
+            if player_obj == 'onion':
+                # get put onion feature shortest distance from pickup onion location (what if has multiple positions?)
+
+
+                motion_goals = self.ml_action_manager.put_onion_in_pot_actions(pot_states_dict)
+
+            elif player_obj == 'tomato':
+                motion_goals = self.ml_action_manager.put_tomato_in_pot_actions(pot_states_dict)
+
+            elif player_obj == 'dish':
+                motion_goals = self.ml_action_manager.pickup_soup_with_dish_actions(pot_states_dict, only_nearly_ready=True)
+
+            elif player_obj == 'soup':
+                motion_goals = self.ml_action_manager.deliver_soup_actions()
+
+            else:
+                raise ValueError()
+
+        motion_goals = [mg for mg in motion_goals if self.mp.is_valid_motion_start_goal_pair(player.pos_and_or, mg)]
+
+        if len(motion_goals) == 0:
+            motion_goals = self.ml_action_manager.go_to_closest_feature_actions(player)
+            motion_goals = [mg for mg in motion_goals if self.mp.is_valid_motion_start_goal_pair(player.pos_and_or, mg)]
+            assert len(motion_goals) != 0
+
+        return motion_goals
+
+# TODO: change MdpPlanner to MdpPlanner(object) not relied on mediumlevelplanner
 class MdpPlanner(MediumLevelPlanner):
 
     def __init__(self, mdp, mlp_params, ml_action_manager=None, \

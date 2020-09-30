@@ -560,7 +560,7 @@ class oneGoalHumanModel(Agent):
     
     Note: may not work if the onion can not be directly deliveried to the pot
     """
-    def __init__(self, mlp, one_goal, auto_unstuck=True):
+    def __init__(self, mlp, one_goal=None, auto_unstuck=True):
         self.mlp = mlp
         self.mdp = self.mlp.mdp
 
@@ -612,6 +612,24 @@ class oneGoalHumanModel(Agent):
             
         return chosen_action, {"action_probs": action_probs}
 
+    def get_curr_env_status(self, state):
+        counter_objects = self.mlp.mdp.get_counter_objects_dict(state, list(self.mlp.mdp.terrain_pos_dict['X']))
+        pot_states_dict = self.mlp.mdp.get_pot_states(state)
+
+        # NOTE: this most likely will fail in some tomato scenarios
+        curr_order = state.curr_order
+
+        if curr_order == 'any':
+            ready_soups = pot_states_dict['onion']['ready'] + pot_states_dict['tomato']['ready']
+            cooking_soups = pot_states_dict['onion']['cooking'] + pot_states_dict['tomato']['cooking']
+        else:
+            ready_soups = pot_states_dict[curr_order]['ready']
+            cooking_soups = pot_states_dict[curr_order]['cooking']
+
+        soup_nearly_ready = len(ready_soups) > 0 or len(cooking_soups) > 0
+
+        return counter_objects, pot_states_dict, ready_soups, cooking_soups, soup_nearly_ready
+
     def resolve_stuck(self, state, chosen_action, action_probs):
         # HACK: if two agents get stuck, select an action at random that would
         # change the player positions if the other player were not to move
@@ -654,9 +672,9 @@ class oneGoalHumanModel(Agent):
             if player_obj.name == 'onion':
                 motion_goals = am.put_onion_in_pot_actions(pot_states_dict)
             else:
-                raise ValueError()
+                motion_goals = am.place_obj_on_counter_actions(state)
 
-        motion_goals = [mg for mg in motion_goals if self.mlp.mp.is_valid_motion_start_goal_pair(player.pos_and_or, mg)]
+        # motion_goals = [mg for mg in motion_goals if self.mlp.mp.is_valid_motion_start_goal_pair(player.pos_and_or, mg)]
 
         return motion_goals, False
 
@@ -698,9 +716,9 @@ class oneGoalHumanModel(Agent):
                 motion_goals = am.deliver_soup_actions()
 
             else:
-                raise ValueError()
+                motion_goals = am.place_obj_on_counter_actions(state)
 
-        motion_goals = [mg for mg in motion_goals if self.mlp.mp.is_valid_motion_start_goal_pair(player.pos_and_or, mg)]
+        # motion_goals = [mg for mg in motion_goals if self.mlp.mp.is_valid_motion_start_goal_pair(player.pos_and_or, mg)]
 
         return motion_goals, False
 
@@ -804,7 +822,135 @@ class oneGoalHumanModel(Agent):
         return motion_goals
 
 
-# class biasHumanModel(Agent):
+class biasHumanModel(oneGoalHumanModel):
+    """
+    The human has a preference distribution over being a type of one-goal human model. Distribution is pre-defined once the model is initiated. The final task the human chooses to execute depends on the initial distribution and the environment.
+    """
+
+    def __init__(self, mlp, goal_preference, adaptivenss, auto_unstuck=True):
+        super().__init__(mlp, auto_unstuck)
+        
+        # A list containing probability of executing each task. The total probability should sum up to 1.
+        self.goal_preference = np.array(goal_preference)
+        self.adaptivenss = adaptivenss
+        self.prev_goal_dstb = self.goal_preference
+        self.sub_goals = {'Onion cooker':0, 'Soup server':1}
+
+        print('Initial human task preference: {:.3f}% onion cooker, {:.3f}% soup server'.format(self.prev_goal_dstb[0]*100, self.prev_goal_dstb[1]*100))
+
+    def action(self, state):
+        start_pos_and_or = state.players_pos_and_or[self.agent_index]
+        # identify agent's goal
+        ml_logic_goals = self.logic_ml_action(state)
+
+        curr_p = ((1.0-self.adaptivenss)*self.prev_goal_dstb + self.adaptivenss*ml_logic_goals)
+
+        print('Game logistics: {:.3f}% onion cooker, {:.3f}% soup server'.format(ml_logic_goals[0]*100, ml_logic_goals[1]*100))
+        print('Human task preference: {:.3f}% onion cooker, {:.3f}% soup server'.format(curr_p[0]*100, curr_p[1]*100))
+
+        task = np.random.choice(len(self.sub_goals), p=curr_p)
+        self.prev_goal_dstb = curr_p
+        print('Chosen task:', list(self.sub_goals.keys())[task], '\n')
+
+        one_goal_motion_goals = []; WAIT = False
+        if task == self.sub_goals['Onion cooker']:
+            one_goal_motion_goals, WAIT = self.onion_cooker_ml_action(state)
+
+        elif task == self.sub_goals['Soup server']:
+            one_goal_motion_goals, WAIT = self.soup_server_ml_action(state)
+
+        else:
+            ValueError()
+
+        chosen_goal = []; chosen_action = []; action_probs = []
+        if not WAIT:
+            chosen_goal, chosen_action, action_probs = self.choose_motion_goal(start_pos_and_or, one_goal_motion_goals)
+
+        else: # if action is to stay at the same place
+            chosen_goal = one_goal_motion_goals[0]
+            chosen_action = Action.STAY
+            action_probs = self.a_probs_from_action(chosen_action)
+
+        if self.auto_unstuck:
+            chosen_action, action_probs = self.resolve_stuck(state, chosen_action, action_probs)
+
+            # NOTE: Assumes that calls to the action method are sequential
+            self.prev_state = state
+
+
+        if state.players[self.agent_index].position == chosen_goal[0] and chosen_action == Action.INTERACT:
+            # reset the task prob choice to the player's interest
+            self.prev_goal_dstb = self.goal_preference
+            
+        return chosen_action, {"action_probs": action_probs}
+
+    def logic_ml_action(self, state):
+        """
+        """
+        player = state.players[self.agent_index]
+        other_player = state.players[1 - self.agent_index]
+        am = self.mlp.ml_action_manager
+
+        counter_objects = self.mlp.mdp.get_counter_objects_dict(state, list(self.mlp.mdp.terrain_pos_dict['X']))
+        pot_states_dict = self.mlp.mdp.get_pot_states(state)
+
+        # NOTE: this most likely will fail in some tomato scenarios
+        curr_order = state.curr_order
+
+        env_pref = np.zeros(len(self.sub_goals))
+
+        if not player.has_object():
+
+            if curr_order == 'any':
+                ready_soups = pot_states_dict['onion']['ready'] + pot_states_dict['tomato']['ready']
+                cooking_soups = pot_states_dict['onion']['cooking'] + pot_states_dict['tomato']['cooking']
+            else:
+                ready_soups = pot_states_dict[curr_order]['ready']
+                cooking_soups = pot_states_dict[curr_order]['cooking']
+
+            soup_nearly_ready = len(ready_soups) > 0 or len(cooking_soups) > 0
+            other_has_dish = other_player.has_object() and other_player.get_object().name == 'dish'
+
+            if soup_nearly_ready and not other_has_dish:
+                env_pref[self.sub_goals['Soup server']] += 1
+            else:
+                next_order = None
+                if state.num_orders_remaining > 1:
+                    next_order = state.next_order
+
+                if next_order == 'onion':
+                    env_pref[self.sub_goals['Onion cooker']] += 1
+                elif next_order == 'tomato':
+                    # env_pref[self.sub_goals['Tomato cooker']] += 1
+                    pass
+                elif next_order is None or next_order == 'any':
+                    env_pref[self.sub_goals['Onion cooker']] += 1
+                    # env_pref[self.sub_goals['Tomato cooker']] += 1
+
+        else:
+            player_obj = player.get_object()
+
+            if player_obj.name == 'onion':
+                env_pref[self.sub_goals['Onion cooker']] += 1
+
+            elif player_obj.name == 'tomato':
+                # env_pref[self.sub_goals['Tomato cooker']] += 1
+                pass
+
+            elif player_obj.name == 'dish':
+                env_pref[self.sub_goals['Soup server']] += 1
+
+            elif player_obj.name == 'soup':
+                env_pref[self.sub_goals['Soup server']] += 1
+            else:
+                raise ValueError()
+
+        if np.sum(env_pref) > 0.0:
+            env_pref = env_pref/np.sum(env_pref)
+        else:
+            env_pref = np.fill(1.0/len(env_pref))
+
+        return env_pref
 
 
 class MdpPlanningAgent(Agent):
