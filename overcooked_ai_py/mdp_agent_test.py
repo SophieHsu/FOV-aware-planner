@@ -7,12 +7,12 @@ import numpy as np
 
 from overcooked_ai_py.mdp.overcooked_mdp import OvercookedGridworld, OvercookedState, Direction, Action, PlayerState, ObjectState
 from overcooked_ai_py.mdp.overcooked_env import OvercookedEnv
-from overcooked_ai_py.agents.agent import AgentPair, StayAgent, EmbeddedPlanningAgent, RandomAgent, AgentFromPolicy, GreedyHumanModel, CoupledPlanningAgent, MdpPlanningAgent
-from overcooked_ai_py.planning.planners import MediumLevelPlanner, NO_COUNTERS_PARAMS, MdpPlanner, PLANNERS_DIR, SoftmaxMdpPlanner
+import overcooked_ai_py.agents.agent as agent
+import overcooked_ai_py.planning.planners as planners
 from overcooked_ai_py.mdp.layout_generator import LayoutGenerator
 from overcooked_ai_py.utils import load_dict_from_file
 
-no_counters_params = {
+NO_COUNTERS_PARAMS = {
     'start_orientations': False,
     'wait_allowed': False,
     'counter_goals': [],
@@ -48,7 +48,7 @@ class App:
         self.agent2 = agent2
         self.agent_idx = player_idx
         self.slow_time = slow_time
-        print("Human player index:", player_idx)
+        # print("Human player index:", player_idx)
 
     def on_init(self):
         pygame.init()
@@ -59,7 +59,7 @@ class App:
         self.agent2.set_agent_index(self.agent_idx+1)
         self.agent2.set_mdp(self.env.mdp)
 
-        print(self.env)
+        # print(self.env)
         self.env.render()
         self._running = True
 
@@ -93,7 +93,7 @@ class App:
                             break
 
         if event.type == pygame.QUIT or done:
-            print("TOT rew", self.env.cumulative_sparse_rewards)
+            # print("TOT rew", self.env.cumulative_sparse_rewards)
             self._running = False
 
 
@@ -108,10 +108,10 @@ class App:
 
         next_state, timestep_sparse_reward, done, info = self.env.step(joint_action)
 
-        print(self.env)
+        # print(self.env)
         self.env.render()
-        print("Curr reward: (sparse)", timestep_sparse_reward, "\t(dense)", info["shaped_r_by_agent"])
-        print(self.env.t)
+        # print("Curr reward: (sparse)", timestep_sparse_reward, "\t(dense)", info["shaped_r_by_agent"])
+        # print(self.env.t)
         return done
 
     def on_loop(self):
@@ -133,39 +133,45 @@ class App:
             self.on_render()
         self.on_cleanup()
 
+
+COUNTERS_PARAMS = {
+    'start_orientations': True,
+    'wait_allowed': True,
+    'counter_goals': [],
+    'counter_drop': [(0, 1), (6, 2), (2, 4), (0, 4), (3, 4), (0, 0), (3, 1), (6, 1), (0, 3), (6, 4), (3, 0), (0, 2), (5, 0), (6, 0), (1, 0), (3, 2), (6, 3)],
+    'counter_pickup': [(0, 1), (6, 2), (2, 4), (0, 4), (3, 4), (0, 0), (3, 1), (6, 1), (0, 3), (6, 4), (3, 0), (0, 2), (5, 0), (6, 0), (1, 0), (3, 2), (6, 3)],
+    'same_motion_goals': True
+}
+
 if __name__ == "__main__" :
 
     # np.random.seed(0)
 
-    scenario_1_mdp = OvercookedGridworld.from_layout_name('five_by_five', start_order_list=['any'], cook_time=2)
+    scenario_1_mdp = OvercookedGridworld.from_layout_name('five_by_five', start_order_list=['any','any'], cook_time=2)
     # start_state = OvercookedState(
     #     [P((2, 1), s, Obj('onion', (2, 1))),
     #      P((3, 2), s)],
     #     {}, order_list=['onion','onion'])
     env = OvercookedEnv.from_mdp(scenario_1_mdp)
 
-    ## create an MDP plan that acts as a look up map for agent inputs
-    # mdpPlan = MdpPlanner(scenario_1_mdp, env)
-    mlp = MediumLevelPlanner.from_pickle_or_compute(scenario_1_mdp, NO_COUNTERS_PARAMS, force_compute=True)
+    mlp = planners.MediumLevelPlanner.from_pickle_or_compute(scenario_1_mdp, NO_COUNTERS_PARAMS, force_compute=True)
 
-    a0 = GreedyHumanModel(mlp)
-    # a1 = EmbeddedPlanningAgent(a0, mlp, env)
-    mdp_planner = MdpPlanner.from_pickle_or_compute(scenario_1_mdp, a0, 0, NO_COUNTERS_PARAMS, force_compute_all = False, force_compute_more=False)#, custom_filename='five_by_five_mdp_d98_small.pkl')
+    a0 = agent.GreedyHumanModel(mlp)
+    mdp_planner = planners.MediumLevelMdpPlanner.from_pickle_or_compute(scenario_1_mdp, NO_COUNTERS_PARAMS, force_compute_all=True)
+    a1 = agent.MediumMdpPlanningAgent(mdp_planner, env)
 
-    a1 = MdpPlanningAgent(a0, mdp_planner, env)
-    agent_pair = AgentPair(a0, a1)
-    # a2 = MdpPlanningAgent(a0, mdp_planner, env)
+    # a0 = agent.oneGoalHumanModel(mlp, 'Onion cooker', auto_unstuck=False)
+    # # a1 = agent.oneGoalHumanModel(mlp, 'Soup server', auto_unstuck=True)
+    # a1 = agent.biasHumanModel(mlp, [0.3, 0.7], 0.3, auto_unstuck=True)
 
-    
+    # mdp_planner = MdpPlanner.from_pickle_or_compute(scenario_1_mdp, a0, 0, NO_COUNTERS_PARAMS, force_compute_all = False, force_compute_more=False)#, custom_filename='gen1_basic_1-3_mdp_70.pkl')
+    # a1 = MdpPlanningAgent(a0, mdp_planner, env)
+
+    agent_pair = agent.AgentPair(a0, a1)
+
     s_t, joint_a_t, r_t, done_t = env.run_agents(agent_pair, include_final_state=True, display=DISPLAY)
 
     # print(s_t, joint_a_t, r_t, done_t)
 
-    # mdp = OvercookedGridworld.from_layout_name("small_corridor")
-    # env = OvercookedEnv.from_mdp(mdp)
-    # # agentMdp = Mdp
-    # mlp = MediumLevelPlanner.from_pickle_or_compute(mdp, NO_COUNTERS_PARAMS, force_compute=True)
-    # comp_agent = EmbeddedPlanningAgent(mlp)
-    # comp_agent2 = EmbeddedPlanningAgent(mlp)
     # theApp = App(env, a0, a1, player_idx=0, slow_time=False)
     # theApp.on_execute()

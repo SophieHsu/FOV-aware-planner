@@ -973,3 +973,55 @@ class MdpPlanningAgent(Agent):
             action = Action.INDEX_TO_ACTION[action_idx]
 
         return action, {}
+
+
+class MediumMdpPlanningAgent(Agent):
+
+    def __init__(self, mdp_planner, env, delivery_horizon=1, logging_level=0):
+        # self.other_agent = other_agent
+        self.delivery_horizon = delivery_horizon
+        self.mdp_planner = mdp_planner
+        self.env = env
+        self.logging_level = logging_level
+
+        
+    def action(self, state):
+        pot_states = self.mdp_planner.mdp.get_pot_states(state)
+        ready_pots = pot_states["tomato"]["ready"] + pot_states["onion"]["ready"]
+        cooking_pots = ready_pots + pot_states["tomato"]["cooking"] + pot_states["onion"]["cooking"]
+        nearly_ready_pots = cooking_pots + pot_states["tomato"]["partially_full"] + pot_states["onion"]["partially_full"]
+
+        state_str = self.mdp_planner.gen_state_dict_key(state, len(nearly_ready_pots))
+        print('State = ', state_str)
+
+        if state_str not in self.mdp_planner.state_idx_dict:
+            print('State = ', state_str, ';\nNot in dictionary. Action = North')
+            action = Action.ALL_ACTIONS[0]#random.choice(Action.ALL_ACTIONS)
+        
+        else:
+            # retrieve medium level action from policy
+            action_idx = self.mdp_planner.policy_matrix[self.mdp_planner.state_idx_dict[state_str]]
+            keys = list(self.mdp_planner.action_idx_dict.keys())
+            vals = list(self.mdp_planner.action_idx_dict.values())
+            action_object_pair = self.mdp_planner.action_dict[keys[vals.index(action_idx)]]
+            print(self.mdp_planner.state_idx_dict[state_str], action_idx, action_object_pair)
+
+            # map back the medium level action to low level action
+            possible_motion_goals = self.mdp_planner.map_action_to_location(action_object_pair[0], action_object_pair[1])
+
+            # initialize
+            action = Action.ALL_ACTIONS[0]
+            minimum_cost = 100000.0
+            
+            for possible_location in possible_motion_goals:
+                motion_goal_locations = self.mdp_planner.mp.motion_goals_for_pos[possible_location]
+                for motion_goal_location in motion_goal_locations:
+                    if self.mdp_planner.mp.is_valid_motion_start_goal_pair((state.players[1].position, state.players[1].orientation), motion_goal_location):
+                        action_plan, _, cost = self.mdp_planner.mp._compute_plan((state.players[1].position, state.players[1].orientation), motion_goal_location)
+                        if cost < minimum_cost:
+                            minimum_cost = cost
+                            action = action_plan[0]
+
+            print(action)
+
+        return action, {}
