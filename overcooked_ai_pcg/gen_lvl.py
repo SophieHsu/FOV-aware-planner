@@ -10,22 +10,22 @@ from overcooked_ai_pcg.GAN_training import dcgan
 from overcooked_ai_pcg.milp_repair import repair_lvl
 from overcooked_ai_pcg.helper import obj_types, lvl_number2str, setup_env_from_grid, read_gan_param, run_overcooked_game, gen_int_rnd_lvl
 
-def generate_lvl(batch_size, model_path, latent_vector=None, worker_id=0):
+def generate_lvl(batch_size, generator, latent_vector=None, worker_id=0):
     """
     Generate level string from random latent vector given the path to the train netG model, and use MILP solver to repair it
 
     Args:
-        model_path: path to the trained netG model
+        generator (DCGAN): netG model
         latent_vector: np.ndarray with the required dimension.
                        When it is None, a new vector will be randomly sampled
     """
     # read in G constructor params from file
-    G_params = read_gan_param()
-    nz = G_params['nz']
+    # G_params = read_gan_param()
+    nz = generator.nz
     x = np.random.randn(batch_size, nz, 1, 1)
 
-    generator = dcgan.DCGAN_G(**G_params)
-    generator.load_state_dict(torch.load(model_path, map_location=lambda storage, loc: storage))
+    # generator = dcgan.DCGAN_G(**G_params)
+    # generator.load_state_dict(torch.load(model_path, map_location=lambda storage, loc: storage))
     if latent_vector is None:
         latent_vector = torch.FloatTensor(x).view(batch_size, nz, 1, 1)
     else:

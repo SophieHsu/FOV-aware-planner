@@ -21,6 +21,7 @@ G_PARAM_FILE = os.path.join(GAN_DATA_DIR, "G_param.json")
 LSI_DIR = os.path.join(_current_dir, "LSI")
 LSI_DATA_DIR = os.path.join(LSI_DIR, "data")
 LSI_LOG_DIR = os.path.join(LSI_DATA_DIR, "log")
+LSI_IMAGE_DIR = os.path.join(LSI_DATA_DIR, "images")
 
 # config LSI search
 LSI_CONFIG_DIR = os.path.join(LSI_DATA_DIR, "config")
