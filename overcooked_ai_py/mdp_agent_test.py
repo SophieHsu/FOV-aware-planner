@@ -157,7 +157,7 @@ if __name__ == "__main__" :
     mlp = planners.MediumLevelPlanner.from_pickle_or_compute(scenario_1_mdp, NO_COUNTERS_PARAMS, force_compute=True)
 
     a0 = agent.GreedyHumanModel(mlp)
-    mdp_planner = planners.MediumLevelMdpPlanner.from_pickle_or_compute(scenario_1_mdp, NO_COUNTERS_PARAMS, force_compute_all=True)
+    mdp_planner = planners.MediumLevelMdpPlanner.from_pickle_or_compute(scenario_1_mdp, NO_COUNTERS_PARAMS, mlp, force_compute_all=True)
     a1 = agent.MediumMdpPlanningAgent(mdp_planner, env)
 
     # a0 = agent.oneGoalHumanModel(mlp, 'Onion cooker', auto_unstuck=False)

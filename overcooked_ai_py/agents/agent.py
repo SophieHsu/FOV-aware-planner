@@ -991,7 +991,15 @@ class MediumMdpPlanningAgent(Agent):
         cooking_pots = ready_pots + pot_states["tomato"]["cooking"] + pot_states["onion"]["cooking"]
         nearly_ready_pots = cooking_pots + pot_states["tomato"]["partially_full"] + pot_states["onion"]["partially_full"]
 
-        state_str = self.mdp_planner.gen_state_dict_key(state, len(nearly_ready_pots))
+        num_item_in_pot = 0
+        if state.objects is not None and len(state.objects) > 0:
+            obj_state = list(state.objects.values())[0]
+            if obj_state.name == 'soup':
+                num_item_in_pot = obj_state.state[1]
+
+        state_str = self.mdp_planner.gen_state_dict_key(state, state.players[1], num_item_in_pot)
+
+
         print('State = ', state_str)
 
         if state_str not in self.mdp_planner.state_idx_dict:
@@ -1007,12 +1015,14 @@ class MediumMdpPlanningAgent(Agent):
             print(self.mdp_planner.state_idx_dict[state_str], action_idx, action_object_pair)
 
             # map back the medium level action to low level action
-            possible_motion_goals = self.mdp_planner.map_action_to_location(action_object_pair[0], action_object_pair[1])
+            possible_motion_goals = self.mdp_planner.map_action_to_location(state, state_str, action_object_pair[0], action_object_pair[1])
 
             # initialize
             action = Action.ALL_ACTIONS[0]
             minimum_cost = 100000.0
             
+            print('possible_motion_goals =', possible_motion_goals)
+
             for possible_location in possible_motion_goals:
                 motion_goal_locations = self.mdp_planner.mp.motion_goals_for_pos[possible_location]
                 for motion_goal_location in motion_goal_locations:

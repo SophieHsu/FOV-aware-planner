@@ -1546,7 +1546,7 @@ class Heuristic(object):
 class MediumLevelMdpPlanner(object):
     def __init__(self, mdp, mlp_params, ml_action_manager=None, \
         state_dict = {}, state_idx_dict = {}, action_dict = {}, action_idx_dict = {}, transition_matrix = None, reward_matrix = None, policy_matrix = None, value_matrix = None, \
-        num_states = 0, num_rounds = 0, epsilon = 0.01, discount = 0.98):
+        num_states = 0, num_rounds = 0, epsilon = 0.01, discount = 0.8):
 
         self.mdp = mdp
         self.params = mlp_params
@@ -1593,16 +1593,16 @@ class MediumLevelMdpPlanner(object):
             # num_states = mdp_planner.num_states
             # num_rounds = mdp_planner.num_rounds
             
-            return MdpPlanner(mdp, params, mlp_action_manager, state_dict, state_idx_dict, policy_matrix=policy_matrix)
+            return MediumLevelMdpPlanner(mdp, params, mlp_action_manager, state_dict, state_idx_dict, policy_matrix=policy_matrix)
     
     @staticmethod
-    def from_pickle_or_compute(mdp, mlp_params, custom_filename=None, force_compute_all=False, info=True, force_compute_more=False):
+    def from_pickle_or_compute(mdp, mlp_params, mlp, custom_filename=None, force_compute_all=False, info=True, force_compute_more=False):
         assert isinstance(mdp, OvercookedGridworld)
 
         filename = custom_filename if custom_filename is not None else mdp.layout_name + '_' + 'medium_mdp' + '.pkl'
 
         if force_compute_all:
-            mdp_planner = MediumLevelMdpPlanner(mdp, mlp_params)
+            mdp_planner = MediumLevelMdpPlanner(mdp, mlp_params, ml_action_manager=mlp.ml_action_manager)
             mdp_planner.compute_mdp_policy(filename)
             return mdp_planner
         
@@ -1630,23 +1630,18 @@ class MediumLevelMdpPlanner(object):
             mdp_plan = [self.mdp, self.params, self.ml_action_manager, self.state_idx_dict, self.state_dict, self.action_idx_dict, self.action_dict, self.transition_matrix, self.policy_matrix]
             pickle.dump(mdp_plan, output, pickle.HIGHEST_PROTOCOL)
 
-    def gen_state_dict_key(self, state, num_nearly_ready_pots):
+    def gen_state_dict_key(self, state, player, soup_finish):
         # a0 pos, a0 dir, a0 hold, a1 pos, a1 dir, a1 hold, len(order_list)
-        player0 = state.players[0]
 
-        p0_obj = None
-        if player0.held_object is not None:
-            p0_obj = player0.held_object.name
-
-        soup_finish = 0
-        if num_nearly_ready_pots > 0:
-            soup_finish = 1
+        player_obj = None
+        if player.held_object is not None:
+            player_obj = player.held_object.name
 
         order_str = None if state.order_list is None else state.order_list[0]
         for order in state.order_list[1:]:
             order_str = order_str + '_' + str(order)
 
-        state_str = str(p0_obj)+'_'+str(soup_finish)+'_'+ order_str
+        state_str = str(player_obj)+'_'+str(soup_finish)+'_'+ order_str
 
         return state_str
 
@@ -1660,18 +1655,20 @@ class MediumLevelMdpPlanner(object):
             # obj_action_pair = list(itertools.product(objects, common_actions)) + addition_actions
 
             state_keys = []; state_obj = []; tmp_state_obj =[];tmp_state_obj_1 =[]
+
             for obj in objects:
                 tmp_state_obj.append(([obj]))
-                tmp_state_obj_1.append(([obj]))
-            # include soup ready state (boolean)
-            for i in range(2):
+
+            # include number of item in soup
+            objects_only_arr = [obj.copy() for obj in tmp_state_obj]
+            for i in range(self.mdp.num_items_for_soup+1):
                 tmp_keys = [val+'_'+str(i) for val in objects]
-                for obj in tmp_state_obj_1:
+                for obj in tmp_state_obj:
                     obj.append(i)
 
                 state_keys = state_keys + tmp_keys
-                state_obj = state_obj+tmp_state_obj_1.copy()
-                tmp_state_obj_1 = tmp_state_obj.copy()
+                state_obj = state_obj + tmp_state_obj
+                tmp_state_obj = [obj.copy() for obj in objects_only_arr]
 
             tmp_state_key = state_keys
             tmp_state_obj = [obj.copy() for obj in state_obj]
@@ -1729,25 +1726,26 @@ class MediumLevelMdpPlanner(object):
 
         # state transition calculation
         for state_key, state_obj in self.state_dict.items():
-            state_idx = self.state_idx_dict[state_key]
-    
-            # define state and action game transition logic
-            actions, next_state_keys = self.state_action_nxt_state(state_obj)
+            for action_key, action_idx in self.action_idx_dict.items():
+                state_idx = self.state_idx_dict[state_key]
+                next_state_idx = state_idx
+                next_action_idx = action_idx
+        
+                # define state and action game transition logic
+                next_actions, next_state_keys = self.state_action_nxt_state(state_obj)
 
-            for idx in range(len(actions)):
-                action_idx = self.action_idx_dict[actions[idx]]
-                next_state_idx = self.state_idx_dict[next_state_keys[idx]]
+                if next_actions == action_key:
+                    next_state_idx = self.state_idx_dict[next_state_keys]
 
-                game_logic_transition[action_idx][state_idx][next_state_idx] += 1.0
+                game_logic_transition[next_action_idx][state_idx][next_state_idx] += 1.0
 
-                # define state transition based on actual tile distance
-                prob = self.state_transition_by_distance(state_obj, self.state_dict[next_state_keys[idx]], self.action_dict[actions[idx]])
-                distance_transition[action_idx][state_idx][next_state_idx] = prob
-                distance_transition[action_idx][state_idx][state_idx] = 1.0 - prob
-
-        self.transition_matrix = np.multiply(game_logic_transition, distance_transition)
-        print(distance_transition[:, 20])
+            # print(state_key)
+        print(game_logic_transition[:, 25])
         tmp = input()
+
+        self.transition_matrix = game_logic_transition
+        
+
     def state_action_nxt_state(self, state):
         # state: obj + action + bool(soup nearly finish) + orders
         player_obj = state[0]; soup_finish = state[1];
@@ -1756,55 +1754,62 @@ class MediumLevelMdpPlanner(object):
             orders = state[2:]
 
         # game logic
-        actions = []; next_state_keys = []
+        actions = ''; next_obj = player_obj; next_soup_finish = soup_finish
         if player_obj == 'None':
-            if soup_finish == '1':# and not other_has_dish:
-                actions.append('pickup_dish')
-                next_state_keys = 'dish'
+            if soup_finish == str(self.mdp.num_items_for_soup):# and not other_has_dish:
+                actions = 'pickup_dish'
+                next_obj = 'dish'
             else:
                 next_order = None
                 if len(orders) > 1:
                     next_order = orders[1]
 
                 if next_order == 'onion':
-                    actions.append('pickup_onion')
-                    next_state_keys = 'onion'
+                    actions = 'pickup_onion'
+                    next_obj = 'onion'
 
                 elif next_order == 'tomato':
-                    actions.append('pickup_tomato') 
-                    next_state_keys = 'tomato'
+                    actions = 'pickup_tomato' 
+                    next_obj = 'tomato'
 
                 elif next_order is None or next_order == 'any':
-                    actions.append('pickup_onion')
-                    next_state_keys = 'onion'
+                    actions = 'pickup_onion'
+                    next_obj = 'onion'
 
         else:
             if player_obj == 'onion':
-                actions.append('drop_onion')
-                next_state_keys = 'None'
+                actions = 'drop_onion'
+                next_obj = 'None'
+                next_soup_finish += 1
 
             elif player_obj == 'tomato':
-                actions.append('drop_tomato')
-                next_state_keys = 'None'
+                actions = 'drop_tomato'
+                next_obj = 'None'
+                next_soup_finish += 1
 
-            elif player_obj == 'dish':
-                actions.append('pickup_soup')
-                next_state_keys = 'soup'
+            elif player_obj == 'dish' and soup_finish == self.mdp.num_items_for_soup:
+                actions = 'pickup_soup'
+                next_obj = 'soup'
+                next_soup_finish = 0
+
+            elif player_obj == 'dish' and soup_finish != self.mdp.num_items_for_soup:
+                actions = 'drop_dish'
+                next_obj = 'None'
 
             elif player_obj == 'soup':
-                actions.append('deliver_soup')
-                next_state_keys = 'None'
-                if len(orders) > 1:
+                actions = 'deliver_soup'
+                next_obj = 'None'
+                if len(orders) >= 1:
                     orders.pop(0)
             else:
                 print(player_obj)
                 raise ValueError()
 
-        next_state_keys = next_state_keys + '_'+str(soup_finish)
+        next_state_keys = next_obj + '_' + str(min(self.mdp.num_items_for_soup, next_soup_finish))
         for order in orders:
-            next_state_keys = next_state_keys + '_'+order
+            next_state_keys = next_state_keys + '_' + order
 
-        return actions, [next_state_keys]
+        return actions, next_state_keys
 
     def state_transition_by_distance(self, curr_state, next_state, action):
         action_taken = action[0]; action_obj = action[1]
@@ -1820,19 +1825,30 @@ class MediumLevelMdpPlanner(object):
 
         return 1.0 / min_distance
 
-    def map_action_to_location(self, action, obj):
+    def drop_item(self, state):
+        return self.mdp.get_empty_counter_locations(state)
+
+    def map_action_to_location(self, state, state_str, action, obj):
         location = []
-        if action == 'pickup':
-            if obj == 'onion':
-                location = self.mdp.get_onion_dispenser_locations()
-            elif obj == 'tomato':
-                location = self.mdp.get_tomato_dispenser_locations()
-            elif obj == 'dish':
-                location = self.mdp.get_dish_dispenser_locations()
-            elif obj == 'soup':
-                location = self.mdp.get_pot_locations()
+        if action == 'pickup' and obj != 'soup':
+            if not self._not_holding_object(state_str):
+                location = self.drop_item(state)
             else:
-                ValueError()
+                if obj == 'onion':
+                    location = self.mdp.get_onion_dispenser_locations()
+                elif obj == 'tomato':
+                    location = self.mdp.get_tomato_dispenser_locations()
+                elif obj == 'dish':
+                    location = self.mdp.get_dish_dispenser_locations()
+                else:
+                    ValueError()
+        elif action == 'pickup' and obj == 'soup':
+            if self.state_dict[state_str][0] != 'dish' and not self._not_holding_object(state_str):
+                location = self.drop_item(state)
+            elif self._not_holding_object(state_str):
+                location = self.mdp.get_dish_dispenser_locations()
+            else:
+                location = self.mdp.get_ready_pots(self.mdp.get_pot_states(state)) + self.mdp.get_cooking_pots(self.mdp.get_pot_states(state)) + self.mdp.get_full_pots(self.mdp.get_pot_states(state))
 
         elif action == 'drop':
             if obj == 'onion' or obj == 'tomato':
@@ -1841,12 +1857,18 @@ class MediumLevelMdpPlanner(object):
                 ValueError()
 
         elif action == 'deliver':
-            location = self.mdp.get_serving_locations()
+            if self.state_dict[state_str][0] != 'soup':
+                location = self.mdp.get_empty_counter_locations(state)
+            else:
+                location = self.mdp.get_serving_locations()
 
         else:
             ValueError()
 
         return location
+
+    def _not_holding_object(self, state_str):
+        return self.state_dict[state_str][0] == 'None'
 
     def init_reward(self, reward_matrix=None):
         # state: obj + action + bool(soup nearly finish) + orders
@@ -1863,8 +1885,18 @@ class MediumLevelMdpPlanner(object):
             if len(state_obj) > 2:
                 orders = state_obj[2:]
 
-            if player_obj == 'soup':
-                self.reward_matrix[action_idx][self.state_idx_dict[state_key]] += self.mdp.delivery_reward
+            # if player_obj == 'soup':
+            #     self.reward_matrix[action_idx][self.state_idx_dict[state_key]] += self.mdp.delivery_reward
+        
+            if orders == None:
+                self.reward_matrix[:,self.state_idx_dict[state_key]] += self.mdp.delivery_reward
+
+            if soup_finish == self.mdp.num_items_for_soup:
+                self.reward_matrix[self.action_idx_dict['pickup_soup'], self.state_idx_dict[state_key]] += self.mdp.delivery_reward/5.0
+
+
+        print('self.reward_matrix =', self.reward_matrix)
+        tmp = input()
 
     def bellman_operator(self, V=None):
 
@@ -1873,6 +1905,7 @@ class MediumLevelMdpPlanner(object):
 
         Q = np.zeros((self.num_actions, self.num_states))
         for a in range(self.num_actions):
+            print(self.transition_matrix[a].dot(V))
             Q[a] = self.reward_matrix[a] + self.discount * self.transition_matrix[a].dot(V)
 
             # print(list(Q.max(axis=0)))
@@ -1910,6 +1943,7 @@ class MediumLevelMdpPlanner(object):
             self.value_matrix, self.policy_matrix = self.bellman_operator()
 
             variation = self.get_span(self.value_matrix-V_prev)
+            print(self.value_matrix)
             print('Variation =',  variation, ', Threshold =', thresh)
 
             if variation < thresh:
