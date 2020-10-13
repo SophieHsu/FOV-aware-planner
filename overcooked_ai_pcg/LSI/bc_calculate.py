@@ -14,6 +14,18 @@ def pot_onion_shortest_dist(ind):
 def pot_serve_shortest_dist(ind):
     return shortest_dist('P', 'S', ind.level)
 
+def pot_dish_shortest_dist(ind):
+    return shortest_dist('P', 'D', ind.level)
+
+def onion_dish_shortest_dist(ind):
+    return shortest_dist('O', 'D', ind.level)
+
+def onion_serve_shortest_dist(ind):
+    return shortest_dist('O', 'S', ind.level)
+
+def dish_serve_shortest_dist(ind):
+    return shortest_dist('D', 'S', ind.level)
+
 def shortest_dist(terrain1, terrain2, lvl_str):
     """
     Use BFS to find the shortest distance between two specified
