@@ -5,8 +5,15 @@ import json
 import toml
 import pandas as pd
 import csv
-from util.SearchHelper import *
-from util.gan_generator import *
+from abc import ABC, abstractmethod
+
+
+class Individual:
+    def __init__(self):
+        pass
+
+    def read_mario_features(self):
+        pass
 
 class FeatureMap:
 
@@ -57,14 +64,33 @@ class FeatureMap:
       return replaced_elite
 
    def get_random_elite(self):
-      pos = random.randint(0, len(self.elite_indices)-1)
+      pos = np.random.randint(0, len(self.elite_indices)-1)
       index = self.elite_indices[pos]
       return self.elite_map[index]
 
 
-class MapElitesAlgorithm:
+class QDAlgorithmBase(ABC):
+    @abstractmethod
+    def is_running(self):
+        pass
 
-    def __init__(self, mutation_power, initial_population, num_to_evaluate, feature_map, num_params):
+    @abstractmethod
+    def generate_individual(self):
+        pass
+
+    @abstractmethod
+    def return_evaluated_individual(self):
+        pass
+
+
+class MapElitesAlgorithm(QDAlgorithmBase):
+    def __init__(self,
+                 mutation_power,
+                 initial_population,
+                 num_to_evaluate,
+                 feature_map,
+                 num_params=32):
+        super().__init__()
         self.num_to_evaluate = num_to_evaluate
         self.initial_population = initial_population
         self.individuals_evaluated = 0
@@ -82,14 +108,37 @@ class MapElitesAlgorithm:
             ind.param_vector = np.random.normal(0.0, 1.0, self.num_params)
         else:
             parent = self.feature_map.get_random_elite()
-            ind.param_vector = parent.param_vector + np.random.normal(0.0, self.mutation_power, self.num_params)
-
+            ind.param_vector = parent.param_vector
+            + np.random.normal(0.0, self.mutation_power, self.num_params)
         self.individuals_disbatched += 1
         return ind
 
     def return_evaluated_individual(self, ind):
-
         ind.ID = self.individuals_evaluated
         self.individuals_evaluated += 1
         self.feature_map.add(ind)
 
+class RandomGenerator(QDAlgorithmBase):
+    def __init__(self,
+                 num_to_evaluate,
+                 feature_map,
+                 num_params=32):
+        super().__init__()
+        self.num_to_evaluate = num_to_evaluate
+        self.individuals_evaluated = 0
+        self.feature_map = feature_map
+        self.num_params = num_params
+
+    def is_running(self):
+        return self.individuals_evaluated < self.num_to_evaluate
+
+    def generate_individual(self):
+        ind = Individual()
+        unscaled_params = np.random.normal(0.0, 1.0, self.num_params)
+        ind.param_vector = unscaled_params
+        return ind
+
+    def return_evaluated_individual(self, ind):
+        ind.ID = self.individuals_evaluated
+        self.individuals_evaluated += 1
+        self.feature_map.add(ind)

@@ -135,3 +135,7 @@ dmypy.json
 
 # overcooked_pcg_related
 overcooked_ai_pcg/GAN_training/data/
+overcooked_ai_pcg/LSI/data/log/
+
+# pycharm related
+.idea/

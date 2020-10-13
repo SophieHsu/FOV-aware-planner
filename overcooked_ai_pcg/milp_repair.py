@@ -1,4 +1,4 @@
-from overcooked_ai_pcg.GAN_training.helper import lvl_str2number, lvl_number2str, obj_types
+from overcooked_ai_pcg.helper import lvl_str2number, lvl_number2str, obj_types
 from overcooked_ai_py import read_layout_dict
 import numpy as np
 from docplex.mp.model import Model
@@ -27,10 +27,12 @@ def add_object_placement(mdl, all_objects):
 # source_objects:     objects that must reach the sink objects [[P_i], ...]
 # sink_objects:       objects that must be reached by the source objects [[K_i], [D_i], ...]
 # blocking_objects:   a list of object types that impede movement [[W_i], ...]
+# cnt:                integer to remember number of times add_reachability function is called
+#                     needed because different calls should produce params with different names
 #
 # post condition: these constraints ensure that a path exists from some source
 #                 object to all sink objects
-def add_reachability(mdl, graph, source_objects, sink_objects, blocking_objects):
+def add_reachability(mdl, graph, source_objects, sink_objects, blocking_objects, cnt):
     # Transpose the blocking objects matrix so all blocking objects for
     # a given node are easily accessible.
     blocking = list(zip(*blocking_objects))
@@ -44,7 +46,7 @@ def add_reachability(mdl, graph, source_objects, sink_objects, blocking_objects)
     rev = [[] for i in range(n_nodes)]
     for i, neighbors in enumerate(graph):
         for j in neighbors:
-            f = mdl.integer_var(name='p_{}_{}'.format(i, j), lb=0, ub=n_nodes)
+            f = mdl.integer_var(name='p_{}_{}-{}'.format(i, j, cnt), lb=0, ub=n_nodes)
             flow[i].append(f)
             rev[j].append(f)
 
@@ -52,9 +54,9 @@ def add_reachability(mdl, graph, source_objects, sink_objects, blocking_objects)
     supplies = []
     demands = []
     for i in range(n_nodes):
-        f = mdl.integer_var(name='p_s_{}'.format(i), lb=0, ub=n_nodes)
+        f = mdl.integer_var(name='p_s_{}-{}'.format(i, cnt), lb=0, ub=n_nodes)
         supplies.append(f)
-        f = mdl.integer_var(name='p_{}_t'.format(i), lb=0, ub=1)
+        f = mdl.integer_var(name='p_{}_t-{}'.format(i, cnt), lb=0, ub=1)
         demands.append(f)
     # Add a flow conservation constraint for each node (outflow == inflow)
     for i in range(n_nodes):
@@ -144,6 +146,12 @@ def add_edit_distance(mdl, graph, objects, add_movement=True):
 
     mdl.minimize(mdl.sum(costs))
 
+def add_reachability_helper(source_labels, sink_labels, blocking_labels, mdl, adj, objs, cnt):
+    source_objects = [objs[obj_types.index(label)] for label in source_labels]
+    sink_objects = [objs[obj_types.index(label)] for label in sink_labels]
+    blocking_objects = [objs[obj_types.index(label)] for label in blocking_labels]
+    add_reachability(mdl, adj, source_objects, sink_objects, blocking_objects, cnt)
+
 
 def repair_lvl(np_lvl):
     # from IPython import embed
@@ -199,14 +207,22 @@ def repair_lvl(np_lvl):
     mdl.add_constraint(sum(objs[obj_types.index("P")]) >= 1)
     mdl.add_constraint(sum(objs[obj_types.index("S")]) >= 1)
 
+    # Upper bound number of onion, dish plate, pot, and serve point
+    mdl.add_constraint(sum(objs[obj_types.index("O")]) <= 2)
+    mdl.add_constraint(sum(objs[obj_types.index("D")]) <= 2)
+    mdl.add_constraint(sum(objs[obj_types.index("P")]) <= 2)
+    mdl.add_constraint(sum(objs[obj_types.index("S")]) <= 4)
+
     # reachability
     source_labels = "1"
-    sink_labels = "2ODPS "
+    sink_labels = "ODPS "
     blocking_labels = "XODPS2"
-    source_objects = [objs[obj_types.index(label)] for label in source_labels]
-    sink_objects = [objs[obj_types.index(label)] for label in sink_labels]
-    blocking_objects = [objs[obj_types.index(label)] for label in blocking_labels]
-    add_reachability(mdl, adj, source_objects, sink_objects, blocking_objects)
+    add_reachability_helper(source_labels, sink_labels, blocking_labels, mdl, adj, objs, 0)
+
+    source_labels = "2"
+    sink_labels = "ODPS "
+    blocking_labels = "XODPS1"
+    add_reachability_helper(source_labels, sink_labels, blocking_labels, mdl, adj, objs, 1)
 
     # add edit distance objective
     objects = []

@@ -14,7 +14,7 @@ class SearchTree(object):
         heuristic_fn (func): Takes in a state and returns a heuristic value
     """
 
-    def __init__(self, root, goal_fn, expand_fn, heuristic_fn, max_iter_count=10e6, debug=False):
+    def __init__(self, root, goal_fn, expand_fn, heuristic_fn, max_iter_count=10e8, debug=False):
         self.debug = debug
         self.root = root
         self.is_goal = goal_fn
@@ -217,10 +217,8 @@ class Graph(object):
         return connected_components
 
     def are_in_same_cc(self, node1, node2):
-        node1_cc_index = [i for i, cc in enumerate(self.connected_components) if node1 in cc]
-        node2_cc_index = [i for i, cc in enumerate(self.connected_components) if node2 in cc]
-        assert len(node1_cc_index) == len(node2_cc_index) == 1, "Node 1 cc: {} \t Node 2 cc: {}".format(node1_cc_index, node2_cc_index)
-        return node1_cc_index[0] == node2_cc_index[0]
+        idx1, idx2 = self._encoder[node1], self._encoder[node2]
+        return self.predecessors[idx1,idx2] != -9999 or idx1 == idx2
 
 class NotConnectedError(Exception):
     pass

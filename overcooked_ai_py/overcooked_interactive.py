@@ -98,6 +98,8 @@ class App:
         next_state, timestep_sparse_reward, done, info = self.env.step(joint_action)
 
         print(self.env)
+        print(joint_action)
+        print(self.env.state)
         self.env.render()
         print("Curr reward: (sparse)", timestep_sparse_reward, "\t(dense)", info["shaped_r_by_agent"])
         print(self.env.t)
@@ -123,7 +125,7 @@ class App:
         self.on_cleanup()
 
 if __name__ == "__main__" :
-    mdp = OvercookedGridworld.from_layout_name("corridor")
+    mdp = OvercookedGridworld.from_layout_name("counter_circuit")
     env = OvercookedEnv.from_mdp(mdp)
     rand_agent = RandomAgent(all_actions=True)
     theApp = App(env, rand_agent, player_idx=0, slow_time=True)

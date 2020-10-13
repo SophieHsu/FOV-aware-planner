@@ -8,6 +8,7 @@ from overcooked_ai_py.mdp.actions import Action, Direction
 from overcooked_ai_py.mdp.overcooked_mdp import OvercookedState, PlayerState, OvercookedGridworld, EVENT_TYPES, SIMPLE_EVENT_TYPES
 from overcooked_ai_py.mdp.overcooked_env import OvercookedEnv
 from overcooked_ai_py.data.planners import load_saved_action_manager, PLANNERS_DIR
+import pprint
 
 # to measure exec time 
 from timeit import default_timer as timer
@@ -393,7 +394,135 @@ class JointMotionPlanner(object):
             return joint_action_plan, end_pos_and_orientations, plan_lengths
 
         # If there is a conflict, and the agents have different goals, we can use solve the joint graph problem
-        return self._compute_plan_from_joint_graph(joint_start_state, joint_goal_state)
+        # return self._compute_plan_from_joint_graph(joint_start_state, joint_goal_state)
+
+        try:
+            return self._get_joint_plan_from_merging_ind_paths(
+                pos_and_or_paths, joint_start_state, joint_goal_state
+            )
+        except ValueError:
+            return self._compute_plan_from_joint_graph(
+                joint_start_state, joint_goal_state
+            )
+
+
+    def merge_paths_dp(self, pos_and_or_paths, joint_start_state):
+        """
+        DP solver that merges two paths such that they do not have conflicts.
+        Note that this solver can only deal with paths that does not share
+        the same start point and end point.
+
+        Args:
+            pos_and_or_paths (list): list of tuple(position, orientation)
+
+        Returns:
+            position_list1 (list), position_list2 (list)
+        """
+
+        s1, s2 = self.extract_ind_pos_list(pos_and_or_paths, joint_start_state)
+
+        if s1[-1] == s2[-1] or s1[0] == s2[0]:
+            return None, None
+        oo = np.inf
+        table = np.full((len(s1)+1, len(s2)+1), oo)
+        table[0, 0] = 0
+        choice = np.full((len(s1)+1, len(s2)+1), -1)
+        for i in range(len(s1)):
+            for j in range(len(s2)):
+                if s1[i] == s2[j]:
+                    table[i][j] = oo
+                    continue
+                ncost = table[i, j]+(1 if j >= i else 0)
+                if ncost < table[i, j+1]:
+                    table[i,j+1] = ncost
+                    choice[i,j+1] = 0
+                ncost = table[i, j]+(1 if i >= j else 0)
+                if ncost < table[i+1,j]:
+                    table[i+1,j] = ncost
+                    choice[i+1,j] = 1
+                ncost = table[i,j]
+                if ncost < table[i+1,j+1]:
+                    table[i+1,j+1] = ncost
+                    choice[i+1,j+1] = 2
+        # Use the choice matrix to build back the path
+        i = len(s1)-1
+        j = len(s2)-1
+        ans1 = []
+        ans2 = []
+        while 0 < i or 0 < j:
+            ans1.append(s1[i])
+            ans2.append(s2[j])
+            if choice[i,j] == 0:
+                j -= 1
+            elif choice[i,j] == 1:
+                i -= 1
+            elif choice[i,j] == 2:
+                i -= 1
+                j -= 1
+            else:
+                raise ValueError("Static agent blocking the way: No solution!")
+        ans1.append(s1[0])
+        ans2.append(s2[0])
+        ans1.reverse()
+        ans2.reverse()
+
+        # paths are invalid if they crash into each other
+        for idx in range(min(len(ans1), len(ans2)) - 1):
+            if ans1[idx] == ans2[idx+1] and ans1[idx+1] == ans2[idx]:
+                raise ValueError("Two paths crached: Solution not valid!")
+
+        return ans1[1:], ans2[1:]
+
+
+    def extract_ind_pos_list(self, pos_and_or_paths, joint_start_state):
+        pos_and_or_path1, pos_and_or_path2 = pos_and_or_paths
+        pos_list1 = [row[0] for row in pos_and_or_path1]
+        pos_list2 = [row[0] for row in pos_and_or_path2]
+        start1, start2 = joint_start_state
+        pos_list1.insert(0, start1[0])
+        pos_list2.insert(0, start2[0])
+        return pos_list1, pos_list2
+
+
+    def _get_joint_plan_from_merging_ind_paths(self, pos_and_or_paths, joint_start_state, joint_goal_state):
+        """
+        Get joint motion plan by using the DP solver to resolve conflicts
+        in the individual motion paths
+
+        Args:
+            pos_and_or_path (list): list of (pos, or) pairs visited during
+                                    plan execution
+                                    (not including start, but including goal)
+            joint_start_state (list(tuple)): list of starting position and
+                                             orientation
+            joint_goal_state (list(tuple)): list of goal position and
+                                            orientation
+        """
+        # resolve conflict in the individual paths
+        path_lists = self.merge_paths_dp(pos_and_or_paths, joint_start_state)
+        
+        # obtain action_plans from paths
+        action_plans, pos_and_or_paths, plan_lengths = [], [], []
+        for path_list, start, goal in zip(path_lists, joint_start_state, joint_goal_state):
+            action_plan, pos_and_or_path, plan_length = \
+                self.motion_planner.action_plan_from_positions(
+                    path_list, start, goal
+                )
+            action_plans.append(action_plan)
+            pos_and_or_paths.append(pos_and_or_path)
+            plan_lengths.append(plan_length)
+
+        # joint the action plans
+        joint_action_plan, end_pos_and_orientations = \
+            self._join_single_agent_action_plans(
+                joint_start_state,
+                action_plans,
+                pos_and_or_paths,
+                 min(plan_lengths)
+            )
+
+        return joint_action_plan, end_pos_and_orientations, plan_lengths
+
 
     def _get_plans_from_single_planner(self, joint_start_state, joint_goal_state):
         """
@@ -957,7 +1086,8 @@ class MediumLevelPlanner(object):
                 OvercookedEnv.print_state(self.mdp, goal_state)
             
             if SAFE_RUN:
-                s_prime, _ = OvercookedEnv.execute_plan(self.mdp, curr_state, joint_action_plan)
+                env = OvercookedEnv.from_mdp(self.mdp, info_level = 0, horizon = 100)
+                s_prime, _ = OvercookedEnv.execute_plan(env, curr_state, joint_action_plan)
                 assert s_prime == goal_state
 
             curr_h = heuristic_fn(goal_state, t, debug=False)
@@ -1021,8 +1151,9 @@ class MediumLevelPlanner(object):
 
             if SAFE_RUN:
                 assert end_pos_and_ors[0] == goal_jm_state[0] or end_pos_and_ors[1] == goal_jm_state[1]
-                s_prime, _ = OvercookedEnv.execute_plan(self.mdp, start_state, joint_motion_action_plans, display=False)
-                assert end_state == s_prime,  [OvercookedEnv.print_state(self.mdp, s_prime), OvercookedEnv.print_state(self.mdp, end_state)]
+                env = OvercookedEnv.from_mdp(self.mdp, info_level = 0, horizon = 100)
+                s_prime, _ = OvercookedEnv.execute_plan(env, start_state, joint_motion_action_plans, display=False)
+                assert end_state == s_prime
 
             successor_states.append((goal_jm_state, end_state, min(plan_costs)))
         return successor_states
