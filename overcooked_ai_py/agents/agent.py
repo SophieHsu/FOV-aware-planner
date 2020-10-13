@@ -840,6 +840,7 @@ class biasHumanModel(oneGoalHumanModel):
 
     def action(self, state):
         start_pos_and_or = state.players_pos_and_or[self.agent_index]
+        
         # identify agent's goal
         ml_logic_goals = self.logic_ml_action(state)
 
@@ -997,7 +998,7 @@ class MediumMdpPlanningAgent(Agent):
             if obj_state.name == 'soup':
                 num_item_in_pot = obj_state.state[1]
 
-        state_str = self.mdp_planner.gen_state_dict_key(state, state.players[1], num_item_in_pot)
+        state_str = self.mdp_planner.gen_state_dict_key(state, state.players[1], num_item_in_pot, state.players[0])
 
 
         print('State = ', state_str)
