@@ -14,7 +14,7 @@ class Individual:
     level = None  # an Overcooked game level
     fitness = None  # score in the level
     ID = None  # ID of the individual after being inserted to the map
-
+    player_workload = None # list of dic that summarize workload of all players
 
 class FeatureMap:
 

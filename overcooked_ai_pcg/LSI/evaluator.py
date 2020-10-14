@@ -6,7 +6,8 @@ from overcooked_ai_pcg.helper import run_overcooked_game
 from overcooked_ai_pcg.LSI import bc_calculate
 
 
-def run_overcooked_eval(ind, visualize, elite_map_config, generator, worker_id):
+def run_overcooked_eval(ind, visualize, elite_map_config, generator,
+                        worker_id):
     """
     Evaluates overcooked game by running a game and calculating relevant BC's.
 
@@ -34,9 +35,9 @@ def run_overcooked_eval(ind, visualize, elite_map_config, generator, worker_id):
     # ind.level = generate_rnd_lvl((6, 8), worker_id=self.id)
 
     # run simulation
-    ind.fitness = run_overcooked_game(ind.level,
-                                      render=visualize,
-                                      worker_id=worker_id)
+    ind.fitness, ind.player_workload = run_overcooked_game(ind.level,
+                                                           render=visualize,
+                                                           worker_id=worker_id)
 
     # calculate bc out of the game
     ind.features = []
@@ -54,7 +55,6 @@ def run_overcooked_eval(ind, visualize, elite_map_config, generator, worker_id):
 
 @ray.remote
 class EvaluationActor:
-
     def run_evaluation_loop(self, algorithm_instance, visualize,
                             elite_map_config, gan_state_dict, G_params,
                             num_simulations, worker_id, evaluation_actors):
@@ -79,8 +79,9 @@ class EvaluationActor:
 
         # repeatedly run evaluations
         while True:
-            ind, ind_id = ray.get(algorithm_instance.
-                                  generate_individual_if_still_running.remote())
+            ind, ind_id = ray.get(
+                algorithm_instance.generate_individual_if_still_running.remote(
+                ))
 
             # no individual was generated because the algorithm is done, so exit
             if ind is None:
@@ -90,8 +91,8 @@ class EvaluationActor:
                   (ind_id, num_simulations, worker_id))
             try:
                 evaluated_ind = run_overcooked_eval(ind, visualize,
-                                                    elite_map_config, generator,
-                                                    worker_id)
+                                                    elite_map_config,
+                                                    generator, worker_id)
             except TimeoutError:
                 print(
                     "Level generated taking too much time to planning. Skipping"

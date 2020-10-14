@@ -62,3 +62,16 @@ def shortest_dist(terrain1, terrain2, lvl_str):
                             q.put((n_x, n_y))
                             dist_matrix[n_x, n_y] = dist_matrix[x, y] + 1
     return shortest
+
+
+def diff_num_ingre_held(ind):
+    workloads = ind.player_workload
+    return workloads[0]["num_ingre_held"] - workloads[1]["num_ingre_held"]
+
+def diff_num_plate_held(ind):
+    workloads = ind.player_workload
+    return workloads[0]["num_plate_held"] - workloads[1]["num_plate_held"]
+
+def diff_num_dish_served(ind):
+    workloads = ind.player_workload
+    return workloads[0]["num_served"] - workloads[1]["num_served"]
