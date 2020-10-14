@@ -162,8 +162,8 @@ if __name__ == "__main__" :
     hmlp = planners.HumanMediumLevelPlanner(scenario_1_mdp, mlp, one_goal=0)
     a0 = agent.oneGoalHumanModel(mlp, 'Onion cooker', auto_unstuck=True)
 
-
-    mdp_planner = planners.HumanAwareMediumMDPPlanner.from_pickle_or_compute(scenario_1_mdp, NO_COUNTERS_PARAMS, hmlp, mlp, force_compute_all=True)
+    mdp_planner = planners.MediumLevelMdpPlanner.from_pickle_or_compute(scenario_1_mdp, NO_COUNTERS_PARAMS, mlp, force_compute_all=True)
+    # mdp_planner = planners.HumanAwareMediumMDPPlanner.from_pickle_or_compute(scenario_1_mdp, NO_COUNTERS_PARAMS, hmlp, mlp, force_compute_all=True)
     a1 = agent.MediumMdpPlanningAgent(mdp_planner, env)
 
     # # a1 = agent.oneGoalHumanModel(mlp, 'Soup server', auto_unstuck=True)

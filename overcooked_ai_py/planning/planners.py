@@ -1778,7 +1778,7 @@ class MediumLevelMdpPlanner(object):
         return state_str
 
     def init_states(self, state_idx_dict=None, order_list=None):
-        print('In init_states()...')
+        # print('In init_states()...')
         # player_obj, num_item_in_pot, order_list
 
         if state_idx_dict is None:
@@ -1831,7 +1831,7 @@ class MediumLevelMdpPlanner(object):
         return
 
     def init_actions(self, actions=None):
-        print('In init_actions()...')
+        # print('In init_actions()...')
 
         if actions is None:
             objects = ['onion', 'tomato']
@@ -1848,7 +1848,7 @@ class MediumLevelMdpPlanner(object):
             self.action_dict = action_dict
             self.action_idx_dict = action_idx_dict
 
-        print('Initialize actions:', self.action_dict)
+        # print('Initialize actions:', self.action_dict)
         
         return
 
@@ -1866,7 +1866,8 @@ class MediumLevelMdpPlanner(object):
                 next_action_idx = action_idx
         
                 # define state and action game transition logic
-                next_actions, next_state_keys = self.state_action_nxt_state(state_obj)
+                player_obj, soup_finish, orders = self.ml_state_to_objs(state_obj)
+                next_actions, next_state_keys = self.state_action_nxt_state(player_obj, soup_finish, orders)
 
                 if next_actions == action_key:
                     next_state_idx = self.state_idx_dict[next_state_keys]
@@ -1874,18 +1875,21 @@ class MediumLevelMdpPlanner(object):
                 game_logic_transition[next_action_idx][state_idx][next_state_idx] += 1.0
 
             # print(state_key)
-        print(game_logic_transition[:, 25])
-        tmp = input()
+        # print(game_logic_transition[:, 25])
+        # tmp = input()
 
         self.transition_matrix = game_logic_transition
-        
-    def state_action_nxt_state(self, state, other_has_dish=False):
-        # state: obj + action + bool(soup nearly finish) + orders
-        player_obj = state[0]; soup_finish = state[1];
-        orders = []
-        if len(state) > 2:
-            orders = state[2:]
 
+    def ml_state_to_objs(self, state_obj):
+        # state: obj + action + bool(soup nearly finish) + orders
+        player_obj = state_obj[0]; soup_finish = state_obj[1];
+        orders = []
+        if len(state_obj) > 2:
+            orders = state_obj[2:]
+
+        return player_obj, soup_finish, orders
+        
+    def state_action_nxt_state(self, player_obj, soup_finish, orders, other_has_dish=False):
         # game logic
         actions = ''; next_obj = player_obj; next_soup_finish = soup_finish
         if player_obj == 'None':
@@ -2027,8 +2031,6 @@ class MediumLevelMdpPlanner(object):
             if soup_finish == self.mdp.num_items_for_soup:
                 self.reward_matrix[self.action_idx_dict['pickup_soup'], self.state_idx_dict[state_key]] += self.mdp.delivery_reward/5.0
 
-
-
     def bellman_operator(self, V=None):
 
         if V is None:
@@ -2036,7 +2038,7 @@ class MediumLevelMdpPlanner(object):
 
         Q = np.zeros((self.num_actions, self.num_states))
         for a in range(self.num_actions):
-            print(self.transition_matrix[a].dot(V))
+            # print(self.transition_matrix[a].dot(V))
             Q[a] = self.reward_matrix[a] + self.discount * self.transition_matrix[a].dot(V)
 
             # print(list(Q.max(axis=0)))
@@ -2046,7 +2048,7 @@ class MediumLevelMdpPlanner(object):
 
     @staticmethod
     def get_span(arr):
-        print('in get span arr.max():', arr.max(), ' - arr.min():', arr.min(), ' = ', (arr.max()-arr.min()))
+        # print('in get span arr.max():', arr.max(), ' - arr.min():', arr.min(), ' = ', (arr.max()-arr.min()))
         return arr.max()-arr.min()
 
     def log_value_iter(self, iter_count):
@@ -2074,8 +2076,8 @@ class MediumLevelMdpPlanner(object):
             self.value_matrix, self.policy_matrix = self.bellman_operator()
 
             variation = self.get_span(self.value_matrix-V_prev)
-            print(self.value_matrix)
-            print('Variation =',  variation, ', Threshold =', thresh)
+            # print(self.value_matrix)
+            # print('Variation =',  variation, ', Threshold =', thresh)
 
             if variation < thresh:
                 self.log_value_iter(iter_count)
@@ -2105,17 +2107,17 @@ class MediumLevelMdpPlanner(object):
         self.init_mdp()
         self.num_states = len(self.state_dict)
         self.num_actions = len(self.action_dict)
-        print('Total states =', self.num_states, '; Total actions =', self.num_actions)
+        # print('Total states =', self.num_states, '; Total actions =', self.num_actions)
 
         self.value_iteration()
 
-        print("Policy Probability Distribution = ")
+        # print("Policy Probability Distribution = ")
         # print(self.policy_matrix.tolist(), '\n')
-        print(self.policy_matrix.shape)
+        # print(self.policy_matrix.shape)
 
-        print("without GPU:", timer()-start)
+        # print("without GPU:", timer()-start)
 
-        tmp = input()
+        # tmp = input()
         # self.save_to_file(output_mdp_path)
         return 
 
@@ -2203,9 +2205,6 @@ class HumanAwareMediumMDPPlanner(MediumLevelMdpPlanner):
                     self.state_dict[new_key] = new_obj # update value
                     self.state_idx_dict[new_key] = len(self.state_idx_dict)
 
-                print(self.state_dict)
-                print(self.state_idx_dict)
-
     def init_transition_matrix(self, transition_matrix=None):
         self.transition_matrix = transition_matrix if transition_matrix is not None else np.zeros((len(self.action_dict), len(self.state_idx_dict), len(self.state_idx_dict)), dtype=float)
 
@@ -2224,8 +2223,8 @@ class HumanAwareMediumMDPPlanner(MediumLevelMdpPlanner):
 
                 # call for the motion goal and the average distance of the other agent
                 other_agent_nxt_obj, other_agent_trans_prob = self.hmlp.get_state_trans(p1_obj, p0_state[1])
-
-                next_actions, next_p0_state_keys = self.state_action_nxt_state(p0_state, other_agent_nxt_obj=='dish')
+                player_obj, soup_finish, orders = self.ml_state_to_objs(p0_state)
+                next_actions, next_p0_state_keys = self.state_action_nxt_state(player_obj, soup_finish, orders, other_agent_nxt_obj=='dish')
 
                 next_state_keys = ''
                 if next_actions == action_key:
@@ -2236,17 +2235,24 @@ class HumanAwareMediumMDPPlanner(MediumLevelMdpPlanner):
                     next_state_keys += other_agent_nxt_obj
 
                 next_state_idx = self.state_idx_dict[next_state_keys]
-                if(state_idx == 200):
-                    print(other_agent_trans_prob)
-                    tmp = input()
+
                 game_logic_transition[next_action_idx][state_idx][next_state_idx] += 1.0 * other_agent_trans_prob
                 game_logic_transition[next_action_idx][state_idx][state_idx] += 1.0 * (1.0 - other_agent_trans_prob)
 
             # print(state_key)
-        print(list(self.state_idx_dict.keys())[list(self.state_idx_dict.values()).index(200)],list(self.state_idx_dict.keys())[list(self.state_idx_dict.values()).index(20)], game_logic_transition[:, 25].shape, game_logic_transition[1,200] ,game_logic_transition[:, 25].sum(axis=1))
+        print(list(self.state_idx_dict.keys())[list(self.state_idx_dict.values()).index(224)],list(self.state_idx_dict.keys())[list(self.state_idx_dict.values()).index(20)], game_logic_transition[:, 25].shape, game_logic_transition[5,224] ,game_logic_transition[:, 224].sum(axis=1))
         tmp = input()
 
         self.transition_matrix = game_logic_transition
+
+    def ml_state_to_objs(self, state_obj):
+        # state: obj + action + bool(soup nearly finish) + orders
+        player_obj = state_obj[0]; soup_finish = state_obj[1];
+        orders = []
+        if len(state_obj) > 3:
+            orders = state_obj[2:-1]
+
+        return player_obj, soup_finish, orders
 
     def init_reward(self, reward_matrix=None):
         # state: obj + action + bool(soup nearly finish) + orders
@@ -2258,13 +2264,10 @@ class HumanAwareMediumMDPPlanner(MediumLevelMdpPlanner):
 
         for state_key, state_obj in self.state_dict.items():
             # state: obj + action + bool(soup nearly finish) + orders
-            player_obj = state_obj[0]; soup_finish = state_obj[1]
-            orders = None
-            if len(state_obj) > 3:
-                orders = state_obj[2:-1]
+            player_obj, soup_finish, orders = self.ml_state_to_objs(state_obj)
 
-            # if player_obj == 'soup':
-            #     self.reward_matrix[action_idx][self.state_idx_dict[state_key]] += self.mdp.delivery_reward
+            if player_obj == 'soup':
+                self.reward_matrix[action_idx][self.state_idx_dict[state_key]] += self.mdp.delivery_reward
         
             if orders == None:
                 self.reward_matrix[:,self.state_idx_dict[state_key]] += self.mdp.delivery_reward
@@ -2273,7 +2276,6 @@ class HumanAwareMediumMDPPlanner(MediumLevelMdpPlanner):
                 self.reward_matrix[self.action_idx_dict['pickup_soup'], self.state_idx_dict[state_key]] += self.mdp.delivery_reward/5.0
 
     def extract_p0(self, state_obj):
-        print(state_obj)
         return state_obj[:-1], state_obj[-1]
 
     def init_mdp(self):
@@ -2316,9 +2318,6 @@ class HumanMediumLevelPlanner(object):
         if not WAIT:
             start_locations = self.start_location_from_object(obj)
             min_distance = self.mlp.mp.min_cost_between_features(start_locations, motion_goals)
-            print(start_locations)
-            print(motion_goals, min_distance)
-            print(obj, next_obj)
         else:
             min_distance = 1.0
             

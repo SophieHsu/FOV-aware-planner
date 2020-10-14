@@ -6,7 +6,7 @@ import numpy as np
 from matplotlib import pyplot as plt
 from overcooked_ai_py.mdp.overcooked_mdp import OvercookedGridworld
 from overcooked_ai_py.mdp.overcooked_env import OvercookedEnv
-from overcooked_ai_py.planning.planners import MediumLevelPlanner
+from overcooked_ai_py.planning.planners import MediumLevelPlanner, MediumLevelMdpPlanner
 from overcooked_ai_py.agents.agent import *
 from overcooked_ai_py.planning.planners import Heuristic
 from overcooked_ai_py import read_layout_dict
@@ -169,25 +169,36 @@ def setup_env_from_grid(layout_grid, worker_id=0):
     # agent2 = GreedyHumanModel(mlp_planner, env)
 
     # Set up 3: Fixed plan agents
+    # print("worker(%d): Pre-constructing graph..." % (worker_id))
+    # mlp_planner = MediumLevelPlanner(mdp, base_params)
+    # print("worker(%d): Planning..." % (worker_id))
+    # joint_plan = \
+    #     mlp_planner.get_low_level_action_plan(
+    #         env.state,
+    #         Heuristic(mlp_planner.mp).simple_heuristic,
+    #         delivery_horizon=2,
+    #         goal_info=True)
+
+    # plan1 = []
+    # plan2 = []
+    # for joint_action in joint_plan:
+    #     action1, action2 = joint_action
+    #     plan1.append(action1)
+    #     plan2.append(action2)
+
+    # agent1 = FixedPlanAgent(plan1)
+    # agent2 = FixedPlanAgent(plan2)
+
+    # Set up 4: Onion Cooker + MDP agent (not human aware)
     print("worker(%d): Pre-constructing graph..." % (worker_id))
     mlp_planner = MediumLevelPlanner(mdp, base_params)
     print("worker(%d): Planning..." % (worker_id))
-    joint_plan = \
-        mlp_planner.get_low_level_action_plan(
-            env.state,
-            Heuristic(mlp_planner.mp).simple_heuristic,
-            delivery_horizon=2,
-            goal_info=True)
+    agent1 = oneGoalHumanModel(mlp_planner, 'Onion cooker', auto_unstuck=True)
+    print("worker(%d): Pre-constructing mdp plan..." % (worker_id))
+    mdp_planner = MediumLevelMdpPlanner.from_pickle_or_compute(mdp, base_params, mlp_planner, force_compute_all=True)
+    print("worker(%d): MDP agent planning..." % (worker_id))
+    agent2 = MediumMdpPlanningAgent(mdp_planner, env)
 
-    plan1 = []
-    plan2 = []
-    for joint_action in joint_plan:
-        action1, action2 = joint_action
-        plan1.append(action1)
-        plan2.append(action2)
-
-    agent1 = FixedPlanAgent(plan1)
-    agent2 = FixedPlanAgent(plan2)
 
     print("worker(%d): Preprocess take %d seconds"
         % (worker_id, time.time() - start_time))

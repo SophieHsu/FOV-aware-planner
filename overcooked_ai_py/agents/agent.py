@@ -985,26 +985,49 @@ class MediumMdpPlanningAgent(Agent):
         self.env = env
         self.logging_level = logging_level
 
-        
+    def get_pot_status(self, state):
+        pot_states = self.mdp_planner.mdp.get_pot_states(state)
+        ready_pots = pot_states["tomato"]["ready"] + pot_states["onion"]["ready"]
+        cooking_pots = ready_pots + pot_states["tomato"]["cooking"] + pot_states["onion"]["cooking"]
+        nearly_ready_pots = cooking_pots + pot_states["tomato"]["partially_full"] + pot_states["onion"]["partially_full"]
+
+        return nearly_ready_pots
+
+    def get_ml_states(self, state):
+        num_item_in_pot = 0; pot_pos = []
+        if state.objects is not None and len(state.objects) > 0:
+            for obj_pos, obj_state in state.objects.items():
+                # print(obj_state)
+                if obj_state.name == 'soup' and obj_state.state[1] > num_item_in_pot:
+                    num_item_in_pot = obj_state.state[1]
+                    pot_pos = obj_pos
+
+        # print(pot_pos, num_item_in_pot)
+        state_str = self.mdp_planner.gen_state_dict_key(state, state.players[1], num_item_in_pot, state.players[0])
+
+        # print('State = ', state_str)
+
+        return state_str
+
     def action(self, state):
         pot_states = self.mdp_planner.mdp.get_pot_states(state)
         ready_pots = pot_states["tomato"]["ready"] + pot_states["onion"]["ready"]
         cooking_pots = ready_pots + pot_states["tomato"]["cooking"] + pot_states["onion"]["cooking"]
         nearly_ready_pots = cooking_pots + pot_states["tomato"]["partially_full"] + pot_states["onion"]["partially_full"]
 
-        num_item_in_pot = 0
-        if state.objects is not None and len(state.objects) > 0:
-            obj_state = list(state.objects.values())[0]
-            if obj_state.name == 'soup':
-                num_item_in_pot = obj_state.state[1]
+        # num_item_in_pot = 0
+        # if state.objects is not None and len(state.objects) > 0:
+        #     obj_state = list(state.objects.values())
 
-        state_str = self.mdp_planner.gen_state_dict_key(state, state.players[1], num_item_in_pot, state.players[0])
+        #     if obj_state.name == 'soup':
+        #         num_item_in_pot = obj_state.state[1]
 
+        # state_str = self.mdp_planner.gen_state_dict_key(state, state.players[1], num_item_in_pot, state.players[0])
 
-        print('State = ', state_str)
+        state_str = self.get_ml_states(state)
 
         if state_str not in self.mdp_planner.state_idx_dict:
-            print('State = ', state_str, ';\nNot in dictionary. Action = North')
+            # print('State = ', state_str, ';\nNot in dictionary. Action = North')
             action = Action.ALL_ACTIONS[0]#random.choice(Action.ALL_ACTIONS)
         
         else:
@@ -1013,7 +1036,7 @@ class MediumMdpPlanningAgent(Agent):
             keys = list(self.mdp_planner.action_idx_dict.keys())
             vals = list(self.mdp_planner.action_idx_dict.values())
             action_object_pair = self.mdp_planner.action_dict[keys[vals.index(action_idx)]]
-            print(self.mdp_planner.state_idx_dict[state_str], action_idx, action_object_pair)
+            # print(self.mdp_planner.state_idx_dict[state_str], action_idx, action_object_pair)
 
             # map back the medium level action to low level action
             possible_motion_goals = self.mdp_planner.map_action_to_location(state, state_str, action_object_pair[0], action_object_pair[1])
@@ -1022,7 +1045,7 @@ class MediumMdpPlanningAgent(Agent):
             action = Action.ALL_ACTIONS[0]
             minimum_cost = 100000.0
             
-            print('possible_motion_goals =', possible_motion_goals)
+            # print('possible_motion_goals =', possible_motion_goals)
 
             for possible_location in possible_motion_goals:
                 motion_goal_locations = self.mdp_planner.mp.motion_goals_for_pos[possible_location]
@@ -1033,6 +1056,6 @@ class MediumMdpPlanningAgent(Agent):
                             minimum_cost = cost
                             action = action_plan[0]
 
-            print(action)
+            # print(action)
 
         return action, {}
