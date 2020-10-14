@@ -22,6 +22,7 @@ class DCGAN_D(nn.Module):
         """
         super(DCGAN_D, self).__init__()
         self.ngpu = ngpu
+        self.nz = nz
         assert isize % 16 == 0, "isize has to be a multiple of 16"
 
         main = nn.Sequential()
@@ -88,6 +89,7 @@ class DCGAN_G(nn.Module):
         """
         super(DCGAN_G, self).__init__()
         self.ngpu = ngpu
+        self.nz = nz
         assert isize % 16 == 0, "isize has to be a multiple of 16"
 
         cngf, tisize = ngf // 2, 4

@@ -92,7 +92,7 @@ python train_gan.py --cuda
 
 The solver is defined in `overcooked_ai_pcg/milp_repair.py`.
 
-It uses [cplex optimizer of IBM](https://www.ibm.com/analytics/cplex-optimizer). Please follow the step [here](https://www.ibm.com/products/ilog-cplex-optimization-studio) to install **IBM ILOG CPLEX Optimization Studio** and the python interface of it.
+It uses [cplex optimizer of IBM](https://www.ibm.com/analytics/cplex-optimizer). Please follow the step [here](https://www.ibm.com/products/ilog-cplex-optimization-studio) to install **IBM ILOG CPLEX Optimization Studio** and the python interface of it. Once you have downloaded the installation file, this [guide](https://www.ibm.com/support/knowledgecenter/SSSA5P_12.10.0/ilog.odms.studio.help/Optimization_Studio/topics/COS_installing.html) may be helpful.
 
 ### Generate level using trained GAN and MILP solver
 
@@ -107,17 +107,53 @@ The program will generate a level from random latent vector sampled from normal 
 
 ### Latent Space Illumination
 
-To run LSI experiments, run the following:
+The Overcooked experiments use [Ray](https://docs.ray.io/en/master/) to run in a
+distributed fashion. To begin, make sure you have the Conda environment set up
+and your dependencies installed.
+
+Next, change into the `LSI` directory:
+
 ```bash
 cd overcooked_ai_pcg/LSI
+```
+
+Now, start the main machine (head node) for Ray:
+
+```bash
+ray start --head
+```
+
+You can provide extra compute for the script by running Ray can run on multiple
+machines. If you would like to do so, **make sure that the other machines also
+have the same Conda environment and dependencies installed**. `ray start --head`
+outputs a command you can run on the other computers to start them. It should
+look something like:
+
+```bash
+ray start --address IP_ADDRESS --redis-password PASSWORD
+```
+
+Once you have started Ray, run (only on the main machine):
+
+```bash
 python run_search.py -c <exp_config_file_path>
 ```
 
-`exp_config_file_path` is the filepath to the experiment config file. It is default to be `overcooked_ai_pcg/LSI/data/config/experiment/MAPELITES_demo.tml`
+`exp_config_file_path` is the filepath to the experiment config file. It is
+default to be `overcooked_ai_pcg/LSI/data/config/experiment/MAPELITES_demo.tml`
+
+`run_search.py` will output log messages to the command line. Furthermore, visit
+the Ray dashboard at http://localhost:8265 to see the status of the Ray workers.
+
+When `run_search.py` ends, it will likely output several `Task failed: IOError`
+messages because several tasks have been killed. This is expected behavior, as
+once we have enough evaluations, we terminate remaining evaluations to save
+computation.
 
 #### LSI config files
 
 There are three kinds of config files, each configuring different components of the LSI experiments.
+
 
 ##### `experiment` config files
 They are under `overcooked_ai_pcg/LSI/data/config/experiment`.

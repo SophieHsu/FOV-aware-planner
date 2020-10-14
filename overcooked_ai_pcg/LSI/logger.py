@@ -1,12 +1,15 @@
-import os
+"""Contains logger classes and a Ray actor for bundling all of them together."""
 import csv
-import toml
-import numpy as np
-from overcooked_ai_pcg import LSI_LOG_DIR
+import os
 from abc import ABC, abstractmethod
+
+import numpy as np
+import ray
+from overcooked_ai_pcg import LSI_LOG_DIR
 
 
 class LoggerBase(ABC):
+
     @abstractmethod
     def init_log(self,):
         pass
@@ -18,6 +21,7 @@ class LoggerBase(ABC):
             writer.writerow(to_add)
             f.close()
 
+
 class RunningIndividualLog(LoggerBase):
     """
     Logger that logs individuals to a csv file
@@ -26,6 +30,7 @@ class RunningIndividualLog(LoggerBase):
         log_path (string): filename of the log file
         elite_map_config: toml config object of the feature maps
     """
+
     def __init__(self, log_path, elite_map_config):
         super().__init__()
         self._log_path = os.path.join(LSI_LOG_DIR, log_path)
@@ -54,6 +59,7 @@ class RunningIndividualLog(LoggerBase):
         ]
         self._write_row(to_add)
 
+
 class FrequentMapLog(LoggerBase):
     """
     Logger that logs compressed feature map information
@@ -62,6 +68,7 @@ class FrequentMapLog(LoggerBase):
         log_path (string): filename of the log file
         num_features (int): number of behavior characteristics
     """
+
     def __init__(self, log_path, num_features):
         super().__init__()
         self._log_path = os.path.join(LSI_LOG_DIR, log_path)
@@ -73,9 +80,11 @@ class FrequentMapLog(LoggerBase):
             os.remove(self._log_path)
 
         # construct label
-        feature_label = ":".join(["feature" + str(i)
-                        for i in range(num_features)])
-        data_labels = ["Dimension", "(f1,f2):IndividualID:Fitness:"+feature_label]
+        feature_label = ":".join(
+            ["feature" + str(i) for i in range(num_features)])
+        data_labels = [
+            "Dimension", "f1:f2:IndividualID:Fitness:" + feature_label
+        ]
         self._write_row(data_labels)
 
     def log_map(self, feature_map):
@@ -84,13 +93,14 @@ class FrequentMapLog(LoggerBase):
         for index in feature_map.elite_indices:
             ind = feature_map.elite_map[index]
             curr = [
-                index,
+                *index,
                 ind.ID,
                 ind.fitness,
                 *ind.features,
             ]
             to_add.append(":".join(str(ele) for ele in curr))
         self._write_row(to_add)
+
 
 class MapSummaryLog(LoggerBase):
     """
@@ -99,6 +109,7 @@ class MapSummaryLog(LoggerBase):
     Args:
         log_path (string): filename of the log file
     """
+
     def __init__(self, log_path):
         super().__init__()
         self._log_path = os.path.join(LSI_LOG_DIR, log_path)
@@ -131,7 +142,7 @@ class MapSummaryLog(LoggerBase):
         median_fitness = np.median(all_fitness)
         max_fitness = np.max(all_fitness)
         num_cell = np.prod(feature_map.resolutions)
-        percent_occupied = 100 * cells_occupied/num_cell
+        percent_occupied = 100 * cells_occupied / num_cell
 
         to_add = [
             num_evaluated,

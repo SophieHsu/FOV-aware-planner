@@ -14,6 +14,18 @@ def pot_onion_shortest_dist(ind):
 def pot_serve_shortest_dist(ind):
     return shortest_dist('P', 'S', ind.level)
 
+def pot_dish_shortest_dist(ind):
+    return shortest_dist('P', 'D', ind.level)
+
+def onion_dish_shortest_dist(ind):
+    return shortest_dist('O', 'D', ind.level)
+
+def onion_serve_shortest_dist(ind):
+    return shortest_dist('O', 'S', ind.level)
+
+def dish_serve_shortest_dist(ind):
+    return shortest_dist('D', 'S', ind.level)
+
 def shortest_dist(terrain1, terrain2, lvl_str):
     """
     Use BFS to find the shortest distance between two specified
@@ -50,3 +62,16 @@ def shortest_dist(terrain1, terrain2, lvl_str):
                             q.put((n_x, n_y))
                             dist_matrix[n_x, n_y] = dist_matrix[x, y] + 1
     return shortest
+
+
+def diff_num_ingre_held(ind):
+    workloads = ind.player_workload
+    return workloads[0]["num_ingre_held"] - workloads[1]["num_ingre_held"]
+
+def diff_num_plate_held(ind):
+    workloads = ind.player_workload
+    return workloads[0]["num_plate_held"] - workloads[1]["num_plate_held"]
+
+def diff_num_dish_served(ind):
+    workloads = ind.player_workload
+    return workloads[0]["num_served"] - workloads[1]["num_served"]

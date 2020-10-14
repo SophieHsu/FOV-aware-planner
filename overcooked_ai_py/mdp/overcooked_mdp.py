@@ -83,11 +83,19 @@ class PlayerState(object):
     orientation: Direction.NORTH/SOUTH/EAST/WEST representing orientation.
     held_object: ObjectState representing the object held by the player, or
                  None if there is no such object.
+    num_ingre_held (int): Number of times the player has held an ingredient object
+                         (onion or tomato).
+    num_plate_held (int): Number of times the player has held a plate
+    num_served (int): Number of times the player has served food
     """
-    def __init__(self, position, orientation, held_object=None):
+    def __init__(self, position, orientation, held_object=None,
+                 num_ingre_held=0, num_plate_held=0, num_served=0):
         self.position = tuple(position)
         self.orientation = tuple(orientation)
         self.held_object = held_object
+        self.num_ingre_held = num_ingre_held
+        self.num_plate_held = num_plate_held
+        self.num_served = num_served
 
         assert self.orientation in Direction.ALL_DIRECTIONS
         if self.held_object is not None:
@@ -124,7 +132,8 @@ class PlayerState(object):
 
     def deepcopy(self):
         new_obj = None if self.held_object is None else self.held_object.deepcopy()
-        return PlayerState(self.position, self.orientation, new_obj)
+        return PlayerState(self.position, self.orientation, new_obj,
+                           self.num_ingre_held, self.num_plate_held, self.num_served)
 
     def __eq__(self, other):
         return isinstance(other, PlayerState) and \
@@ -138,13 +147,25 @@ class PlayerState(object):
     def __repr__(self):
         return '{} facing {} holding {}'.format(
             self.position, self.orientation, str(self.held_object))
-    
+
     def to_dict(self):
         return {
             "position": self.position,
             "orientation": self.orientation,
             "held_object": self.held_object.to_dict() if self.held_object is not None else None
         }
+
+    def get_workload(self,):
+        return {
+            "num_ingre_held": self.num_ingre_held,
+            "num_plate_held": self.num_plate_held,
+            "num_served": self.num_served,
+        }
+
+    def print_workload(self,):
+        print("Number of ingredients held: {}".format(self.num_ingre_held))
+        print("Number of plates held: {}".format(self.num_plate_held))
+        print("Number of soup served: {}".format(self.num_served))
 
     @staticmethod
     def from_dict(player_dict):
@@ -285,7 +306,7 @@ class OvercookedState(object):
     def deepcopy(self):
         return OvercookedState(
             [player.deepcopy() for player in self.players],
-            {pos:obj.deepcopy() for pos, obj in self.objects.items()}, 
+            {pos:obj.deepcopy() for pos, obj in self.objects.items()},
             None if self.order_list is None else list(self.order_list))
 
     def __eq__(self, other):
@@ -327,6 +348,17 @@ class OvercookedState(object):
     def from_json(filename):
         return load_from_json(filename)
 
+    def print_player_workload(self,):
+        for idx, player in enumerate(self.players):
+            print("Player {}".format(idx+1))
+            player.print_workload()
+            print()
+
+    def get_player_workload(self,):
+        workloads = []
+        for idx, player in enumerate(self.players):
+            workloads.append(player.get_workload())
+        return workloads
 
 NO_REW_SHAPING_PARAMS = {
     "PLACEMENT_IN_POT_REW": 0,
@@ -662,15 +694,19 @@ class OvercookedGridworld(object):
                 self.log_object_pickup(events_infos, new_state, "onion", pot_states, player_idx)
 
                 # Onion pickup from dispenser
-                obj = ObjectState('onion', pos)
-                player.set_object(obj)
+                player.set_object(ObjectState('onion', pos))
+                player.num_ingre_held += 1
 
             elif terrain_type == 'T' and player.held_object is None:
+                self.log_object_pickup(events_infos, new_state, "tomato", pot_states, player_idx)
+
                 # Tomato pickup from dispenser
                 player.set_object(ObjectState('tomato', pos))
+                player.num_ingre_held += 1
 
             elif terrain_type == 'D' and player.held_object is None:
                 self.log_object_pickup(events_infos, new_state, "dish", pot_states, player_idx)
+                player.num_plate_held += 1
 
                 # Give shaped reward if pickup is useful
                 if self.is_dish_pickup_useful(new_state, pot_states):
@@ -722,9 +758,10 @@ class OvercookedGridworld(object):
 
                     new_state, delivery_rew = self.deliver_soup(new_state, player, obj)
                     sparse_reward[player_idx] += delivery_rew
+                    player.num_served += 1
 
                     # Log soup delivery
-                    events_infos['soup_delivery'][player_idx] = True                        
+                    events_infos['soup_delivery'][player_idx] = True
 
                     # If last soup necessary was delivered, stop resolving interacts
                     if new_state.order_list is not None and len(new_state.order_list) == 0:

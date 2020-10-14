@@ -225,6 +225,7 @@ def run_overcooked_game(lvl_str, render=True, worker_id=0):
     agent1, agent2, env = setup_env_from_grid(grid, worker_id=worker_id)
     done = False
     total_sparse_reward = 0
+    last_state = None
     while not done:
         if render:
             env.render()
@@ -234,9 +235,10 @@ def run_overcooked_game(lvl_str, render=True, worker_id=0):
         # print(joint_action)
         next_state, timestep_sparse_reward, done, info = env.step(joint_action)
         total_sparse_reward += timestep_sparse_reward
+        last_state = next_state
 
-
-    return total_sparse_reward
+    workloads = last_state.get_player_workload()
+    return total_sparse_reward, workloads
 
 def gen_int_rnd_lvl(size):
     """
