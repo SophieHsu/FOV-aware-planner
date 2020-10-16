@@ -32,7 +32,7 @@ To complete the installation after cloning the repo, run the following commands:
 
 ```
 cd overcooked_ai
-python setup.py develop
+pip install -e .
 ```
 
 ### Verifying Installation
