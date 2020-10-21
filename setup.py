@@ -18,4 +18,5 @@ setup(
         'matplotlib',
         'pandas',
         'ray==1.0.0',
+        'toml',
     ])
