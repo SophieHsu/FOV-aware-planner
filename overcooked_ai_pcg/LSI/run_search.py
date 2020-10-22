@@ -3,7 +3,6 @@ import argparse
 import os
 import time
 
-import toml
 import torch
 
 import dask.distributed
@@ -14,7 +13,8 @@ from overcooked_ai_pcg.helper import read_gan_param, read_in_lsi_config
 from overcooked_ai_pcg.LSI.evaluator import run_overcooked_eval
 from overcooked_ai_pcg.LSI.logger import (FrequentMapLog, MapSummaryLog,
                                           RunningIndividualLog)
-from overcooked_ai_pcg.LSI.qd_algorithms import (FeatureMap, MapElitesAlgorithm,
+from overcooked_ai_pcg.LSI.qd_algorithms import (FeatureMap,
+                                                 MapElitesAlgorithm,
                                                  RandomGenerator)
 
 
@@ -24,6 +24,8 @@ def search(dask_client, num_simulations, algorithm_config, elite_map_config,
     Run search with the specified algorithm and elite map
 
     Args:
+        dask_client (dask.distributed.Client): client for accessing a Dask
+          cluster.
         num_simulations (int): total number of evaluations of QD algorithm to run.
         algorithm_config: toml config object of QD algorithm
         elite_map_config: toml config object of the feature maps
