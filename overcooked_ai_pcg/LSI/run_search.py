@@ -10,12 +10,11 @@ import dask.distributed
 from dask_jobqueue import SLURMCluster
 from overcooked_ai_pcg import (GAN_TRAINING_DIR, LSI_CONFIG_ALGO_DIR,
                                LSI_CONFIG_EXP_DIR, LSI_CONFIG_MAP_DIR)
-from overcooked_ai_pcg.helper import read_gan_param
+from overcooked_ai_pcg.helper import read_gan_param, read_in_lsi_config
 from overcooked_ai_pcg.LSI.evaluator import run_overcooked_eval
 from overcooked_ai_pcg.LSI.logger import (FrequentMapLog, MapSummaryLog,
                                           RunningIndividualLog)
-from overcooked_ai_pcg.LSI.qd_algorithms import (FeatureMap,
-                                                 MapElitesAlgorithm,
+from overcooked_ai_pcg.LSI.qd_algorithms import (FeatureMap, MapElitesAlgorithm,
                                                  RandomGenerator)
 
 
@@ -160,15 +159,12 @@ def run(
         model_path (string): file path to the GAN model
     """
     # read in necessary config files
-    experiment_config = toml.load(config)
+    experiment_config, algorithm_config, elite_map_config = read_in_lsi_config(
+        opt.config)
+
     visualize = experiment_config["visualize"]
     num_cores = experiment_config["num_cores"]
     num_simulations = experiment_config["num_simulations"]
-    algorithm_config = toml.load(
-        os.path.join(LSI_CONFIG_ALGO_DIR,
-                     experiment_config["algorithm_config"]))
-    elite_map_config = toml.load(
-        os.path.join(LSI_CONFIG_MAP_DIR, experiment_config["elite_map_config"]))
 
     # Initialize Dask.
     if experiment_config.get("slurm", False):

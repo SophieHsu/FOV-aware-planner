@@ -37,7 +37,7 @@ def run_overcooked_eval(ind, visualize, elite_map_config, G_params,
 
     # run simulation
     try:
-        ind.fitness, ind.player_workload = run_overcooked_game(
+        ind.fitness, ind.score, ind.timestep, ind.player_workload = run_overcooked_game(
             ind.level, render=visualize, worker_id=worker_id)
     except TimeoutError:
         print(

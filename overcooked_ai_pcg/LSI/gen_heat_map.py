@@ -8,19 +8,27 @@ import os
 import cv2
 import csv
 import glob
+import toml
+import argparse
 import seaborn as sns
 import pandas as pd
 from itertools import product
 from overcooked_ai_pcg import LSI_IMAGE_DIR, LSI_LOG_DIR
+from overcooked_ai_pcg.helper import read_in_lsi_config
 
-feature1Label = 'pot_onion_shortest_dist'
-feature2Label = 'pot_serve_shortest_dist'
-image_title = 'MAP-Elites'
-# image_title = 'CMA-ME'
+# handled by command line argument parser
+FEATURE1_LABEL = None # label of the first feature to plot
+FEATURE2_LABEL = None # label of the second feature to plot
+IMAGE_TITLE = None # title of the image, aka name of the algorithm
+STEP_SIZE = None # step size of the animation to generate
+LOG_FILE_NAME = None # filepath to the elite map log file
+NUM_FEATURES = None  # total number of features (bc) used in the experiment
+ROW_INDEX = None  # index of feature 1 to plot
+COL_INDEX = None  # index of feature 2 to plot
 
-stepSize = 5
-
-logFilename = os.path.join(LSI_LOG_DIR, "elite_map.csv")
+# max and min value of fitness
+FITNESS_MIN = -100
+FITNESS_MAX = 100
 
 
 def createRecordList(mapData, mapDims):
@@ -28,13 +36,15 @@ def createRecordList(mapData, mapDims):
     indexPairs = [(x, y)
                   for x, y in product(range(mapDims[0]), range(mapDims[1]))]
     for cellData in mapData:
+        # splite data from csv file
         splitedData = cellData.split(":")
-        cellRow = int(splitedData[0])
-        cellCol = int(splitedData[1])
-        indID = int(splitedData[2])
-        fitness = float(splitedData[3])
-        f1 = float(splitedData[4])
-        f2 = float(splitedData[5])
+        cellRow = int(splitedData[ROW_INDEX])
+        cellCol = int(splitedData[COL_INDEX])
+        nonFeatureIdx = NUM_FEATURES
+        indID = int(splitedData[nonFeatureIdx])
+        fitness = float(splitedData[nonFeatureIdx + 1])
+        f1 = float(splitedData[nonFeatureIdx + 2 + ROW_INDEX])
+        f2 = float(splitedData[nonFeatureIdx + 2 + COL_INDEX])
 
         data = [cellRow, cellCol, indID, fitness, f1, f2]
         recordList.append(data)
@@ -85,16 +95,18 @@ def createImage(rowData, filename):
         numTicksX = mapDims[0] // numTicks + 1
         numTicksY = mapDims[1] // numTicks + 1
         plt.figure(figsize=(3, 3))
-        g = sns.heatmap(fitnessMap,
-                        annot=False,
-                        fmt=".0f",
-                        xticklabels=numTicksX,
-                        yticklabels=numTicksY,
-                        vmin=0,
-                        vmax=40)
+        g = sns.heatmap(
+            fitnessMap,
+            annot=False,
+            fmt=".0f",
+            xticklabels=numTicksX,
+            yticklabels=numTicksY,
+            vmin=FITNESS_MIN,
+            vmax=FITNESS_MAX,
+        )
         fig = g.get_figure()
         # plt.axis('off')
-        g.set(title=image_title, xlabel=feature2Label, ylabel=feature1Label)
+        g.set(title=IMAGE_TITLE, xlabel=FEATURE1_LABEL, ylabel=FEATURE2_LABEL)
         plt.tight_layout()
         fig.savefig(filename)
     plt.close('all')
@@ -142,7 +154,7 @@ def generateAll(logPath):
 
         # generate the movie
         template = os.path.join(tmpImageFolder, 'grid_{:05d}.png')
-        createImages(stepSize, allRows[1:], template)
+        createImages(STEP_SIZE, allRows[1:], template)
         movieFilename = 'fitness.avi'
         createMovie(tmpImageFolder, movieFilename)
 
@@ -152,4 +164,46 @@ def generateAll(logPath):
 
 
 if __name__ == "__main__":
-    generateAll(logFilename)
+    parser = argparse.ArgumentParser()
+    parser.add_argument('-c',
+                        '--config',
+                        help='path to the experiment config file',
+                        required=True)
+    parser.add_argument('-f1',
+                        '--feature1_idx',
+                        help='index of the first feature to plot',
+                        required=False,
+                        default=0)
+    parser.add_argument('-f2',
+                        '--feature2_idx',
+                        help='index of the second feature to plot',
+                        required=False,
+                        default=1)
+    parser.add_argument('-s',
+                        '--step_size',
+                        help='step size of the animation to generate',
+                        required=False,
+                        default=5)
+    parser.add_argument('-l',
+                        '--log_file',
+                        help='filepath to the elite map log file',
+                        required=False,
+                        default=os.path.join(LSI_LOG_DIR, "elite_map.csv"))
+    opt = parser.parse_args()
+
+    # read in the name of the algorithm and features to plot
+    experiment_config, algorithm_config, elite_map_config = read_in_lsi_config(
+        opt.config)
+    features = elite_map_config['Map']['Features']
+
+    # read in parameters
+    NUM_FEATURES = len(features)
+    ROW_INDEX = int(opt.feature1_idx)
+    COL_INDEX = int(opt.feature2_idx)
+    STEP_SIZE = int(opt.step_size)
+    IMAGE_TITLE = algorithm_config['name']
+    FEATURE1_LABEL = features[ROW_INDEX]['name']
+    FEATURE2_LABEL = features[COL_INDEX]['name']
+    LOG_FILE_NAME = opt.log_file
+
+    generateAll(LOG_FILE_NAME)
