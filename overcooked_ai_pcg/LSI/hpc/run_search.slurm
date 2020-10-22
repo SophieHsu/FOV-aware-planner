@@ -1,5 +1,5 @@
 #!/bin/bash
-#SBATCH --job-name=overcooked
+#SBATCH --job-name=run-lsi-search
 #SBATCH --cpus-per-task=4
 #SBATCH --mem-per-cpu=4GB
 #SBATCH --nodes=1
