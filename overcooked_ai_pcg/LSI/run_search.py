@@ -170,6 +170,11 @@ def run(
             cores=cores_per_worker,
             memory=f"{experiment_config['mem_gib_per_slurm_worker']}GiB",
             processes=cores_per_worker,
+            walltime=experiment_config['slurm_worker_walltime'],
+            job_extra=[
+              "--output ./logs/slurm-%j.out",
+              "--error ./logs/slurm-%j.out",
+            ],
         )
 
         print("### SLURM Job script ###")

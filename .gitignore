@@ -140,6 +140,3 @@ overcooked_ai_pcg/LSI/data/images/
 
 # pycharm related
 .idea/
-
-# Dask
-dask-worker-space/

@@ -4,7 +4,7 @@
 #SBATCH --mem-per-cpu=4GB
 #SBATCH --nodes=1
 #SBATCH --tasks-per-node=1
-#SBATCH --time=01:00:00
+#SBATCH --time=02:00:00
 #SBATCH --account=nikolaid_548
 #SBATCH --output ./logs/slurm-%j.out
 #SBATCH --error ./logs/slurm-%j.out
@@ -42,14 +42,14 @@ module load gcc/8.3.0
 module load anaconda3
 
 eval "$(conda shell.bash hook)"
-conda activate dask # This environment must exist.
+conda activate overcooked_ai
 conda env list
 
 echo
 echo "========== Starting Dask Python script =========="
 
 # The "-u" option removes buffers from stdin and stdout.
-python -u run_search.py --slurm --config data/config/experiment/MAPELITES_demo_slurm.tml
+python -u run_search.py --config data/config/experiment/MAPELITES_demo_slurm.tml
 
 echo
 echo "========== Done =========="
