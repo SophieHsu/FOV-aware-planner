@@ -2,6 +2,7 @@ import os
 import json
 import torch
 import time
+import toml
 import numpy as np
 from matplotlib import pyplot as plt
 from overcooked_ai_py.mdp.overcooked_mdp import OvercookedGridworld
@@ -11,9 +12,10 @@ from overcooked_ai_py.agents.agent import *
 from overcooked_ai_py.planning.planners import Heuristic
 from overcooked_ai_py import read_layout_dict
 from overcooked_ai_py import LAYOUTS_DIR
-from overcooked_ai_pcg import ERR_LOG_PIC, G_PARAM_FILE
+from overcooked_ai_pcg import ERR_LOG_PIC, G_PARAM_FILE, LSI_CONFIG_ALGO_DIR, LSI_CONFIG_MAP_DIR
 
 obj_types = "12XSPOD "
+
 
 def vertical_flip(np_lvl):
     """
@@ -98,6 +100,15 @@ def read_in_training_data(data_path):
 
 # print(read_in_training_data(LAYOUTS_DIR))
 
+def read_in_lsi_config(exp_config_file):
+    experiment_config = toml.load(exp_config_file)
+    algorithm_config = toml.load(
+        os.path.join(LSI_CONFIG_ALGO_DIR,
+                    experiment_config["algorithm_config"]))
+    elite_map_config = toml.load(
+        os.path.join(LSI_CONFIG_MAP_DIR, experiment_config["elite_map_config"]))
+    return experiment_config, algorithm_config, elite_map_config
+
 def plot_err(average_errG_log,
              average_errD_log,
              average_errD_fake_log,
@@ -141,7 +152,7 @@ def setup_env_from_grid(layout_grid, worker_id=0, human_preference=0.3, human_ad
         "start_order_list": ['onion'] * 2,
         "cook_time": 10,
         "num_items_for_soup": 3,
-        "delivery_reward": 20,
+        "delivery_reward": 50,
         "rew_shaping_params": None
     }
     mdp = OvercookedGridworld.from_grid(layout_grid, config)
@@ -227,12 +238,11 @@ def run_overcooked_game(ind, lvl_str, render=True, worker_id=0):
     Run one turn of overcooked game and return the sparse reward as fitness
     """
     grid = lvl_str2grid(lvl_str)
-    print('in overcooked game:', ind.human_preference, ind.human_adaptiveness)
     agent1, agent2, env = setup_env_from_grid(grid, worker_id=worker_id, human_preference=ind.human_preference, human_adaptiveness=ind.human_adaptiveness)
     done = False
     total_sparse_reward = 0
     last_state = None
-    runtime_count = 0
+    timestep = 0
     while not done:
         if render:
             env.render()
@@ -243,15 +253,17 @@ def run_overcooked_game(ind, lvl_str, render=True, worker_id=0):
         next_state, timestep_sparse_reward, done, info = env.step(joint_action)
         total_sparse_reward += timestep_sparse_reward
         last_state = next_state
-        runtime_count += 1
+        timestep += 1
 
-        if runtime_count > 3000:
+        if timestep > 3000:
             print('Break due to exceed 3000 steps')
             break
 
     workloads = last_state.get_player_workload()
 
-    return total_sparse_reward, workloads
+    # smooth fitness by subtracting timestep
+    fitness = total_sparse_reward - timestep
+    return fitness, total_sparse_reward, timestep, workloads
 
 def gen_int_rnd_lvl(size):
     """

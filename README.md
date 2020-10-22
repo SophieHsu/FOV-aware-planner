@@ -21,7 +21,7 @@ For more information about the environment, please check out the [original Overc
 
 ### Install Overcooked-AI
 
-It is useful to setup a conda environment with Python 3.7:
+It is useful to setup a conda environment with Python 3.7 using [Anaconda](https://www.anaconda.com/products/individual):
 
 ```
 conda create -n overcooked_ai python=3.7
@@ -32,7 +32,7 @@ To complete the installation after cloning the repo, run the following commands:
 
 ```
 cd overcooked_ai
-python setup.py develop
+pip install -e .
 ```
 
 ### Verifying Installation

@@ -12,9 +12,14 @@ class Individual:
     features = None  # BC's
     param_vector = None  # genotype
     level = None  # an Overcooked game level
-    fitness = None  # score in the level
+    fitness = None  # fitness in the level = score - timestep
+    score = None # raw score of the level,
+                 # proportional to the number of soup delivered
+    timestep = None # timestep to finish the level
     ID = None  # ID of the individual after being inserted to the map
     player_workload = None # list of dic that summarize workload of all players
+    human_preference = None
+    human_adaptiveness = None
 
 class FeatureMap:
 
@@ -159,7 +164,7 @@ class MapElitesAlgorithm(QDAlgorithmBase):
         self.num_to_evaluate = num_to_evaluate
         self.initial_population = initial_population
         self.mutation_power = mutation_power
-        self.num_params = num_params
+        self.num_params = num_params+2 # add human parameters
 
     def is_running(self):
         return self.individuals_evaluated < self.num_to_evaluate
@@ -168,10 +173,26 @@ class MapElitesAlgorithm(QDAlgorithmBase):
         ind = Individual()
         if self.individuals_disbatched < self.initial_population:
             ind.param_vector = np.random.normal(0.0, 1.0, self.num_params)
+            while True:
+                if (ind.param_vector[32] > 0.0 and ind.param_vector[32] <= 1.0) and (ind.param_vector[33] >= 0.0 and ind.param_vector[33] <= 1.0):
+                    break
+                else:
+                    ind.param_vector = np.random.normal(0.0, 1.0, self.num_params)
+                    print('mutating for a in-limit parameters...')
         else:
             parent = self.feature_map.get_random_elite()
             ind.param_vector = parent.param_vector + np.random.normal(
                 0.0, self.mutation_power, self.num_params)
+
+            while True:
+                if (ind.param_vector[32] > 0.0 and ind.param_vector[32] <= 1.0) and (ind.param_vector[33] >= 0.0 and ind.param_vector[33] <= 1.0):
+                    break
+                else:
+                    ind.param_vector = parent.param_vector + np.random.normal(0.0, self.mutation_power, self.num_params)
+                    print('mutating for a in-limit parameters...')
+
+        print(self.num_params, ind.param_vector[32:])
+
         self.individuals_disbatched += 1
         return ind
 

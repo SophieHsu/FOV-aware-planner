@@ -17,5 +17,12 @@ setup(
         'torch',
         'matplotlib',
         'pandas',
+<<<<<<< Updated upstream
         'ray==1.0.0',
+        'toml',
     ])
+=======
+        'ray'
+      ]
+    )
+>>>>>>> Stashed changes
