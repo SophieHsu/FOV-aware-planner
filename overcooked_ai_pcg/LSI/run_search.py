@@ -3,9 +3,10 @@ import argparse
 import os
 import time
 
-import dask.distributed
 import toml
 import torch
+
+import dask.distributed
 from dask_jobqueue import SLURMCluster
 from overcooked_ai_pcg import (GAN_TRAINING_DIR, LSI_CONFIG_ALGO_DIR,
                                LSI_CONFIG_EXP_DIR, LSI_CONFIG_MAP_DIR)
@@ -112,8 +113,12 @@ def search(dask_client, num_simulations, algorithm_config, elite_map_config,
                 print(
                     "Finished simulation.\nTotal simulations done: %d/%d" %
                     (algorithm_instance.individuals_evaluated, num_simulations))
-        except dask.distributed.scheduler.KilledWorker:  # pylint: disable=no-member
+        except dask.distributed.scheduler.KilledWorker as err:  # pylint: disable=no-member
             # worker may fail due to, for instance, memory
+            print("Worker failed with the following error; continuing anyway")
+            print("-------------------------------------------")
+            print(err)
+            print("-------------------------------------------")
             continue
 
         if algorithm_instance.is_running():
