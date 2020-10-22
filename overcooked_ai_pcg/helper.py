@@ -6,7 +6,7 @@ import numpy as np
 from matplotlib import pyplot as plt
 from overcooked_ai_py.mdp.overcooked_mdp import OvercookedGridworld
 from overcooked_ai_py.mdp.overcooked_env import OvercookedEnv
-from overcooked_ai_py.planning.planners import MediumLevelPlanner, MediumLevelMdpPlanner
+from overcooked_ai_py.planning.planners import MediumLevelPlanner, MediumLevelMdpPlanner, HumanMediumLevelPlanner, HumanAwareMediumMDPPlanner, MediumLevelActionManager
 from overcooked_ai_py.agents.agent import *
 from overcooked_ai_py.planning.planners import Heuristic
 from overcooked_ai_py import read_layout_dict
@@ -130,7 +130,7 @@ def plot_err(average_errG_log,
     plt.savefig(ERR_LOG_PIC)
     plt.show()
 
-def setup_env_from_grid(layout_grid, worker_id=0):
+def setup_env_from_grid(layout_grid, worker_id=0, human_preference=0.3, human_adaptiveness=0.5):
     """
     Set up random agents and overcooked env to run demo game.
 
@@ -189,15 +189,20 @@ def setup_env_from_grid(layout_grid, worker_id=0):
     # agent1 = FixedPlanAgent(plan1)
     # agent2 = FixedPlanAgent(plan2)
 
-    # Set up 4: Onion Cooker + MDP agent (not human aware)
+    # Set up 4: Preferenced human + human-aware agent
     print("worker(%d): Pre-constructing graph..." % (worker_id))
-    mlp_planner = MediumLevelPlanner(mdp, base_params)
+    ml_action_manager = MediumLevelActionManager(mdp, base_params)
+    hmlp = HumanMediumLevelPlanner(mdp, ml_action_manager, [human_preference, 1.0-human_preference], human_adaptiveness)
     print("worker(%d): Planning..." % (worker_id))
-    agent1 = oneGoalHumanModel(mlp_planner, 'Onion cooker', auto_unstuck=True)
+
+    agent1 = biasHumanModel(ml_action_manager, [human_preference, 1.0-human_preference], human_adaptiveness, auto_unstuck=True)
+    # agent1 = oneGoalHumanModel(mlp_planner, 'Onion cooker', auto_unstuck=True)
     print("worker(%d): Pre-constructing mdp plan..." % (worker_id))
-    mdp_planner = MediumLevelMdpPlanner.from_pickle_or_compute(mdp, base_params, mlp_planner, force_compute_all=True)
+    
+    mdp_planner = HumanAwareMediumMDPPlanner.from_pickle_or_compute(mdp, base_params, hmlp, ml_action_manager, force_compute_all=True)
     print("worker(%d): MDP agent planning..." % (worker_id))
-    agent2 = MediumMdpPlanningAgent(mdp_planner, env)
+    
+    agent2 = MediumMdpPlanningAgent(mdp_planner, env, auto_unstuck=True)
 
 
     print("worker(%d): Preprocess take %d seconds"
@@ -217,15 +222,17 @@ def read_gan_param():
         G_params = json.load(f)
     return G_params
 
-def run_overcooked_game(lvl_str, render=True, worker_id=0):
+def run_overcooked_game(ind, lvl_str, render=True, worker_id=0):
     """
     Run one turn of overcooked game and return the sparse reward as fitness
     """
     grid = lvl_str2grid(lvl_str)
-    agent1, agent2, env = setup_env_from_grid(grid, worker_id=worker_id)
+    print('in overcooked game:', ind.human_preference, ind.human_adaptiveness)
+    agent1, agent2, env = setup_env_from_grid(grid, worker_id=worker_id, human_preference=ind.human_preference, human_adaptiveness=ind.human_adaptiveness)
     done = False
     total_sparse_reward = 0
     last_state = None
+    runtime_count = 0
     while not done:
         if render:
             env.render()
@@ -236,8 +243,14 @@ def run_overcooked_game(lvl_str, render=True, worker_id=0):
         next_state, timestep_sparse_reward, done, info = env.step(joint_action)
         total_sparse_reward += timestep_sparse_reward
         last_state = next_state
+        runtime_count += 1
+
+        if runtime_count > 3000:
+            print('Break due to exceed 3000 steps')
+            break
 
     workloads = last_state.get_player_workload()
+
     return total_sparse_reward, workloads
 
 def gen_int_rnd_lvl(size):

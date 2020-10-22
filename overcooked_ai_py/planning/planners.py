@@ -807,6 +807,7 @@ class MediumLevelActionManager(object):
     """
 
     def __init__(self, mdp, params):
+        start_time = time.time()
         self.mdp = mdp
         
         self.params = params
@@ -816,6 +817,7 @@ class MediumLevelActionManager(object):
         
         self.joint_motion_planner = JointMotionPlanner(mdp, params)
         self.motion_planner = self.joint_motion_planner.motion_planner
+        print("It took {} seconds to create MediumLevelActionManager".format(time.time() - start_time))
 
     def save_to_file(self, filename):
         with open(filename, 'wb') as output:
@@ -1675,15 +1677,15 @@ class Heuristic(object):
 
 
 class MediumLevelMdpPlanner(object):
-    def __init__(self, mdp, mlp_params, ml_action_manager=None, \
+
+    def __init__(self, mdp, mlp_params, ml_action_manager, \
         state_dict = {}, state_idx_dict = {}, action_dict = {}, action_idx_dict = {}, transition_matrix = None, reward_matrix = None, policy_matrix = None, value_matrix = None, \
         num_states = 0, num_rounds = 0, epsilon = 0.01, discount = 0.8):
 
         self.mdp = mdp
         self.params = mlp_params
-        self.ml_action_manager = ml_action_manager if ml_action_manager else MediumLevelActionManager(mdp, mlp_params)
-        self.jmp = self.ml_action_manager.joint_motion_planner
-        self.mp = self.jmp.motion_planner
+        self.ml_action_manager = ml_action_manager
+        self.mp = self.ml_action_manager.motion_planner
 
         self.state_idx_dict = state_idx_dict
         self.state_dict = state_dict
@@ -1727,14 +1729,14 @@ class MediumLevelMdpPlanner(object):
             return MediumLevelMdpPlanner(mdp, params, mlp_action_manager, state_dict, state_idx_dict, policy_matrix=policy_matrix)
 
     @staticmethod
-    def from_pickle_or_compute(mdp, mlp_params, mlp, custom_filename=None, force_compute_all=False, info=True, force_compute_more=False):
+    def from_pickle_or_compute(mdp, mlp_params, ml_action_manager, custom_filename=None, force_compute_all=False, info=True, force_compute_more=False):
 
         assert isinstance(mdp, OvercookedGridworld)
 
         filename = custom_filename if custom_filename is not None else mdp.layout_name + '_' + 'medium_mdp' + '.pkl'
 
         if force_compute_all:
-            mdp_planner = MediumLevelMdpPlanner(mdp, mlp_params, ml_action_manager=mlp.ml_action_manager)
+            mdp_planner = MediumLevelMdpPlanner(mdp, mlp_params, ml_action_manager)
             mdp_planner.compute_mdp_policy(filename)
             return mdp_planner
         
@@ -2022,8 +2024,8 @@ class MediumLevelMdpPlanner(object):
             if len(state_obj) > 2:
                 orders = state_obj[2:]
 
-            # if player_obj == 'soup':
-            #     self.reward_matrix[action_idx][self.state_idx_dict[state_key]] += self.mdp.delivery_reward
+            if player_obj == 'soup':
+                self.reward_matrix[action_idx][self.state_idx_dict[state_key]] += self.mdp.delivery_reward
         
             if orders == None:
                 self.reward_matrix[:,self.state_idx_dict[state_key]] += self.mdp.delivery_reward
@@ -2102,8 +2104,10 @@ class MediumLevelMdpPlanner(object):
         self.init_reward()
 
     def compute_mdp_policy(self, filename):
-        start = timer() 
+        start_time = time.time()
 
+        final_filepath = os.path.join(PLANNERS_DIR, filename)
+        print("Computing MediumLevelPlanner to be saved in {}".format(final_filepath))
         self.init_mdp()
         self.num_states = len(self.state_dict)
         self.num_actions = len(self.action_dict)
@@ -2116,7 +2120,8 @@ class MediumLevelMdpPlanner(object):
         # print(self.policy_matrix.shape)
 
         # print("without GPU:", timer()-start)
-
+        print("It took {} seconds to create MediumLevelMdpPlanner".format(time.time() - start_time))
+        self.save_to_file(final_filepath)
         # tmp = input()
         # self.save_to_file(output_mdp_path)
         return 
@@ -2124,11 +2129,11 @@ class MediumLevelMdpPlanner(object):
 
 class HumanAwareMediumMDPPlanner(MediumLevelMdpPlanner):
     """docstring for HumanAwareMediumMDPPlanner"""
-    def __init__(self, mdp, mlp_params, hmlp, ml_action_manager=None, \
+    def __init__(self, mdp, mlp_params, hmlp, ml_action_manager, \
         state_dict = {}, state_idx_dict = {}, action_dict = {}, action_idx_dict = {}, transition_matrix = None, reward_matrix = None, policy_matrix = None, value_matrix = None, \
         num_states = 0, num_rounds = 0, epsilon = 0.01, discount = 0.8):
 
-        super().__init__(mdp, mlp_params, ml_action_manager=None, \
+        super().__init__(mdp, mlp_params, ml_action_manager, \
         state_dict = {}, state_idx_dict = {}, action_dict = {}, action_idx_dict = {}, transition_matrix = None, reward_matrix = None, policy_matrix = None, value_matrix = None, \
         num_states = 0, num_rounds = 0, epsilon = 0.01, discount = 0.8)
 
@@ -2156,14 +2161,14 @@ class HumanAwareMediumMDPPlanner(MediumLevelMdpPlanner):
             return HumanAwareMediumMDPPlanner(mdp, params, mlp_action_manager, state_dict, state_idx_dict, policy_matrix=policy_matrix)
 
     @staticmethod
-    def from_pickle_or_compute(mdp, mlp_params, hmlp, mlp, custom_filename=None, force_compute_all=False, info=True, force_compute_more=False):
+    def from_pickle_or_compute(mdp, mlp_params, hmlp, ml_action_manager, custom_filename=None, force_compute_all=False, info=True, force_compute_more=False):
 
         assert isinstance(mdp, OvercookedGridworld)
 
         filename = custom_filename if custom_filename is not None else mdp.layout_name + '_' + 'human_aware_medium_mdp' + '.pkl'
 
         if force_compute_all:
-            mdp_planner = HumanAwareMediumMDPPlanner(mdp, mlp_params, hmlp, ml_action_manager=mlp.ml_action_manager)
+            mdp_planner = HumanAwareMediumMDPPlanner(mdp, mlp_params, hmlp, ml_action_manager)
             mdp_planner.compute_mdp_policy(filename)
             return mdp_planner
         
@@ -2177,7 +2182,7 @@ class HumanAwareMediumMDPPlanner(MediumLevelMdpPlanner):
 
         except (FileNotFoundError, ModuleNotFoundError, EOFError, AttributeError) as e:
             print("Recomputing planner due to:", e)
-            mdp_planner = HumanAwareMediumMDPPlanner(mdp, mlp_params, hmlp)
+            mdp_planner = HumanAwareMediumMDPPlanner(mdp, mlp_params, hmlp, ml_action_manager)
             mdp_planner.compute_mdp_policy(filename)
             return mdp_planner
 
@@ -2187,23 +2192,25 @@ class HumanAwareMediumMDPPlanner(MediumLevelMdpPlanner):
         return mdp_planner
     
     def init_human_aware_states(self, state_idx_dict=None, order_list=None):
-        print('In init_human_aware_states()')
+        # print('In init_human_aware_states()')
         self.init_states(order_list=order_list)
 
         # add p1_obj to [p0_obj, num_item_in_pot, order_list]
         objects = ['onion', 'tomato', 'soup', 'dish', 'None']
         original_state_dict = copy.deepcopy(self.state_dict)
+        self.state_dict.clear()
+        self.state_idx_dict.clear()
         for i, obj in enumerate(objects):
             for ori_key, ori_value in original_state_dict.items():
                 new_key = ori_key+'_'+obj
-                if i == 0:
-                    new_obj = self.state_dict.pop(ori_key)+[obj] # update key
-                    self.state_dict[new_key] = new_obj # update value
-                    self.state_idx_dict[new_key] = self.state_idx_dict.pop(ori_key) # update key
-                else:
-                    new_obj = original_state_dict[ori_key]+[obj] 
-                    self.state_dict[new_key] = new_obj # update value
-                    self.state_idx_dict[new_key] = len(self.state_idx_dict)
+                # if i == 0:
+                #     new_obj = original_state_dict[ori_key]+[obj] # update key
+                #     self.state_dict[new_key] = new_obj # update value
+                #     self.state_idx_dict[new_key] = original_state_dict[ori_key] # update key
+                # else:
+                new_obj = original_state_dict[ori_key]+[obj] 
+                self.state_dict[new_key] = new_obj # update value
+                self.state_idx_dict[new_key] = len(self.state_idx_dict)
 
     def init_transition_matrix(self, transition_matrix=None):
         self.transition_matrix = transition_matrix if transition_matrix is not None else np.zeros((len(self.action_dict), len(self.state_idx_dict), len(self.state_idx_dict)), dtype=float)
@@ -2222,7 +2229,10 @@ class HumanAwareMediumMDPPlanner(MediumLevelMdpPlanner):
                 p0_state, p1_obj = self.extract_p0(state_obj)
 
                 # call for the motion goal and the average distance of the other agent
-                other_agent_nxt_obj, other_agent_trans_prob = self.hmlp.get_state_trans(p1_obj, p0_state[1])
+                if len(p0_state) > 2:
+                    other_agent_nxt_obj, other_agent_trans_prob = self.hmlp.get_state_trans(p1_obj, p0_state[1], p0_state[2:])
+                else:
+                    other_agent_nxt_obj, other_agent_trans_prob = self.hmlp.get_state_trans(p1_obj, p0_state[1], [])
                 player_obj, soup_finish, orders = self.ml_state_to_objs(p0_state)
                 next_actions, next_p0_state_keys = self.state_action_nxt_state(player_obj, soup_finish, orders, other_agent_nxt_obj=='dish')
 
@@ -2240,8 +2250,8 @@ class HumanAwareMediumMDPPlanner(MediumLevelMdpPlanner):
                 game_logic_transition[next_action_idx][state_idx][state_idx] += 1.0 * (1.0 - other_agent_trans_prob)
 
             # print(state_key)
-        print(list(self.state_idx_dict.keys())[list(self.state_idx_dict.values()).index(224)],list(self.state_idx_dict.keys())[list(self.state_idx_dict.values()).index(20)], game_logic_transition[:, 25].shape, game_logic_transition[5,224] ,game_logic_transition[:, 224].sum(axis=1))
-        tmp = input()
+        # print(list(self.state_idx_dict.keys())[list(self.state_idx_dict.values()).index(224)],list(self.state_idx_dict.keys())[list(self.state_idx_dict.values()).index(20)], game_logic_transition[:, 25].shape, game_logic_transition[5,224] ,game_logic_transition[:, 224].sum(axis=1))
+        # tmp = input()
 
         self.transition_matrix = game_logic_transition
 
@@ -2273,7 +2283,7 @@ class HumanAwareMediumMDPPlanner(MediumLevelMdpPlanner):
                 self.reward_matrix[:,self.state_idx_dict[state_key]] += self.mdp.delivery_reward
 
             if soup_finish == self.mdp.num_items_for_soup:
-                self.reward_matrix[self.action_idx_dict['pickup_soup'], self.state_idx_dict[state_key]] += self.mdp.delivery_reward/5.0
+                self.reward_matrix[self.action_idx_dict['pickup_soup'], self.state_idx_dict[state_key]] += self.mdp.delivery_reward/10.0
 
     def extract_p0(self, state_obj):
         return state_obj[:-1], state_obj[-1]
@@ -2303,34 +2313,42 @@ class HumanAwareMediumMDPPlanner(MediumLevelMdpPlanner):
 
 
 class HumanMediumLevelPlanner(object):
-    def __init__(self, mdp, mlp, ml_action_manager=None, one_goal=0):
+    def __init__(self, mdp, ml_action_manager, goal_preference, adaptiveness):
         self.mdp = mdp
-        self.mlp = mlp
-        self.ml_action_manager = mlp.ml_action_manager
+        self.ml_action_manager = ml_action_manager
         
-        self.one_goal = one_goal
-        self.sub_goals = {0:'Onion cooker', 1:'Soup server'}
+        self.sub_goals = {'Onion cooker':0, 'Soup server':1}
+        self.adaptiveness = adaptiveness
+        self.goal_preference = np.array(goal_preference)
+        self.prev_goal_dstb = self.goal_preference
 
-    def get_state_trans(self, obj, num_item_in_pot):
-        next_obj, motion_goals, WAIT = self.human_ml_motion_goal(obj, num_item_in_pot)
+    def get_state_trans(self, obj, num_item_in_pot, order_list):
+        next_obj, motion_goals, WAIT = self.human_ml_motion_goal(obj, num_item_in_pot, order_list)
         
         min_distance = np.Inf
         if not WAIT:
             start_locations = self.start_location_from_object(obj)
-            min_distance = self.mlp.mp.min_cost_between_features(start_locations, motion_goals)
+            min_distance = self.ml_action_manager.motion_planner.min_cost_between_features(start_locations, motion_goals)
         else:
             min_distance = 1.0
             
         return next_obj, 1.0/(min_distance)
 
-    def human_ml_motion_goal(self, obj, num_item_in_pot, prefence=0):
+    def human_ml_motion_goal(self, obj, num_item_in_pot, order_list):
         """ 
         Get the human's motion goal based on its held object. The return can be multiple location since there can be multiple same feature tiles.
 
         Return: next object, list(motion goals)
         """
+        ml_logic_goals = self.logic_ml_action(obj, num_item_in_pot, order_list)
+
+        curr_p = ((1.0-self.adaptiveness)*self.prev_goal_dstb + self.adaptiveness*ml_logic_goals)
+
+        task = np.random.choice(len(self.sub_goals), p=curr_p)
+        self.prev_goal_dstb = curr_p
+
         next_obj = ''; motion_goal = []; WAIT = False
-        if self.sub_goals[self.one_goal] == 'Onion cooker':
+        if task == self.sub_goals['Onion cooker']:
             next_obj, motion_goal, WAIT = self.onion_cooker_ml_goal(obj, num_item_in_pot)
         else:
             next_obj, motion_goal, WAIT = self.soup_server_ml_goal(obj, num_item_in_pot)
@@ -2378,6 +2396,53 @@ class HumanMediumLevelPlanner(object):
             next_obj = 'None'
 
         return next_obj, motion_goal, WAIT
+
+    
+    def logic_ml_action(self, player_obj, num_item_in_pot, order_list):
+        """
+        """
+        env_pref = np.zeros(len(self.sub_goals))
+
+        if player_obj == 'None':
+
+            if num_item_in_pot == self.mdp.num_items_for_soup:
+                env_pref[1] += 1
+            else:
+                next_order = None
+                if len(order_list) > 1:
+                    next_order = order_list[1]
+
+                if next_order == 'onion':
+                    env_pref[0] += 1
+                elif next_order == 'tomato':
+                    # env_pref[self.sub_goals['Tomato cooker']] += 1
+                    pass
+                elif next_order is None or next_order == 'any':
+                    env_pref[0] += 1
+                    # env_pref[self.sub_goals['Tomato cooker']] += 1
+
+        else:
+            if player_obj == 'onion':
+                env_pref[0] += 1
+
+            elif player_obj == 'tomato':
+                # env_pref[self.sub_goals['Tomato cooker']] += 1
+                pass
+
+            elif player_obj == 'dish':
+                env_pref[1] += 1
+
+            elif player_obj == 'soup':
+                env_pref[1] += 1
+            else:
+                raise ValueError()
+
+        if np.sum(env_pref) > 0.0:
+            env_pref = env_pref/np.sum(env_pref)
+        else:
+            env_pref = np.ones((len(env_pref)))/len(env_pref)
+
+        return env_pref
 
     def start_location_from_object(self, obj):
         """ 

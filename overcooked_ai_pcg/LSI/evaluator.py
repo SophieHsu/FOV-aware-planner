@@ -1,5 +1,6 @@
 """Defines a Ray remote function for running evaluations."""
 import ray
+import numpy as np
 from overcooked_ai_pcg.GAN_training import dcgan
 from overcooked_ai_pcg.gen_lvl import generate_lvl
 from overcooked_ai_pcg.helper import run_overcooked_game
@@ -29,15 +30,21 @@ def run_overcooked_eval(ind, visualize, elite_map_config, generator,
         # since this vector originates from the algorithm actor, Ray makes it
         # read-only; thus, we should copy it so generate_lvl can do whatever it
         # wants with it
-        ind.param_vector.copy(),
+        ind.param_vector[:32].copy(),
         worker_id=worker_id,
     )
     # ind.level = generate_rnd_lvl((6, 8), worker_id=self.id)
 
+    # generate human worker preference and adaptiveness
+    ind.human_preference = ind.param_vector[32]
+    ind.human_adaptiveness = ind.param_vector[33]
+    # print('human parameters =', ind.human_preference, ind.human_adaptiveness)
+
     # run simulation
-    ind.fitness, ind.player_workload = run_overcooked_game(ind.level,
+    ind.fitness, ind.player_workload = run_overcooked_game(ind, ind.level,
                                                            render=visualize,
                                                            worker_id=worker_id)
+
 
     # calculate bc out of the game
     ind.features = []
@@ -93,6 +100,7 @@ class EvaluationActor:
                 evaluated_ind = run_overcooked_eval(ind, visualize,
                                                     elite_map_config,
                                                     generator, worker_id)
+
             except TimeoutError:
                 print(
                     "Level generated taking too much time to planning. Skipping"

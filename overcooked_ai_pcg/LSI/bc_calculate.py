@@ -75,3 +75,13 @@ def diff_num_plate_held(ind):
 def diff_num_dish_served(ind):
     workloads = ind.player_workload
     return workloads[0]["num_served"] - workloads[1]["num_served"]
+
+# bc for human awared mdp agent
+def human_adaptiveness(ind):
+    # print('bc human_adaptiveness =', ind.human_adaptiveness)
+    return ind.human_adaptiveness
+
+def human_preference(ind):
+    # print('bc human_preference =', ind.human_preference)
+    return ind.human_preference
+

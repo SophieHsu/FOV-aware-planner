@@ -147,29 +147,30 @@ if __name__ == "__main__" :
 
     # np.random.seed(0)
 
-    scenario_1_mdp = OvercookedGridworld.from_layout_name('five_by_five', start_order_list=['any','any'], cook_time=2)
+    scenario_1_mdp = OvercookedGridworld.from_layout_name('10x15_test1', start_order_list=['any','any'], cook_time=2)
     # start_state = OvercookedState(
     #     [P((2, 1), s, Obj('onion', (2, 1))),
     #      P((3, 2), s)],
     #     {}, order_list=['onion','onion'])
     env = OvercookedEnv.from_mdp(scenario_1_mdp)
 
-    mlp = planners.MediumLevelPlanner.from_pickle_or_compute(scenario_1_mdp, NO_COUNTERS_PARAMS, force_compute=True)
+    print('starting MediumLevelActionManager')
+    ml_action_manager = planners.MediumLevelActionManager(scenario_1_mdp, NO_COUNTERS_PARAMS)
 
     # a0 = agent.GreedyHumanModel(mlp)
 
+    print('starting HumanMediumLevelPlanner')
+    hmlp = planners.HumanMediumLevelPlanner(scenario_1_mdp, ml_action_manager, [0.4, 0.6], 0.3)
+    a0 = agent.biasHumanModel(ml_action_manager, [0.4, 0.6], 0.3, auto_unstuck=True)
 
-    hmlp = planners.HumanMediumLevelPlanner(scenario_1_mdp, mlp, one_goal=0)
-    a0 = agent.oneGoalHumanModel(mlp, 'Onion cooker', auto_unstuck=True)
-
-    mdp_planner = planners.MediumLevelMdpPlanner.from_pickle_or_compute(scenario_1_mdp, NO_COUNTERS_PARAMS, mlp, force_compute_all=True)
-    # mdp_planner = planners.HumanAwareMediumMDPPlanner.from_pickle_or_compute(scenario_1_mdp, NO_COUNTERS_PARAMS, hmlp, mlp, force_compute_all=True)
-    a1 = agent.MediumMdpPlanningAgent(mdp_planner, env)
+    print('starting HumanAwareMediumMDPPlanner')
+    # mdp_planner = planners.MediumLevelMdpPlanner.from_pickle_or_compute(scenario_1_mdp, NO_COUNTERS_PARAMS, mlp, force_compute_all=True)
+    mdp_planner = planners.HumanAwareMediumMDPPlanner.from_pickle_or_compute(scenario_1_mdp, NO_COUNTERS_PARAMS, hmlp, ml_action_manager, force_compute_all=True)
+    a1 = agent.MediumMdpPlanningAgent(mdp_planner, env, auto_unstuck=True)
 
     # # a1 = agent.oneGoalHumanModel(mlp, 'Soup server', auto_unstuck=True)
     # a1 = agent.biasHumanModel(mlp, [0.3, 0.7], 0.3, auto_unstuck=True)
 
-    # mdp_planner = MdpPlanner.from_pickle_or_compute(scenario_1_mdp, a0, 0, NO_COUNTERS_PARAMS, force_compute_all = False, force_compute_more=False)#, custom_filename='gen1_basic_1-3_mdp_70.pkl')
     # a1 = MdpPlanningAgent(a0, mdp_planner, env)
 
     agent_pair = agent.AgentPair(a0, a1)
