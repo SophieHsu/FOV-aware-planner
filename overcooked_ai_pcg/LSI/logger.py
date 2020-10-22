@@ -44,7 +44,7 @@ class RunningIndividualLog(LoggerBase):
             os.remove(self._log_path)
 
         # construct labels
-        data_labels = ["ID", "fitness"]
+        data_labels = ["ID", "fitness", "score", "timestep"]
         for bc in self._elite_map_config["Map"]["Features"]:
             data_labels.append(bc["name"])
         data_labels.append("lvl_str")
@@ -54,6 +54,8 @@ class RunningIndividualLog(LoggerBase):
         to_add = [
             ind.ID,
             ind.fitness,
+            ind.score,
+            ind.timestep,
             *ind.features,
             ind.level,
         ]

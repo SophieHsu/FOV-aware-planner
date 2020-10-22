@@ -19,7 +19,8 @@ image_title = 'MAP-Elites'
 # image_title = 'CMA-ME'
 
 stepSize = 5
-
+FITNESS_MIN = -100
+FITNESS_MAX = 100
 logFilename = os.path.join(LSI_LOG_DIR, "elite_map.csv")
 
 
@@ -90,8 +91,8 @@ def createImage(rowData, filename):
                         fmt=".0f",
                         xticklabels=numTicksX,
                         yticklabels=numTicksY,
-                        vmin=0,
-                        vmax=40)
+                        vmin=FITNESS_MIN,
+                        vmax=FITNESS_MAX,)
         fig = g.get_figure()
         # plt.axis('off')
         g.set(title=image_title, xlabel=feature2Label, ylabel=feature1Label)

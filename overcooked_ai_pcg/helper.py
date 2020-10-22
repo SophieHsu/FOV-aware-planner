@@ -15,6 +15,7 @@ from overcooked_ai_pcg import ERR_LOG_PIC, G_PARAM_FILE
 
 obj_types = "12XSPOD "
 
+
 def vertical_flip(np_lvl):
     """
     Return the vertically flipped version of the input np level.
@@ -141,7 +142,7 @@ def setup_env_from_grid(layout_grid, worker_id=0):
         "start_order_list": ['onion'] * 2,
         "cook_time": 10,
         "num_items_for_soup": 3,
-        "delivery_reward": 20,
+        "delivery_reward": 50,
         "rew_shaping_params": None
     }
     mdp = OvercookedGridworld.from_grid(layout_grid, config)
@@ -215,6 +216,7 @@ def run_overcooked_game(lvl_str, render=True, worker_id=0):
     done = False
     total_sparse_reward = 0
     last_state = None
+    timestep = 0
     while not done:
         if render:
             env.render()
@@ -225,9 +227,13 @@ def run_overcooked_game(lvl_str, render=True, worker_id=0):
         next_state, timestep_sparse_reward, done, info = env.step(joint_action)
         total_sparse_reward += timestep_sparse_reward
         last_state = next_state
+        timestep += 1
 
     workloads = last_state.get_player_workload()
-    return total_sparse_reward, workloads
+
+    # smooth fitness by subtracting timestep
+    fitness = total_sparse_reward - timestep
+    return fitness, total_sparse_reward, timestep, workloads
 
 def gen_int_rnd_lvl(size):
     """

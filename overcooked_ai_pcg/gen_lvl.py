@@ -105,8 +105,8 @@ def main():
 
     grid = [layout_row.strip() for layout_row in lvl_str.split("\n")][:-1]
 
-    reward, _ = run_overcooked_game(lvl_str, render=True)
-    print("reward: %d" % reward)
+    fitness, _, _, _ = run_overcooked_game(lvl_str, render=True)
+    print("fitness: %d" % fitness)
 
 
 if __name__ == "__main__":

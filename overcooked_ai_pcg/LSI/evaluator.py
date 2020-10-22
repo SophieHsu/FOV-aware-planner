@@ -35,9 +35,10 @@ def run_overcooked_eval(ind, visualize, elite_map_config, generator,
     # ind.level = generate_rnd_lvl((6, 8), worker_id=self.id)
 
     # run simulation
-    ind.fitness, ind.player_workload = run_overcooked_game(ind.level,
-                                                           render=visualize,
-                                                           worker_id=worker_id)
+    ind.fitness, ind.score, ind.timestep, ind.player_workload = \
+        run_overcooked_game(ind.level,
+                            render=visualize,
+                            worker_id=worker_id)
 
     # calculate bc out of the game
     ind.features = []

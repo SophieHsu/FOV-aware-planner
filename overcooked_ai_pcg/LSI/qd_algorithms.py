@@ -12,7 +12,10 @@ class Individual:
     features = None  # BC's
     param_vector = None  # genotype
     level = None  # an Overcooked game level
-    fitness = None  # score in the level
+    fitness = None  # fitness in the level = score - timestep
+    score = None # raw score of the level,
+                 # proportional to the number of soup delivered
+    timestep = None # timestep to finish the level
     ID = None  # ID of the individual after being inserted to the map
     player_workload = None # list of dic that summarize workload of all players
 
