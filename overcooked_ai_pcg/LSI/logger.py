@@ -9,9 +9,8 @@ from overcooked_ai_pcg import LSI_LOG_DIR
 
 
 class LoggerBase(ABC):
-
     @abstractmethod
-    def init_log(self,):
+    def init_log(self, ):
         pass
 
     def _write_row(self, to_add):
@@ -30,7 +29,6 @@ class RunningIndividualLog(LoggerBase):
         log_path (string): filename of the log file
         elite_map_config: toml config object of the feature maps
     """
-
     def __init__(self, log_path, elite_map_config):
         super().__init__()
         self._log_path = os.path.join(LSI_LOG_DIR, log_path)
@@ -38,7 +36,7 @@ class RunningIndividualLog(LoggerBase):
         self._elite_map_config = elite_map_config
         self.init_log()
 
-    def init_log(self,):
+    def init_log(self, ):
         # remove the file if exists
         if os.path.exists(self._log_path):
             os.remove(self._log_path)
@@ -70,7 +68,6 @@ class FrequentMapLog(LoggerBase):
         log_path (string): filename of the log file
         num_features (int): number of behavior characteristics
     """
-
     def __init__(self, log_path, num_features):
         super().__init__()
         self._log_path = os.path.join(LSI_LOG_DIR, log_path)
@@ -83,15 +80,18 @@ class FrequentMapLog(LoggerBase):
 
         # construct label
         feature_label = ":".join(
-            ["feature" + str(i) for i in range(num_features)])
+            ["feature" + str(i + 1) for i in range(num_features)])
+        dimension_label = ":".join(
+            ["f" + str(i + 1) for i in range(num_features)])
         data_labels = [
-            "Dimension", "f1:f2:IndividualID:Fitness:" + feature_label
+            "Dimension",
+            dimension_label + ":IndividualID:Fitness:" + feature_label
         ]
         self._write_row(data_labels)
 
     def log_map(self, feature_map):
         to_add = []
-        to_add.append("x".join(str(num) for num in feature_map.resolutions),)
+        to_add.append("x".join(str(num) for num in feature_map.resolutions), )
         for index in feature_map.elite_indices:
             ind = feature_map.elite_map[index]
             curr = [
@@ -111,13 +111,12 @@ class MapSummaryLog(LoggerBase):
     Args:
         log_path (string): filename of the log file
     """
-
     def __init__(self, log_path):
         super().__init__()
         self._log_path = os.path.join(LSI_LOG_DIR, log_path)
         self.init_log()
 
-    def init_log(self,):
+    def init_log(self, ):
         # remove the file if exists
         if os.path.exists(self._log_path):
             os.remove(self._log_path)
