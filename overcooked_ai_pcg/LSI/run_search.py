@@ -3,9 +3,9 @@ import argparse
 import os
 import time
 
+import dask.distributed
 import toml
 import torch
-from dask.distributed import Client, LocalCluster, as_completed
 from dask_jobqueue import SLURMCluster
 from overcooked_ai_pcg import (GAN_TRAINING_DIR, LSI_CONFIG_ALGO_DIR,
                                LSI_CONFIG_EXP_DIR, LSI_CONFIG_MAP_DIR)
@@ -97,19 +97,24 @@ def search(dask_client, num_simulations, algorithm_config, elite_map_config,
                 gan_state_dict,
                 worker_id,
             ))
-    as_completed_evaluations = as_completed(evaluations)
+    as_completed_evaluations = dask.distributed.as_completed(evaluations)
     print(f"Started {num_cores} simulations")
 
     # repeatedly grab completed evaluations, return them to the algorithm, and
     # send out new evaluations
     for completion in as_completed_evaluations:
-        evaluated_ind = completion.result()
+        try:
+            evaluated_ind = completion.result()
 
-        # evaluated_ind may be None if the evaluation failed
-        if (evaluated_ind is not None and
-                algorithm_instance.insert_if_still_running(evaluated_ind)):
-            print("Finished simulation.\nTotal simulations done: %d/%d" %
-                  (algorithm_instance.individuals_evaluated, num_simulations))
+            # evaluated_ind may be None if the evaluation failed
+            if (evaluated_ind is not None and
+                    algorithm_instance.insert_if_still_running(evaluated_ind)):
+                print(
+                    "Finished simulation.\nTotal simulations done: %d/%d" %
+                    (algorithm_instance.individuals_evaluated, num_simulations))
+        except dask.distributed.scheduler.KilledWorker:  # pylint: disable=no-member
+            # worker may fail due to, for instance, memory
+            continue
 
         if algorithm_instance.is_running():
             # request another evaluation if still running
@@ -172,8 +177,8 @@ def run(
             processes=cores_per_worker,
             walltime=experiment_config['slurm_worker_walltime'],
             job_extra=[
-              "--output ./logs/slurm-%j.out",
-              "--error ./logs/slurm-%j.out",
+                "--output ./logs/slurm-%j.out",
+                "--error ./logs/slurm-%j.out",
             ],
         )
 
@@ -183,13 +188,13 @@ def run(
         print("--------------------------------------")
 
         cluster.scale(cores=num_cores)
-        dask_client = Client(cluster)
+        dask_client = dask.distributed.Client(cluster)
     else:
         # Single machine -- run with num_cores worker processes.
-        cluster = LocalCluster(n_workers=num_cores,
-                               threads_per_worker=1,
-                               processes=True)
-        dask_client = Client(cluster)
+        cluster = dask.distributed.LocalCluster(n_workers=num_cores,
+                                                threads_per_worker=1,
+                                                processes=True)
+        dask_client = dask.distributed.Client(cluster)
 
     # run lsi search
     search(dask_client, num_simulations, algorithm_config, elite_map_config,
