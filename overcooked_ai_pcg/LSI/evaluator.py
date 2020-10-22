@@ -1,13 +1,12 @@
 """Defines a Ray remote function for running evaluations."""
-import ray
 from overcooked_ai_pcg.GAN_training import dcgan
 from overcooked_ai_pcg.gen_lvl import generate_lvl
 from overcooked_ai_pcg.helper import run_overcooked_game
 from overcooked_ai_pcg.LSI import bc_calculate
 
 
-def run_overcooked_eval(ind, visualize, elite_map_config, generator,
-                        worker_id):
+def run_overcooked_eval(ind, visualize, elite_map_config, G_params,
+                        gan_state_dict, worker_id):
     """
     Evaluates overcooked game by running a game and calculating relevant BC's.
 
@@ -17,27 +16,34 @@ def run_overcooked_eval(ind, visualize, elite_map_config, generator,
         visualize (bool): render the game(evaluation) or not
         elite_map_config: toml config object of the feature maps
         model_path (string): file path to the GAN model
-        worker_id (int): Worker ID to use (deprecated parameter).
+        worker_id (int): Worker ID to use.
 
     Returns:
         The individual that was passed in (ind), but with populated data fields.
     """
+    generator = dcgan.DCGAN_G(**G_params)
+    generator.load_state_dict(gan_state_dict)
+
     # generate new level
     ind.level = generate_lvl(
         1,
         generator,
-        # since this vector originates from the algorithm actor, Ray makes it
-        # read-only; thus, we should copy it so generate_lvl can do whatever it
-        # wants with it
+        # since this vector originates from the algorithm actor, it may be
+        # read-only; we copy it so generate_lvl can do whatever it wants with it
         ind.param_vector.copy(),
         worker_id=worker_id,
     )
     # ind.level = generate_rnd_lvl((6, 8), worker_id=self.id)
 
     # run simulation
-    ind.fitness, ind.player_workload = run_overcooked_game(ind.level,
-                                                           render=visualize,
-                                                           worker_id=worker_id)
+    try:
+        ind.fitness, ind.player_workload = run_overcooked_game(
+            ind.level, render=visualize, worker_id=worker_id)
+    except TimeoutError:
+        print(
+            "worker(%d): Level generated taking too much time to plan. Skipping"
+            % worker_id)
+        return None
 
     # calculate bc out of the game
     ind.features = []
@@ -51,66 +57,3 @@ def run_overcooked_eval(ind, visualize, elite_map_config, generator,
     print("worker(%d): Game end; fitness = %d" % (worker_id, ind.fitness))
 
     return ind
-
-
-@ray.remote
-class EvaluationActor:
-    def run_evaluation_loop(self, algorithm_instance, visualize,
-                            elite_map_config, gan_state_dict, G_params,
-                            num_simulations, worker_id, evaluation_actors):
-        """
-        Task that repeatedly runs evaluations and updates the algorithm actor.
-
-        Args:
-            algorithm_instance: Handle to the algorithm instance's Ray actor.
-            visualize (bool): render the game(evaluation) or not
-            elite_map_config: toml config object of the feature maps
-            gan_state_dict (state dict): state dict of the GAN
-            G_params (json object): parameters of DCGAN object
-            num_simulations (int): Total number of simulations to run.
-            worker_id(int): ID for the task (may help in debugging since we
-                create a finite number of workers).
-            evaluation_actors: List of handles of all the other evaluation
-                actors.
-        """
-        # construct DCGAN
-        generator = dcgan.DCGAN_G(**G_params)
-        generator.load_state_dict(gan_state_dict)
-
-        # repeatedly run evaluations
-        while True:
-            ind, ind_id = ray.get(
-                algorithm_instance.generate_individual_if_still_running.remote(
-                ))
-
-            # no individual was generated because the algorithm is done, so exit
-            if ind is None:
-                break
-
-            print("Starting simulation: %d/%d on worker %d" %
-                  (ind_id, num_simulations, worker_id))
-            try:
-                evaluated_ind = run_overcooked_eval(ind, visualize,
-                                                    elite_map_config,
-                                                    generator, worker_id)
-            except TimeoutError:
-                print(
-                    "Level generated taking too much time to planning. Skipping"
-                )
-                continue
-            inserted, individuals_evaluated = ray.get(
-                algorithm_instance.insert_if_still_running.remote(
-                    evaluated_ind))
-
-            # exit if the algorithm is done and the solution was not inserted
-            if not inserted:
-                break
-
-            print(
-                "Finished simulation in worker: %d\nTotal simulation done: %d/%d"
-                % (worker_id, individuals_evaluated, num_simulations))
-
-        # kill all the other evaluation actors
-        for i, actor in enumerate(evaluation_actors):
-            if i != worker_id:
-                ray.kill(actor)

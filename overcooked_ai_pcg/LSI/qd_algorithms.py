@@ -3,7 +3,6 @@ import dataclasses
 from abc import ABC, abstractmethod
 
 import numpy as np
-import ray
 
 
 @dataclasses.dataclass
@@ -14,7 +13,8 @@ class Individual:
     level = None  # an Overcooked game level
     fitness = None  # score in the level
     ID = None  # ID of the individual after being inserted to the map
-    player_workload = None # list of dic that summarize workload of all players
+    player_workload = None  # list of dic that summarize workload of all players
+
 
 class FeatureMap:
 
@@ -103,24 +103,6 @@ class QDAlgorithmBase(ABC):
     def return_evaluated_individual(self, ind):
         pass
 
-    def generate_individual_if_still_running(self):
-        """
-        If the algorithm is still running, generates an individual and returns
-        it with its id.
-
-        The id can be as simple as the number of individuals that have been
-        generated so far (this is its default value, in fact).
-
-        Returns:
-            ind (Individual): The generated individual. None if the algorithm is
-                no longer running.
-            ind_id (int): The id of the generated individual. None if the
-                algorithm is no longer running.
-        """
-        if self.is_running():
-            return self.generate_individual(), self.individuals_disbatched
-        return None, None
-
     def insert_if_still_running(self, ind):
         """
         Adds the individual to the algorithm container if the algorithm is still
@@ -142,7 +124,6 @@ class QDAlgorithmBase(ABC):
         return False, None
 
 
-@ray.remote
 class MapElitesAlgorithm(QDAlgorithmBase):
 
     def __init__(self,
@@ -182,7 +163,6 @@ class MapElitesAlgorithm(QDAlgorithmBase):
         return ind
 
 
-@ray.remote
 class RandomGenerator(QDAlgorithmBase):
 
     def __init__(self,
