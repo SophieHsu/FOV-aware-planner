@@ -6,8 +6,7 @@ import time
 import dask.distributed
 import torch
 from dask_jobqueue import SLURMCluster
-from overcooked_ai_pcg import (GAN_TRAINING_DIR, LSI_CONFIG_ALGO_DIR,
-                               LSI_CONFIG_EXP_DIR, LSI_CONFIG_MAP_DIR)
+from overcooked_ai_pcg import GAN_TRAINING_DIR, LSI_CONFIG_EXP_DIR
 from overcooked_ai_pcg.helper import read_gan_param, read_in_lsi_config
 from overcooked_ai_pcg.LSI.evaluator import run_overcooked_eval
 from overcooked_ai_pcg.LSI.logger import (FrequentMapLog, MapSummaryLog,
@@ -160,7 +159,7 @@ def run(
     """
     # read in necessary config files
     experiment_config, algorithm_config, elite_map_config = read_in_lsi_config(
-        opt.config)
+        config)
 
     visualize = experiment_config["visualize"]
     num_cores = experiment_config["num_cores"]
