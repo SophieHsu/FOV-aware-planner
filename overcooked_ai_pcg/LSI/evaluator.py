@@ -13,7 +13,8 @@ def print_mem_usage(info, worker_id):
           resource.getrusage(resource.RUSAGE_SELF).ru_maxrss)
 
 
-def run_overcooked_eval(ind, visualize, worker_id):
+def run_overcooked_eval(ind, visualize, elite_map_config, G_params,
+        gan_state_dict, worker_id):
     """
     Evaluates overcooked game by running a game and calculating relevant BC's.
 
@@ -30,9 +31,10 @@ def run_overcooked_eval(ind, visualize, worker_id):
     dask_worker = get_worker()
 
     # these values are set in set_gan_data in run_search.py
-    elite_map_config = dask_worker.data["elite_map_config"]
-    G_params = dask_worker.data["G_params"]
-    gan_state_dict = dask_worker.data["gan_state_dict"]
+    #  elite_map_config = dask_worker.data["elite_map_config"]
+    #  G_params = dask_worker.data["G_params"]
+    #  gan_state_dict = dask_worker.data["gan_state_dict"]
+
     generator = dcgan.DCGAN_G(**G_params)
     generator.load_state_dict(gan_state_dict)
 
