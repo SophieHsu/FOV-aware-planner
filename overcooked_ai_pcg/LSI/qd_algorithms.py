@@ -99,6 +99,10 @@ class QDAlgorithmBase(ABC):
         pass
 
     @abstractmethod
+    def is_blocking(self):
+        pass
+
+    @abstractmethod
     def generate_individual(self):
         pass
 
@@ -148,6 +152,9 @@ class MapElitesAlgorithm(QDAlgorithmBase):
     def is_running(self):
         return self.individuals_evaluated < self.num_to_evaluate
 
+    def is_blocking(self):
+        return self.individuals_disbatched == self.initial_population and self.individuals_evaluated == 0
+
     def generate_individual(self):
         ind = Individual()
         if self.individuals_disbatched < self.initial_population:
@@ -182,6 +189,9 @@ class RandomGenerator(QDAlgorithmBase):
 
     def is_running(self):
         return self.individuals_evaluated < self.num_to_evaluate
+
+    def is_blocking(self):
+        return self.individuals_disbatched == self.initial_population and self.individuals_evaluated == 0
 
     def generate_individual(self):
         ind = Individual()
