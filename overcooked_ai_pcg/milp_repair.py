@@ -1,5 +1,5 @@
 import numpy as np
-from docplex.mp.model import Model
+from docplex.mp.model import Context, Model
 from overcooked_ai_py import read_layout_dict
 
 from overcooked_ai_pcg.helper import lvl_number2str, lvl_str2number, obj_types
@@ -200,7 +200,9 @@ def repair_lvl(np_lvl):
         if is_border:
             border_nodes.append(i)
 
-    with Model() as mdl:
+    context = Context.make_default_context()
+    context.cplex_parameters.threads = 1
+    with Model(context=context) as mdl:
 
         objs = []
         for obj_label in obj_types:
