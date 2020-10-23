@@ -1,5 +1,5 @@
 visualize=false
-num_cores=10
-num_simulations=1000
+num_cores=11
+num_simulations=700
 algorithm_config="map_elites.tml"
 elite_map_config="adaptiveness_dish.tml"

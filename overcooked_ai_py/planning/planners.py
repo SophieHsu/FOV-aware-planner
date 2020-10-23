@@ -2131,11 +2131,11 @@ class HumanAwareMediumMDPPlanner(MediumLevelMdpPlanner):
     """docstring for HumanAwareMediumMDPPlanner"""
     def __init__(self, mdp, mlp_params, hmlp, ml_action_manager, \
         state_dict = {}, state_idx_dict = {}, action_dict = {}, action_idx_dict = {}, transition_matrix = None, reward_matrix = None, policy_matrix = None, value_matrix = None, \
-        num_states = 0, num_rounds = 0, epsilon = 0.01, discount = 0.8):
+        num_states = 0, num_rounds = 0, epsilon = 0.01, discount = 0.9):
 
         super().__init__(mdp, mlp_params, ml_action_manager, \
         state_dict = {}, state_idx_dict = {}, action_dict = {}, action_idx_dict = {}, transition_matrix = None, reward_matrix = None, policy_matrix = None, value_matrix = None, \
-        num_states = 0, num_rounds = 0, epsilon = 0.01, discount = 0.8)
+        num_states = 0, num_rounds = 0, epsilon = 0.01, discount = 0.9)
 
         self.hmlp = hmlp
 
@@ -2238,31 +2238,25 @@ class HumanAwareMediumMDPPlanner(MediumLevelMdpPlanner):
 
                 next_state_keys = ''
                 if next_actions == action_key:
-                    next_state_keys = next_p0_state_keys + '_' + other_agent_nxt_obj
+                    next_state_keys = next_p0_state_keys
                 else:
-                    for s in p0_state:
-                        next_state_keys = next_state_keys + str(s) + '_'
-                    next_state_keys += other_agent_nxt_obj
+                    next_state_keys = str(p0_state[0])
+                    for s in p0_state[1:]:
+                        next_state_keys = next_state_keys + '_' + str(s) 
+                # print(next_state_keys, other_agent_nxt_obj,str(p0_obj))
 
-                next_state_idx = self.state_idx_dict[next_state_keys]
+                next_state_idx_p1_nxt = self.state_idx_dict[next_state_keys+'_'+other_agent_nxt_obj]
+                next_state_idx_p1_ori = self.state_idx_dict[next_state_keys+'_'+ str(p1_obj)]
 
-                game_logic_transition[next_action_idx][state_idx][next_state_idx] += 1.0 * other_agent_trans_prob
-                game_logic_transition[next_action_idx][state_idx][state_idx] += 1.0 * (1.0 - other_agent_trans_prob)
+                game_logic_transition[next_action_idx][state_idx][next_state_idx_p1_nxt] += 1.0 * other_agent_trans_prob
+                game_logic_transition[next_action_idx][state_idx][next_state_idx_p1_ori] += 1.0 * (1.0 - other_agent_trans_prob)
 
             # print(state_key)
-        # print(list(self.state_idx_dict.keys())[list(self.state_idx_dict.values()).index(224)],list(self.state_idx_dict.keys())[list(self.state_idx_dict.values()).index(20)], game_logic_transition[:, 25].shape, game_logic_transition[5,224] ,game_logic_transition[:, 224].sum(axis=1))
+        # print(list(self.state_idx_dict.keys())[list(self.state_idx_dict.values()).index(24)],\
+        #     game_logic_transition[:, 24, 260])
         # tmp = input()
 
         self.transition_matrix = game_logic_transition
-
-    def ml_state_to_objs(self, state_obj):
-        # state: obj + action + bool(soup nearly finish) + orders
-        player_obj = state_obj[0]; soup_finish = state_obj[1];
-        orders = []
-        if len(state_obj) > 3:
-            orders = state_obj[2:-1]
-
-        return player_obj, soup_finish, orders
 
     def init_reward(self, reward_matrix=None):
         # state: obj + action + bool(soup nearly finish) + orders
