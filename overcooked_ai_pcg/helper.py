@@ -255,10 +255,6 @@ def run_overcooked_game(ind, lvl_str, render=True, worker_id=0):
         last_state = next_state
         timestep += 1
 
-        if timestep > 3000:
-            print('Break due to exceed 3000 steps')
-            break
-
     workloads = last_state.get_player_workload()
 
     # smooth fitness by subtracting timestep
