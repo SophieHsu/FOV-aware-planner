@@ -84,14 +84,6 @@ def search(dask_client, num_simulations, algorithm_config, elite_map_config,
     gan_state_dict = torch.load(model_path,
                                 map_location=lambda storage, loc: storage)
 
-    #  def set_gan_data(dask_worker):
-    #      dask_worker.data["G_params"] = G_params
-    #      dask_worker.data["gan_state_dict"] = gan_state_dict
-    #      dask_worker.data["elite_map_config"] = elite_map_config
-
-    #  # place the GAN data on each worker
-    #  dask_client.register_worker_callbacks(set_gan_data)
-
     # initialize the workers with num_cores jobs
     evaluations = []
     for worker_id in range(1, num_cores + 1):
