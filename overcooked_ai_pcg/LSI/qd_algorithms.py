@@ -3,7 +3,6 @@ import dataclasses
 from abc import ABC, abstractmethod
 
 import numpy as np
-import ray
 
 
 @dataclasses.dataclass
@@ -101,30 +100,16 @@ class QDAlgorithmBase(ABC):
         pass
 
     @abstractmethod
+    def is_blocking(self):
+        pass
+
+    @abstractmethod
     def generate_individual(self):
         pass
 
     @abstractmethod
     def return_evaluated_individual(self, ind):
         pass
-
-    def generate_individual_if_still_running(self):
-        """
-        If the algorithm is still running, generates an individual and returns
-        it with its id.
-
-        The id can be as simple as the number of individuals that have been
-        generated so far (this is its default value, in fact).
-
-        Returns:
-            ind (Individual): The generated individual. None if the algorithm is
-                no longer running.
-            ind_id (int): The id of the generated individual. None if the
-                algorithm is no longer running.
-        """
-        if self.is_running():
-            return self.generate_individual(), self.individuals_disbatched
-        return None, None
 
     def insert_if_still_running(self, ind):
         """
@@ -147,7 +132,6 @@ class QDAlgorithmBase(ABC):
         return False, None
 
 
-@ray.remote
 class MapElitesAlgorithm(QDAlgorithmBase):
 
     def __init__(self,
@@ -168,6 +152,9 @@ class MapElitesAlgorithm(QDAlgorithmBase):
 
     def is_running(self):
         return self.individuals_evaluated < self.num_to_evaluate
+
+    def is_blocking(self):
+        return self.individuals_disbatched == self.initial_population and self.individuals_evaluated == 0
 
     def generate_individual(self):
         ind = Individual()
@@ -203,7 +190,6 @@ class MapElitesAlgorithm(QDAlgorithmBase):
         return ind
 
 
-@ray.remote
 class RandomGenerator(QDAlgorithmBase):
 
     def __init__(self,
@@ -220,6 +206,9 @@ class RandomGenerator(QDAlgorithmBase):
 
     def is_running(self):
         return self.individuals_evaluated < self.num_to_evaluate
+
+    def is_blocking(self):
+        return self.individuals_disbatched == self.initial_population and self.individuals_evaluated == 0
 
     def generate_individual(self):
         ind = Individual()

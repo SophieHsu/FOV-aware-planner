@@ -1,10 +1,9 @@
-"""Contains logger classes and a Ray actor for bundling all of them together."""
+"""Contains logger classes."""
 import csv
 import os
 from abc import ABC, abstractmethod
 
 import numpy as np
-import ray
 from overcooked_ai_pcg import LSI_LOG_DIR
 
 

@@ -17,12 +17,8 @@ setup(
         'torch',
         'matplotlib',
         'pandas',
-<<<<<<< Updated upstream
-        'ray==1.0.0',
+        'dask==2.30.0',
+        'dask-jobqueue==0.7.1',
+        'bokeh==2.2.3',  # For the dashboard.
         'toml',
     ])
-=======
-        'ray'
-      ]
-    )
->>>>>>> Stashed changes
