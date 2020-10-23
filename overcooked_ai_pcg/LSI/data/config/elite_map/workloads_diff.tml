@@ -8,10 +8,10 @@ resolution=13
 name="diff_num_plate_held"
 low=-2
 high=2
-resolution=7
+resolution=5
 
 [[Map.Features]]
 name="diff_num_dish_served"
 low=-2
 high=2
-resolution=7
+resolution=5
