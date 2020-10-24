@@ -13,7 +13,7 @@ from overcooked_ai_pcg.GAN_training import dcgan
 from overcooked_ai_pcg.helper import (gen_int_rnd_lvl, lvl_number2str,
                                       obj_types, read_gan_param,
                                       run_overcooked_game, setup_env_from_grid)
-from overcooked_ai_pcg.milp_repair import repair_lvl, repair_lvl_in_process
+from overcooked_ai_pcg.milp_repair import repair_lvl
 
 
 def generate_lvl(batch_size, generator, latent_vector=None, worker_id=0):
