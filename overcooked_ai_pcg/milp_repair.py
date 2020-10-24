@@ -1,3 +1,5 @@
+from multiprocessing import Pipe, Process
+
 import numpy as np
 from docplex.mp.model import Context, Model
 from overcooked_ai_py import read_layout_dict
@@ -282,6 +284,41 @@ def repair_lvl(np_lvl):
                 i = r * m + c
                 new_lvl[r, c] = get_idx_from_variables(solution, i)
         return new_lvl.astype(np.uint8)
+
+
+def repair_worker(np_lvl, sender):
+    """Worker that repairs the level in a process and sends the result.
+
+    Args:
+        np_lvl: Numpy representation of the level.
+        sender: multiprocessing.Connection object for sending results back to
+            the main process.
+    """
+    sender.send(repair_lvl(np_lvl))
+
+
+def repair_lvl_in_process(np_lvl):
+    """Run repair_lvl in a separate process.
+
+    Hopefully this takes care of any memory leaks docplex may have.
+
+    Args:
+        np_lvl: Numpy representation of the level.
+    """
+    # Start the process.
+    receiver, sender = Pipe(duplex=False)
+    repair_process = Process(target=repair_worker, args=(np_lvl, sender))
+    repair_process.start()
+
+    # Block for result.
+    repaired_lvl = receiver.recv()
+
+    # Clean up.
+    repair_process.terminate()
+    receiver.close()
+    sender.close()
+
+    return repaired_lvl
 
 
 def main():
