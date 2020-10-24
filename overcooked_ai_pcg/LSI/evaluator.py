@@ -51,7 +51,6 @@ def run_overcooked_eval(ind, visualize, elite_map_config, G_params,
             % worker_id)
         return None
 
-
     # calculate bc out of the game
     ind.features = []
     for bc in elite_map_config["Map"]["Features"]:
@@ -64,4 +63,3 @@ def run_overcooked_eval(ind, visualize, elite_map_config, G_params,
     print("worker(%d): Game end; fitness = %d" % (worker_id, ind.fitness))
 
     return ind
-    

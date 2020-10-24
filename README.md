@@ -47,7 +47,7 @@ cd overcooked_ai
 pip install -e .
 ```
 
-### Verifying Installation
+### Verifying Installation (Deprecated for now)
 
 To verify your python installation, you can try running the following command
 from the inner `overcooked_ai_py` folder:
