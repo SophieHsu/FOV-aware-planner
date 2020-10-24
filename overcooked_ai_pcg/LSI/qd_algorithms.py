@@ -154,7 +154,7 @@ class MapElitesAlgorithm(QDAlgorithmBase):
 
     def is_blocking(self):
         return (self.individuals_disbatched == self.initial_population and
-                self.individuals_evaluated < self.initial_population)
+                self.individuals_evaluated < self.initial_population / 2)
 
     def generate_individual(self):
         ind = Individual()

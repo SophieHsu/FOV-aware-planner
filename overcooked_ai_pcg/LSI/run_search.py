@@ -98,7 +98,7 @@ def search(dask_client, num_simulations, algorithm_config, elite_map_config,
                 active_evals + 1,  # worker_id
             ))
         active_evals += 1
-    as_completed_evaluations = dask.distributed.as_completed(evaluations)
+    evaluations = dask.distributed.as_completed(evaluations)
     print(f"Started {active_evals} simulations")
 
     # completion time of the latest simulation
@@ -106,7 +106,7 @@ def search(dask_client, num_simulations, algorithm_config, elite_map_config,
 
     # repeatedly grab completed evaluations, return them to the algorithm, and
     # send out new evaluations
-    for completion in as_completed_evaluations:
+    for completion in evaluations:
         # process the individual
         active_evals -= 1
         try:
@@ -131,6 +131,8 @@ def search(dask_client, num_simulations, algorithm_config, elite_map_config,
                   "-------------------------------------------")
             continue
 
+        del completion  # clean up
+
         if algorithm.is_running():
             # request more evaluations if still running
             while active_evals < num_cores and not algorithm.is_blocking():
@@ -147,8 +149,7 @@ def search(dask_client, num_simulations, algorithm_config, elite_map_config,
                     # id of the individual as the worker id
                     algorithm.individuals_disbatched,
                 )
-                as_completed_evaluations.add(future)
-                evaluations.append(future)
+                evaluations.add(future)
                 active_evals += 1
                 print(f"{algorithm.individuals_disbatched}/{num_simulations}")
             print(f"Active evaluations: {active_evals}")
@@ -156,7 +157,6 @@ def search(dask_client, num_simulations, algorithm_config, elite_map_config,
             # otherwise, terminate
             break
 
-    dask_client.cancel(evaluations)  # Cancel remaining evals.
     finish_time = time.time()
     print("Total evaluation time:", str(finish_time - start_time), "seconds")
 
