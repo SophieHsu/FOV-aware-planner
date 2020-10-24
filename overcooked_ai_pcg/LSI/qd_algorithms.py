@@ -12,9 +12,9 @@ class Individual:
     param_vector = None  # genotype
     level = None  # an Overcooked game level
     fitness = None  # fitness in the level = score - timestep
-    score = None # raw score of the level,
-                 # proportional to the number of soup delivered
-    timestep = None # timestep to finish the level
+    score = None  # raw score of the level,
+    # proportional to the number of soup delivered
+    timestep = None  # timestep to finish the level
     ID = None  # ID of the individual after being inserted to the map
     player_workload = None # list of dic that summarize workload of all players
     human_preference = None
@@ -70,7 +70,7 @@ class FeatureMap:
         return replaced_elite
 
     def get_random_elite(self):
-        pos = np.random.randint(0, len(self.elite_indices) - 1)
+        pos = np.random.randint(0, len(self.elite_indices))
         index = self.elite_indices[pos]
         return self.elite_map[index]
 
@@ -154,7 +154,8 @@ class MapElitesAlgorithm(QDAlgorithmBase):
         return self.individuals_evaluated < self.num_to_evaluate
 
     def is_blocking(self):
-        return self.individuals_disbatched == self.initial_population and self.individuals_evaluated == 0
+        return (self.individuals_disbatched == self.initial_population and
+                self.individuals_evaluated < self.initial_population / 2)
 
     def generate_individual(self):
         ind = Individual()
@@ -208,7 +209,8 @@ class RandomGenerator(QDAlgorithmBase):
         return self.individuals_evaluated < self.num_to_evaluate
 
     def is_blocking(self):
-        return self.individuals_disbatched == self.initial_population and self.individuals_evaluated == 0
+        return False
+        # return self.individuals_disbatched == self.initial_population and self.individuals_evaluated == 0
 
     def generate_individual(self):
         ind = Individual()
