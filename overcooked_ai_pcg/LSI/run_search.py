@@ -99,6 +99,9 @@ def search(dask_client, num_simulations, algorithm_config, elite_map_config,
     as_completed_evaluations = dask.distributed.as_completed(evaluations)
     print(f"Started {num_cores} simulations")
 
+    # completion time of the latest simulation
+    last_completion = time.time()
+
     # repeatedly grab completed evaluations, return them to the algorithm, and
     # send out new evaluations
     for completion in as_completed_evaluations:
@@ -111,6 +114,11 @@ def search(dask_client, num_simulations, algorithm_config, elite_map_config,
                 print(
                     "Finished simulation.\nTotal simulations done: %d/%d" %
                     (algorithm_instance.individuals_evaluated, num_simulations))
+                cur_time = time.time()
+                print(
+                    f"Time since last simulation: {cur_time - last_completion} s"
+                )
+                last_completion = cur_time
         except dask.distributed.scheduler.KilledWorker as err:  # pylint: disable=no-member
             # worker may fail due to, for instance, memory
             print("Worker failed with the following error; continuing anyway")
