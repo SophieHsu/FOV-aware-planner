@@ -14,6 +14,8 @@ from overcooked_ai_py import read_layout_dict
 from overcooked_ai_py import LAYOUTS_DIR
 from overcooked_ai_pcg import ERR_LOG_PIC, G_PARAM_FILE, LSI_CONFIG_ALGO_DIR, LSI_CONFIG_MAP_DIR
 
+import gc
+
 obj_types = "12XSPOD "
 
 
@@ -206,6 +208,10 @@ def setup_env_from_grid(layout_grid, worker_id=0):
     agent2.set_agent_index(1)
     agent1.set_mdp(mdp)
     agent2.set_mdp(mdp)
+
+    del mlp_planner
+    gc.collect()
+
     return agent1, agent2, env
 
 def save_gan_param(G_params):
@@ -240,6 +246,9 @@ def run_overcooked_game(lvl_str, render=True, worker_id=0):
         timestep += 1
 
     workloads = last_state.get_player_workload()
+
+    del agent1, agent2, env
+    gc.collect()
 
     # smooth fitness by subtracting timestep
     fitness = total_sparse_reward - timestep

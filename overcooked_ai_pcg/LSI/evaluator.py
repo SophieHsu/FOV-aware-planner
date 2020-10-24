@@ -48,6 +48,8 @@ def run_overcooked_eval(ind, visualize, elite_map_config, G_params,
     )
     # ind.level = generate_rnd_lvl((6, 8), worker_id=self.id)
 
+    del generator
+
     print_mem_usage("after generating level", worker_id)
 
     # run simulation
