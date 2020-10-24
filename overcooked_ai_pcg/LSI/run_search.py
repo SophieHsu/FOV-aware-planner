@@ -55,7 +55,7 @@ def search(dask_client, num_simulations, algorithm_config, elite_map_config,
         mutation_power = algorithm_config["mutation_power"]
         initial_population = algorithm_config["initial_population"]
         # pylint: disable=no-member
-        algorithm_instance = MapElitesAlgorithm(
+        algorithm = MapElitesAlgorithm(
             mutation_power,
             initial_population,
             num_simulations,
@@ -67,7 +67,7 @@ def search(dask_client, num_simulations, algorithm_config, elite_map_config,
     elif algorithm_name == "RANDOM":
         print("Start Running RANDOM")
         # pylint: disable=no-member
-        algorithm_instance = RandomGenerator(
+        algorithm = RandomGenerator(
             num_simulations,
             feature_map,
             running_individual_log,
@@ -85,66 +85,73 @@ def search(dask_client, num_simulations, algorithm_config, elite_map_config,
 
     # initialize the workers with num_cores jobs
     evaluations = []
-    for worker_id in range(1, num_cores + 1):
+    active_evals = 0
+    while active_evals < num_cores and not algorithm.is_blocking():
         evaluations.append(
             dask_client.submit(
                 run_overcooked_eval,
-                algorithm_instance.generate_individual(),
+                algorithm.generate_individual(),
                 visualize,
                 elite_map_config,
                 G_params,
                 gan_state_dict,
-                worker_id,
+                active_evals + 1,  # worker_id
             ))
+        active_evals += 1
     as_completed_evaluations = dask.distributed.as_completed(evaluations)
-    print(f"Started {num_cores} simulations")
+    print(f"Started {active_evals} simulations")
 
     # completion time of the latest simulation
-    last_completion = time.time()
+    last_eval = time.time()
 
     # repeatedly grab completed evaluations, return them to the algorithm, and
     # send out new evaluations
     for completion in as_completed_evaluations:
+        # process the individual
         try:
             evaluated_ind = completion.result()
 
-            # evaluated_ind may be None if the evaluation failed
-            if (evaluated_ind is not None and
-                    algorithm_instance.insert_if_still_running(evaluated_ind)):
-                print(
-                    "Finished simulation.\nTotal simulations done: %d/%d" %
-                    (algorithm_instance.individuals_evaluated, num_simulations))
+            if evaluated_ind is None:
+                print("Received a failed evaluation.")
+            elif (evaluated_ind is not None and
+                  algorithm.insert_if_still_running(evaluated_ind)):
+                active_evals -= 1
                 cur_time = time.time()
-                print(
-                    f"Time since last simulation: {cur_time - last_completion} s"
-                )
-                last_completion = cur_time
+                print("Finished simulation.\n"
+                      f"Total simulations done: "
+                      f"{algorithm.individuals_evaluated}/{num_simulations}\n"
+                      f"Time since last simulation: {cur_time - last_eval}s\n"
+                      f"Active evaluations: {active_evals}")
+                last_eval = cur_time
         except dask.distributed.scheduler.KilledWorker as err:  # pylint: disable=no-member
             # worker may fail due to, for instance, memory
-            print("Worker failed with the following error; continuing anyway")
-            print("-------------------------------------------")
-            print(err)
-            print("-------------------------------------------")
+            print("Worker failed with the following error; continuing anyway\n"
+                  "-------------------------------------------\n"
+                  f"{err}\n"
+                  "-------------------------------------------")
             continue
 
-        if algorithm_instance.is_running():
-            # request another evaluation if still running
-            new_ind = algorithm_instance.generate_individual()
-            future = dask_client.submit(
-                run_overcooked_eval,
-                new_ind,
-                visualize,
-                elite_map_config,
-                G_params,
-                gan_state_dict,
-                # since there are no more "workers", we just pass in the
-                # id of the individual as the worker id
-                algorithm_instance.individuals_disbatched,
-            )
-            as_completed_evaluations.add(future)
-            evaluations.append(future)
-            print("Starting simulation: %d/%d" %
-                  (algorithm_instance.individuals_disbatched, num_simulations))
+        if algorithm.is_running():
+            # request more evaluations if still running
+            while active_evals < num_cores and not algorithm.is_blocking():
+                print("Starting simulation: ", end="")
+                new_ind = algorithm.generate_individual()
+                future = dask_client.submit(
+                    run_overcooked_eval,
+                    new_ind,
+                    visualize,
+                    elite_map_config,
+                    G_params,
+                    gan_state_dict,
+                    # since there are no more "workers", we just pass in the
+                    # id of the individual as the worker id
+                    algorithm.individuals_disbatched,
+                )
+                as_completed_evaluations.add(future)
+                evaluations.append(future)
+                active_evals += 1
+                print(f"{algorithm.individuals_disbatched}/{num_simulations}")
+            print(f"Active evaluations: {active_evals}")
         else:
             # otherwise, terminate
             break
