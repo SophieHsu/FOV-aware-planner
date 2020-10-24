@@ -1,14 +1,19 @@
-import os
-import numpy as np
-import time
-import torch
 import json
-from torch.autograd import Variable
+import os
+import subprocess
+import time
+
+import numpy as np
+import torch
 from overcooked_ai_py.mdp.overcooked_mdp import OvercookedGridworld
+from torch.autograd import Variable
+
 from overcooked_ai_pcg import GAN_TRAINING_DIR
 from overcooked_ai_pcg.GAN_training import dcgan
-from overcooked_ai_pcg.milp_repair import repair_lvl
-from overcooked_ai_pcg.helper import obj_types, lvl_number2str, setup_env_from_grid, read_gan_param, run_overcooked_game, gen_int_rnd_lvl
+from overcooked_ai_pcg.helper import (gen_int_rnd_lvl, lvl_number2str,
+                                      obj_types, read_gan_param,
+                                      run_overcooked_game, setup_env_from_grid)
+from overcooked_ai_pcg.milp_repair import repair_lvl, repair_lvl_in_process
 
 
 def generate_lvl(batch_size, generator, latent_vector=None, worker_id=0):
@@ -42,8 +47,40 @@ def generate_lvl(batch_size, generator, latent_vector=None, worker_id=0):
     print("worker(%d): Before repair:\n" % (worker_id) +
           lvl_number2str(lvl_int))
 
-    # print("Start MILP repair...")
-    lvl_repaired = repair_lvl(lvl_int)
+    # In order to avoid dealing with memory leaks that may arise with docplex,
+    # we run `repair_lvl` in a separate process. We can't create a child process
+    # since the Dask workers are daemonic processes (which cannot spawn
+    # children), so we run with subprocess. The code below essentially calls
+    # `python` with a small bit of code and gets back the repr of a numpy array.
+    # We then eval that output to get the repaird level.
+    #
+    # Yes, this is sketchy.
+
+    # Allows us to separate the array from the rest of the process's output.
+    delimiter = "----DELIMITER----DELIMITER----"
+    output = subprocess.run(
+        [
+            'python', '-c', f"""\
+import numpy as np
+from numpy import array
+from overcooked_ai_pcg.milp_repair import repair_lvl
+
+np_lvl = eval(\"\"\"{np.array_repr(lvl_int)}\"\"\")
+repaired_lvl = np.array_repr(repair_lvl(np_lvl))
+print("{delimiter}")
+print(repaired_lvl)
+"""
+        ],
+        stdout=subprocess.PIPE,
+    ).stdout.decode('utf-8')
+    # Array comes after the delimiter.
+    output = output.split(delimiter)[1]
+    # The repr uses array and uint8 without np, so we make it available for eval
+    # here.
+    array, uint8 = np.array, np.uint8  # pylint: disable = unused-variable
+    # Get the array.
+    lvl_repaired = eval(output)
+
     lvl_str = lvl_number2str(lvl_repaired)
 
     print("worker(%d): After repair:\n" % (worker_id) + lvl_str)
