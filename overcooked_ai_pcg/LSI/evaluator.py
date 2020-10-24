@@ -6,6 +6,7 @@ from overcooked_ai_pcg.gen_lvl import generate_lvl
 from overcooked_ai_pcg.helper import run_overcooked_game
 from overcooked_ai_pcg.LSI import bc_calculate
 
+import gc
 
 def print_mem_usage(info, worker_id):
     print(f"worker({worker_id}): Memory usage ({info}):",
@@ -60,7 +61,7 @@ def run_overcooked_eval(ind, visualize, elite_map_config, G_params,
         return None
 
     print_mem_usage("after running overcooked game", worker_id)
-
+    
     # calculate bc out of the game
     ind.features = []
     for bc in elite_map_config["Map"]["Features"]:
@@ -73,5 +74,5 @@ def run_overcooked_eval(ind, visualize, elite_map_config, G_params,
     print("worker(%d): Game end; fitness = %d" % (worker_id, ind.fitness))
 
     print_mem_usage("end", worker_id)
-
+    gc.collect()
     return ind

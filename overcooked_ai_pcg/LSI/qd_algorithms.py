@@ -192,7 +192,8 @@ class RandomGenerator(QDAlgorithmBase):
         return self.individuals_evaluated < self.num_to_evaluate
 
     def is_blocking(self):
-        return self.individuals_disbatched == self.initial_population and self.individuals_evaluated == 0
+       return False
+       # return self.individuals_disbatched == self.initial_population and self.individuals_evaluated == 0
 
     def generate_individual(self):
         ind = Individual()
