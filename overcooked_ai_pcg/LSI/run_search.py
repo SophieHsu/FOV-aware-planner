@@ -108,6 +108,7 @@ def search(dask_client, num_simulations, algorithm_config, elite_map_config,
     # send out new evaluations
     for completion in as_completed_evaluations:
         # process the individual
+        active_evals -= 1
         try:
             evaluated_ind = completion.result()
 
@@ -115,7 +116,6 @@ def search(dask_client, num_simulations, algorithm_config, elite_map_config,
                 print("Received a failed evaluation.")
             elif (evaluated_ind is not None and
                   algorithm.insert_if_still_running(evaluated_ind)):
-                active_evals -= 1
                 cur_time = time.time()
                 print("Finished simulation.\n"
                       f"Total simulations done: "
