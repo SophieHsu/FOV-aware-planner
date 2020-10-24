@@ -2136,6 +2136,7 @@ class MediumLevelMdpPlanner(object):
         return
 
     def save_to_file(self, filename):
+        print("In save_to_file")
         with open(filename, 'wb') as output:
             pickle.dump(self, output, pickle.HIGHEST_PROTOCOL)
 
@@ -2162,7 +2163,7 @@ class MediumLevelMdpPlanner(object):
 
         # print("without GPU:", timer()-start)
         print("It took {} seconds to create MediumLevelMdpPlanner".format(time.time() - start_time))
-        self.save_to_file(final_filepath)
+        # self.save_to_file(final_filepath)
         # tmp = input()
         # self.save_to_file(output_mdp_path)
         return 
