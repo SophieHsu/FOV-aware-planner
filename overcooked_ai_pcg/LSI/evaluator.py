@@ -13,7 +13,7 @@ def print_mem_usage(info, worker_id):
           resource.getrusage(resource.RUSAGE_SELF).ru_maxrss)
 
 
-def run_overcooked_eval(ind, visualize, elite_map_config, G_params,
+def run_overcooked_eval(ind, visualize, elite_map_config, agent_config, G_params,
                         gan_state_dict, worker_id):
     """
     Evaluates overcooked game by running a game and calculating relevant BC's.
@@ -60,7 +60,7 @@ def run_overcooked_eval(ind, visualize, elite_map_config, G_params,
 
     # run simulation
     try:
-        ind.fitness, ind.score, ind.timestep, ind.player_workload = run_overcooked_game(ind, ind.level, render=visualize, worker_id=worker_id)
+        ind.fitness, ind.score, ind.timestep, ind.player_workload = run_overcooked_game(ind, ind.level, agent_config, render=visualize, worker_id=worker_id)
     except TimeoutError:
         print(
             "worker(%d): Level generated taking too much time to plan. Skipping"

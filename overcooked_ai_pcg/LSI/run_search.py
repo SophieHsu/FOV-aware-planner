@@ -16,8 +16,7 @@ from overcooked_ai_pcg.LSI.qd_algorithms import (FeatureMap,
                                                  RandomGenerator)
 
 
-def search(dask_client, num_simulations, algorithm_config, elite_map_config,
-           model_path, visualize, num_cores):
+def search(dask_client, num_simulations, algorithm_config, elite_map_config, agent_config, model_path, visualize, num_cores):
     """
     Run search with the specified algorithm and elite map
 
@@ -93,6 +92,7 @@ def search(dask_client, num_simulations, algorithm_config, elite_map_config,
                 algorithm.generate_individual(),
                 visualize,
                 elite_map_config,
+                agent_config,
                 G_params,
                 gan_state_dict,
                 active_evals + 1,  # worker_id
@@ -143,6 +143,7 @@ def search(dask_client, num_simulations, algorithm_config, elite_map_config,
                     new_ind,
                     visualize,
                     elite_map_config,
+                    agent_config,
                     G_params,
                     gan_state_dict,
                     # since there are no more "workers", we just pass in the
@@ -173,8 +174,7 @@ def run(
         model_path (string): file path to the GAN model
     """
     # read in necessary config files
-    experiment_config, algorithm_config, elite_map_config = read_in_lsi_config(
-        config)
+    experiment_config, algorithm_config, elite_map_config, agent_config = read_in_lsi_config(config)
 
     visualize = experiment_config["visualize"]
     num_cores = experiment_config["num_cores"]
@@ -212,8 +212,7 @@ def run(
         dask_client = dask.distributed.Client(cluster)
 
     # run lsi search
-    search(dask_client, num_simulations, algorithm_config, elite_map_config,
-           model_path, visualize, num_cores)
+    search(dask_client, num_simulations, algorithm_config, elite_map_config, agent_config, model_path, visualize, num_cores)
 
 
 if __name__ == "__main__":
