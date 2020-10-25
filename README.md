@@ -180,6 +180,7 @@ num_cores (int): number of processes that runs the evaluations
 num_simulations (int): total number of evaluations/simulations to run
 algorithm_config (string): file name of the algorithm config file
 elite_map_config (string): file name of the elite map config file
+agent_config (string): file name of the agent config file
 ```
 
 The experiment config files are the entry points each LSI experiments.
@@ -214,6 +215,13 @@ resolution (int): resolution (how many sections to divide) for the bc
 
 Note that the name should match the name of the function to calculate the bc in
 `overcooked_ai_pcg/LSI/bc_calculate.py`
+
+##### `agent` config files
+
+They are under `overcooked_ai_pcg/LSI/data/config/agents`.
+
+A agent config file contains the two agents used for running overcooked game.
+Each agent contains its own properties, which varies across different agent type.
 
 ### Making More GAN Training Data
 
