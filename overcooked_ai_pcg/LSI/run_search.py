@@ -145,6 +145,7 @@ def search(dask_client, base_log_dir, num_simulations, algorithm_config, elite_m
     # config algorithm instance -> it runs on the head node so that it can
     # access the logger files
     algorithm_name = algorithm_config["name"]
+    num_params = agent_config["Search"]["num_param"]
     if algorithm_name == "MAPELITES":
         print("Start Running MAPELITES")
         mutation_power = algorithm_config["mutation_power"]
@@ -158,6 +159,7 @@ def search(dask_client, base_log_dir, num_simulations, algorithm_config, elite_m
             running_individual_log,
             frequent_map_log,
             map_summary_log,
+            num_params
         )
     elif algorithm_name == "RANDOM":
         print("Start Running RANDOM")
@@ -168,6 +170,7 @@ def search(dask_client, base_log_dir, num_simulations, algorithm_config, elite_m
             running_individual_log,
             frequent_map_log,
             map_summary_log,
+            num_params
         )
 
     # run search

@@ -49,10 +49,11 @@ def run_overcooked_eval(ind, visualize, elite_map_config, agent_config, G_params
     )
     # ind.level = generate_rnd_lvl((6, 8), worker_id=self.id)
 
-    # generate human worker preference and adaptiveness
-    ind.human_preference = ind.param_vector[32]
-    ind.human_adaptiveness = ind.param_vector[33]
-    # print('human parameters =', ind.human_preference, ind.human_adaptiveness)
+    if agent_config["Search"]["type"] == 'human':
+        # generate human worker preference and adaptiveness
+        ind.human_preference = ind.param_vector[32]
+        ind.human_adaptiveness = ind.param_vector[33]
+        # print('human parameters =', ind.human_preference, ind.human_adaptiveness)
 
     del generator
 

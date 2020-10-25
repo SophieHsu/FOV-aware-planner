@@ -1,3 +1,7 @@
+[Search]
+num_param=34
+type="agent"
+
 [Agent1]
 name="fixed_plan_agent"
 

@@ -17,8 +17,10 @@ class Individual:
     timestep = None  # timestep to finish the level
     ID = None  # ID of the individual after being inserted to the map
     player_workload = None # list of dic that summarize workload of all players
-    human_preference = None
-    human_adaptiveness = None
+
+    # human model params
+    human_preference = None # float from 0 to 1 indicating human's subtask preference
+    human_adaptiveness = None # float from 0 to 1; human's flexability to adapte to gameplay 
 
 class FeatureMap:
 
@@ -148,7 +150,7 @@ class MapElitesAlgorithm(QDAlgorithmBase):
         self.num_to_evaluate = num_to_evaluate
         self.initial_population = initial_population
         self.mutation_power = mutation_power
-        self.num_params = num_params+2 # add human parameters
+        self.num_params = num_params
 
     def is_running(self):
         return self.individuals_evaluated < self.num_to_evaluate
@@ -161,7 +163,7 @@ class MapElitesAlgorithm(QDAlgorithmBase):
         ind = Individual()
         if self.individuals_disbatched < self.initial_population:
             ind.param_vector = np.random.normal(0.0, 1.0, self.num_params)
-            while True:
+            while len(ind.param_vector) > 32:
                 if (ind.param_vector[32] > 0.0 and ind.param_vector[32] <= 1.0) and (ind.param_vector[33] >= 0.0 and ind.param_vector[33] <= 1.0):
                     break
                 else:
@@ -172,14 +174,15 @@ class MapElitesAlgorithm(QDAlgorithmBase):
             ind.param_vector = parent.param_vector + np.random.normal(
                 0.0, self.mutation_power, self.num_params)
 
-            while True:
+            while len(ind.param_vector) > 32:
                 if (ind.param_vector[32] > 0.0 and ind.param_vector[32] <= 1.0) and (ind.param_vector[33] >= 0.0 and ind.param_vector[33] <= 1.0):
                     break
                 else:
                     ind.param_vector = parent.param_vector + np.random.normal(0.0, self.mutation_power, self.num_params)
                     print('mutating for a in-limit parameters...')
 
-        print(self.num_params, ind.param_vector[32:])
+        if len(ind.param_vector) > 32:
+            print(self.num_params, ind.param_vector[32:])
 
         self.individuals_disbatched += 1
         return ind
