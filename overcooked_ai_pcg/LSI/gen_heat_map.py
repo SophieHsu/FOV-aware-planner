@@ -34,7 +34,7 @@ FITNESS_MAX = 100
 def createRecordList(mapData, mapDims):
     recordList = []; trackRmIndexPairs = {}
     indexPairs = [(x, y)
-                  for x, y in product(range(mapDims[0]), range(mapDims[1]))]
+                  for x, y in product(range(mapDims[ROW_INDEX]), range(mapDims[COL_INDEX]))]
     for i, cellData in enumerate(mapData):
         # splite data from csv file
         splitedData = cellData.split(":")
@@ -99,8 +99,8 @@ def createImage(rowData, filename):
     fitnessMap.sort_index(level=1, ascending=False, inplace=True)
     with sns.axes_style("white"):
         numTicks = 5  #11
-        numTicksX = mapDims[0] // numTicks + 1
-        numTicksY = mapDims[1] // numTicks + 1
+        numTicksX = mapDims[ROW_INDEX] // numTicks + 1
+        numTicksY = mapDims[COL_INDEX] // numTicks + 1
         plt.figure(figsize=(3, 3))
         g = sns.heatmap(
             fitnessMap,
@@ -190,7 +190,7 @@ if __name__ == "__main__":
                         '--step_size',
                         help='step size of the animation to generate',
                         required=False,
-                        default=5)
+                        default=100)
     parser.add_argument('-l',
                         '--log_file',
                         help='filepath to the elite map log file',
@@ -199,7 +199,7 @@ if __name__ == "__main__":
     opt = parser.parse_args()
 
     # read in the name of the algorithm and features to plot
-    experiment_config, algorithm_config, elite_map_config = read_in_lsi_config(
+    experiment_config, algorithm_config, elite_map_config, agent_config = read_in_lsi_config(
         opt.config)
     features = elite_map_config['Map']['Features']
 
@@ -212,5 +212,5 @@ if __name__ == "__main__":
     FEATURE1_LABEL = features[ROW_INDEX]['name']
     FEATURE2_LABEL = features[COL_INDEX]['name']
     LOG_FILE_NAME = opt.log_file
-
+    print(ROW_INDEX,FEATURE2_LABEL)
     generateAll(LOG_FILE_NAME)
