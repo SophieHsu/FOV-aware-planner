@@ -225,7 +225,7 @@ def setup_env_from_grid(layout_grid, worker_id=0, human_preference=0.3, human_ad
     agent1.set_mdp(mdp)
     agent2.set_mdp(mdp)
 
-    del mlp_planner
+    del ml_action_manager, hmlp, mdp_planner
     gc.collect()
 
     return agent1, agent2, env

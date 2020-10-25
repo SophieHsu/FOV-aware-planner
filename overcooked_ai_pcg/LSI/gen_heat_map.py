@@ -32,10 +32,10 @@ FITNESS_MAX = 100
 
 
 def createRecordList(mapData, mapDims):
-    recordList = []
+    recordList = []; trackRmIndexPairs = {}
     indexPairs = [(x, y)
                   for x, y in product(range(mapDims[0]), range(mapDims[1]))]
-    for cellData in mapData:
+    for i, cellData in enumerate(mapData):
         # splite data from csv file
         splitedData = cellData.split(":")
         cellRow = int(splitedData[ROW_INDEX])
@@ -47,8 +47,15 @@ def createRecordList(mapData, mapDims):
         f2 = float(splitedData[nonFeatureIdx + 2 + COL_INDEX])
 
         data = [cellRow, cellCol, indID, fitness, f1, f2]
-        recordList.append(data)
-        indexPairs.remove((cellRow, cellCol))
+
+        if (cellRow, cellCol) in indexPairs:
+            indexPairs.remove((cellRow, cellCol))
+            trackRmIndexPairs[str(cellRow)+'_'+str(cellCol)] = len(recordList)
+            recordList.append(data)
+        else:
+            track_idx = trackRmIndexPairs[str(cellRow)+'_'+str(cellCol)]
+            if data[3] > recordList[track_idx][3]:
+                recordList[track_idx] = data
 
     # Put in the blank cells
     for x, y in indexPairs:

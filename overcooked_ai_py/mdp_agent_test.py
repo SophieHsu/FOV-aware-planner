@@ -4,6 +4,7 @@ import pygame
 # import matplotlib.pyplot as plt
 from argparse import ArgumentParser
 import numpy as np
+import gc
 
 from overcooked_ai_py.mdp.overcooked_mdp import OvercookedGridworld, OvercookedState, Direction, Action, PlayerState, ObjectState
 from overcooked_ai_py.mdp.overcooked_env import OvercookedEnv
@@ -169,8 +170,11 @@ if __name__ == "__main__" :
     # a1 = agent.biasHumanModel(mlp, [0.3, 0.7], 0.3, auto_unstuck=True)
 
     # a1 = MdpPlanningAgent(a0, mdp_planner, env)
-
+    del ml_action_manager, hmlp, mdp_planner
+    gc.collect()
     agent_pair = agent.AgentPair(a0, a1)
+
+
 
     s_t, joint_a_t, r_t, done_t = env.run_agents(agent_pair, include_final_state=True, display=DISPLAY)
 
