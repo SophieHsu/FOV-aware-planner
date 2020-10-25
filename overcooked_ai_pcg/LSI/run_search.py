@@ -70,6 +70,7 @@ def init_dask(experiment_config, log_dir):
     if experiment_config.get("slurm", False):
         worker_logs = os.path.join(log_dir, "worker_logs")
         os.mkdir(worker_logs)
+        output_file = os.path.join(worker_logs, 'slurm-%j.out')
 
         cores_per_worker = experiment_config["num_cores_per_slurm_worker"]
 
@@ -81,8 +82,8 @@ def init_dask(experiment_config, log_dir):
             processes=cores_per_worker,
             walltime=experiment_config['slurm_worker_walltime'],
             job_extra=[
-                f"--output {worker_logs}/slurm-%j.out",
-                f"--error {worker_logs}/slurm-%j.out",
+                f"--output {output_file}",
+                f"--error {output_file}",
             ],
         )
 
