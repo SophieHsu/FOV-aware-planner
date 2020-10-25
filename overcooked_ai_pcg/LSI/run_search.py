@@ -51,12 +51,8 @@ def init_logging_dir(config_path, experiment_config, algorithm_config,
         )
 
     # start a README
-    commit_hash = subprocess.run(["git", "rev-parse", "HEAD"],
-                                 stdout=subprocess.PIPE).stdout.decode('utf-8')
     with open(os.path.join(log_dir, "README.md"), "w") as file:
-        file.write(f"# {exp_name}, {time_str}\n"
-                   "\n"
-                   f"- Git commit: {commit_hash}")
+        file.write(f"# {exp_name}, {time_str}\n")
 
     return log_dir, base_log_dir
 
