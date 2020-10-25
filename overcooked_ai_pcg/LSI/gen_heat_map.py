@@ -12,7 +12,7 @@ import toml
 import argparse
 import seaborn as sns
 import pandas as pd
-from itertools import product
+from itertools import product, combinations
 from overcooked_ai_pcg import LSI_IMAGE_DIR, LSI_LOG_DIR
 from overcooked_ai_pcg.helper import read_in_lsi_config
 
@@ -152,21 +152,16 @@ def generateAll(logPath):
         # Read all the data from the csv file
         allRows = list(csv.reader(csvfile, delimiter=','))
 
-        # Clear out the previous images
-        tmpImageFolder = LSI_IMAGE_DIR
-        if not os.path.exists(tmpImageFolder):
-            os.mkdir(tmpImageFolder)
-        for curFile in glob.glob(tmpImageFolder + '/*'):
-            os.remove(curFile)
+        
 
         # generate the movie
         template = os.path.join(tmpImageFolder, 'grid_{:05d}.png')
         createImages(STEP_SIZE, allRows[1:], template)
-        movieFilename = 'fitness.avi'
+        movieFilename = 'fitness_'+str(ROW_INDEX)+'_'+str(COL_INDEX)+'.avi'
         createMovie(tmpImageFolder, movieFilename)
 
         # Create the final image we need
-        imageFilename = 'fitnessMap.png'
+        imageFilename = 'fitnessMap_'+str(ROW_INDEX)+'_'+str(COL_INDEX)+'.png'
         createImage(allRows[-1], os.path.join(LSI_IMAGE_DIR, imageFilename))
 
 
@@ -205,12 +200,18 @@ if __name__ == "__main__":
 
     # read in parameters
     NUM_FEATURES = len(features)
-    ROW_INDEX = int(opt.feature1_idx)
-    COL_INDEX = int(opt.feature2_idx)
-    STEP_SIZE = int(opt.step_size)
-    IMAGE_TITLE = algorithm_config['name']
-    FEATURE1_LABEL = features[ROW_INDEX]['name']
-    FEATURE2_LABEL = features[COL_INDEX]['name']
     LOG_FILE_NAME = opt.log_file
-    print(ROW_INDEX,FEATURE2_LABEL)
-    generateAll(LOG_FILE_NAME)
+    # Clear out the previous images
+    tmpImageFolder = LSI_IMAGE_DIR  
+    if not os.path.exists(tmpImageFolder):
+        os.mkdir(tmpImageFolder)
+    for curFile in glob.glob(tmpImageFolder + '/*'):
+        os.remove(curFile)
+
+    for ROW_INDEX, COL_INDEX in combinations(range(NUM_FEATURES), 2):
+        STEP_SIZE = int(opt.step_size)
+        IMAGE_TITLE = algorithm_config['name']
+        FEATURE1_LABEL = features[ROW_INDEX]['name']
+        FEATURE2_LABEL = features[COL_INDEX]['name']
+
+        generateAll(LOG_FILE_NAME)
