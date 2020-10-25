@@ -1,12 +1,14 @@
 """Runs a search to illuminate the latent space."""
 import argparse
 import os
+import subprocess
 import time
 
 import dask.distributed
+import toml
 import torch
 from dask_jobqueue import SLURMCluster
-from overcooked_ai_pcg import GAN_TRAINING_DIR, LSI_CONFIG_EXP_DIR
+from overcooked_ai_pcg import GAN_TRAINING_DIR, LSI_CONFIG_EXP_DIR, LSI_LOG_DIR
 from overcooked_ai_pcg.helper import read_gan_param, read_in_lsi_config
 from overcooked_ai_pcg.LSI.evaluator import run_overcooked_eval
 from overcooked_ai_pcg.LSI.logger import (FrequentMapLog, MapSummaryLog,
@@ -16,13 +18,102 @@ from overcooked_ai_pcg.LSI.qd_algorithms import (FeatureMap,
                                                  RandomGenerator)
 
 
-def search(dask_client, num_simulations, algorithm_config, elite_map_config, agent_config, model_path, visualize, num_cores):
+def init_logging_dir(config_path, experiment_config, algorithm_config,
+                     elite_map_config, agent_config):
+    """Creates the logging directory, saves configs to it, and starts a README.
+
+    Args:
+        config_path (str): path to the experiment config file
+        experiment_config (toml): toml config object of current experiment
+        algorithm_config: toml config object of QD algorithm
+        elite_map_config: toml config object of the feature maps
+        agent_config: toml config object of the agents used
+    Returns:
+        log_dir: full path to the logging directory
+        base_log_dir: the path without LSI_LOG_DIR prepended
+    """
+    # create logging directory
+    exp_name = os.path.basename(config_path).replace(".tml",
+                                                     "").replace("_", "-")
+    time_str = time.strftime("%Y-%m-%d_%k-%M-%S")
+    base_log_dir = time_str + "_" + exp_name
+    log_dir = os.path.join(LSI_LOG_DIR, base_log_dir)
+    os.mkdir(log_dir)
+
+    # save configs
+    with open(os.path.join(log_dir, "config.tml"), "w") as file:
+        toml.dump(
+            {
+                "experiment_config": experiment_config,
+                "algorithm_config": algorithm_config,
+                "elite_map_config": elite_map_config,
+                "agent_config": agent_config,
+            },
+            file,
+        )
+
+    # start a README
+    with open(os.path.join(log_dir, "README.md"), "w") as file:
+        file.write(f"# {exp_name}, {time_str}\n")
+
+    return log_dir, base_log_dir
+
+
+def init_dask(experiment_config, log_dir):
+    """Initializes Dask with a local or SLURM cluster.
+
+    Args:
+        experiment_config (toml): toml config object of experiment
+        log_dir (str): directory for storing logs
+    Returns:
+        A Dask client for the cluster created.
+    """
+    num_cores = experiment_config["num_cores"]
+
+    if experiment_config.get("slurm", False):
+        worker_logs = os.path.join(log_dir, "worker_logs")
+        os.mkdir(worker_logs)
+        output_file = os.path.join(worker_logs, 'slurm-%j.out')
+
+        cores_per_worker = experiment_config["num_cores_per_slurm_worker"]
+
+        # 1 process per CPU since cores == processes
+        cluster = SLURMCluster(
+            project=experiment_config["slurm_project"],
+            cores=cores_per_worker,
+            memory=f"{experiment_config['mem_gib_per_slurm_worker']}GiB",
+            processes=cores_per_worker,
+            walltime=experiment_config['slurm_worker_walltime'],
+            job_extra=[
+                f"--output {output_file}",
+                f"--error {output_file}",
+            ],
+        )
+
+        print("### SLURM Job script ###")
+        print("--------------------------------------")
+        print(cluster.job_script())
+        print("--------------------------------------")
+
+        cluster.scale(cores=num_cores)
+        return dask.distributed.Client(cluster)
+
+    # Single machine -- run with num_cores worker processes.
+    cluster = dask.distributed.LocalCluster(n_workers=num_cores,
+                                            threads_per_worker=1,
+                                            processes=True)
+    return dask.distributed.Client(cluster)
+
+
+def search(dask_client, base_log_dir, num_simulations, algorithm_config, elite_map_config, agent_config, model_path, visualize, num_cores):
     """
     Run search with the specified algorithm and elite map
 
     Args:
         dask_client (dask.distributed.Client): client for accessing a Dask
-          cluster.
+            cluster.
+        base_log_dir (str): Logging directory within LSI_LOG_DIR for storing
+            logs.
         num_simulations (int): total number of evaluations of QD algorithm to run.
         algorithm_config: toml config object of QD algorithm
         elite_map_config: toml config object of the feature maps
@@ -40,11 +131,16 @@ def search(dask_client, num_simulations, algorithm_config, elite_map_config, age
     feature_map = FeatureMap(num_simulations, feature_ranges, resolutions)
 
     # create loggers
-    running_individual_log = RunningIndividualLog("individuals_log.csv",
-                                                  elite_map_config)
-    frequent_map_log = FrequentMapLog("elite_map.csv",
-                                      len(elite_map_config["Map"]["Features"]))
-    map_summary_log = MapSummaryLog("map_summary.csv")
+    running_individual_log = RunningIndividualLog(
+        os.path.join(base_log_dir, "individuals_log.csv"),
+        elite_map_config,
+    )
+    frequent_map_log = FrequentMapLog(
+        os.path.join(base_log_dir, "elite_map.csv"),
+        len(elite_map_config["Map"]["Features"]),
+    )
+    map_summary_log = MapSummaryLog(
+        os.path.join(base_log_dir, "map_summary.csv"))
 
     # config algorithm instance -> it runs on the head node so that it can
     # access the logger files
@@ -170,49 +266,28 @@ def run(
     Read in toml config files and run the search
 
     Args:
-        config (toml): toml config object of current experiment
+        config (toml): toml config path of current experiment
         model_path (string): file path to the GAN model
     """
-    # read in necessary config files
-    experiment_config, algorithm_config, elite_map_config, agent_config = read_in_lsi_config(config)
+    experiment_config, algorithm_config, elite_map_config, agent_config = \
+        read_in_lsi_config(config)
 
-    visualize = experiment_config["visualize"]
-    num_cores = experiment_config["num_cores"]
-    num_simulations = experiment_config["num_simulations"]
+    log_dir, base_log_dir = init_logging_dir(config, experiment_config,
+                                             algorithm_config, elite_map_config, agent_config)
+    print("LOGGING DIRECTORY:", log_dir)
 
-    # Initialize Dask.
-    if experiment_config.get("slurm", False):
-        cores_per_worker = experiment_config["num_cores_per_slurm_worker"]
-
-        # 1 process per CPU since cores == processes
-        cluster = SLURMCluster(
-            project=experiment_config["slurm_project"],
-            cores=cores_per_worker,
-            memory=f"{experiment_config['mem_gib_per_slurm_worker']}GiB",
-            processes=cores_per_worker,
-            walltime=experiment_config['slurm_worker_walltime'],
-            job_extra=[
-                "--output ./logs/slurm-%j.out",
-                "--error ./logs/slurm-%j.out",
-            ],
-        )
-
-        print("### SLURM Job script ###")
-        print("--------------------------------------")
-        print(cluster.job_script())
-        print("--------------------------------------")
-
-        cluster.scale(cores=num_cores)
-        dask_client = dask.distributed.Client(cluster)
-    else:
-        # Single machine -- run with num_cores worker processes.
-        cluster = dask.distributed.LocalCluster(n_workers=num_cores,
-                                                threads_per_worker=1,
-                                                processes=True)
-        dask_client = dask.distributed.Client(cluster)
-
-    # run lsi search
-    search(dask_client, num_simulations, algorithm_config, elite_map_config, agent_config, model_path, visualize, num_cores)
+    # start LSI search
+    search(
+        init_dask(experiment_config, log_dir),
+        base_log_dir,
+        experiment_config["num_simulations"],
+        algorithm_config,
+        elite_map_config,
+        agent_config,
+        model_path,
+        experiment_config["visualize"],
+        experiment_config["num_cores"],
+    )
 
 
 if __name__ == "__main__":

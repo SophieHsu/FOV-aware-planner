@@ -350,8 +350,11 @@ The evaluations can take a long time. To run on USC's HPC, do the following:
       log files (since they are separate Slurm jobs). Instead of searching for
       these outputs, you can view the individuals log file with
       ```bash
-      tail -f data/log/individuals_log.csv
+      tail -f data/log/<LOGDIR>/individuals_log.csv
       ```
+      where `<LOGDIR>` is the most recently created logging directory in the
+      `data/log` directory (each directory has a date and time prepended to its
+      name).
    1. To see what Slurm jobs are running (Dask will spawn several `dask-worker`
       jobs), run:
       ```bash
