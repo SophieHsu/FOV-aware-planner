@@ -478,7 +478,8 @@ class CMA_ME_Algorithm(QDAlgorithmBase):
         emitter = None
         for i in range(len(self.emitters)):
             if not self.emitters[i].is_blocking() and \
-               (emitter == None or emitter.individuals_released > self.emitters[i].individuals_released):
+               (emitter == None or \
+                emitter.individuals_released > self.emitters[i].individuals_released):
                 emitter = self.emitters[i]
                 pos = i
         
