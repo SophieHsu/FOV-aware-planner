@@ -156,7 +156,7 @@ def setup_env_from_grid(layout_grid, agent_config, worker_id=0, human_preference
         "start_order_list": ['onion'] * 2,
         "cook_time": 10,
         "num_items_for_soup": 3,
-        "delivery_reward": 50,
+        "delivery_reward": 20,
         "rew_shaping_params": None
     }
     mdp = OvercookedGridworld.from_grid(layout_grid, config)
@@ -280,7 +280,7 @@ def run_overcooked_game(ind, lvl_str, agent_config, render=True, worker_id=0):
 
     # smooth fitness by subtracting timestep
     fitness = total_sparse_reward * 1000 - time_last_reward_achieved
-    return fitness, total_sparse_reward, timestep, workloads
+    return fitness, total_sparse_reward, time_last_reward_achieved, workloads
 
 def gen_int_rnd_lvl(size):
     """
