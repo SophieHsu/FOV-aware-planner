@@ -335,7 +335,7 @@ class ImprovementEmitter:
             
             is_within_bounds = True
             for i in range(len(self.bound_constraints)):
-                if self.bound_constriants[i] != None:
+                if self.bound_constraints[i] != None:
                     min_val, max_val = self.bound_constraints[i]
                     if unscaled_params[i] < min_val or unscaled_params[i] > max_val:
                         is_within_bounds = False
