@@ -188,6 +188,11 @@ def search(dask_client, base_log_dir, num_simulations, algorithm_config, elite_m
             num_params
         )
 
+    # Super hacky! This is where we add bounded constraints for the human model.
+    if num_params > 32:
+        for i in range(32, num_params):
+            algorithm.add_bound_constraint(i, (0.0, 1.0))
+
     # run search
     start_time = time.time()
 
