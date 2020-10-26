@@ -96,6 +96,7 @@ class QDAlgorithmBase(ABC):
         self.running_individual_log = running_individual_log
         self.frequent_map_log = frequent_map_log
         self.map_summary_log = map_summary_log
+        self.bound_constraints = []
 
     @abstractmethod
     def is_running(self):
@@ -104,6 +105,18 @@ class QDAlgorithmBase(ABC):
     @abstractmethod
     def is_blocking(self):
         pass
+
+    @abstractmethod
+    def add_bound_constraint(self, index, bounds):
+        
+        if len(self.bound_constraints) <= index:
+            new_bound_constraints = [
+                self.bound_constraints[i] if i < len(self.bound_constraints) else None \
+                for i in range(index+1)
+            ]
+            self.bound_constraints = new_bound_constraints
+
+        self.bound_constraints[index] = bounds
 
     @abstractmethod
     def generate_individual(self):
@@ -163,26 +176,21 @@ class MapElitesAlgorithm(QDAlgorithmBase):
         ind = Individual()
         if self.individuals_disbatched < self.initial_population:
             ind.param_vector = np.random.normal(0.0, 1.0, self.num_params)
-            while len(ind.param_vector) > 32:
-                if (ind.param_vector[32] > 0.0 and ind.param_vector[32] <= 1.0) and (ind.param_vector[33] >= 0.0 and ind.param_vector[33] <= 1.0):
-                    break
-                else:
-                    ind.param_vector = np.random.normal(0.0, 1.0, self.num_params)
-                    print('mutating for a in-limit parameters...')
+
+            for i in range(len(self.bound_constraints)):
+                if self.bound_constraints[i] != None:
+                    min_val, max_val = self.bound_constraints[i]
+                    ind.param_vector[i] = np.clip(ind.param_vector[i], min_val, max_val)
+
         else:
             parent = self.feature_map.get_random_elite()
             ind.param_vector = parent.param_vector + np.random.normal(
                 0.0, self.mutation_power, self.num_params)
 
-            while len(ind.param_vector) > 32:
-                if (ind.param_vector[32] > 0.0 and ind.param_vector[32] <= 1.0) and (ind.param_vector[33] >= 0.0 and ind.param_vector[33] <= 1.0):
-                    break
-                else:
-                    ind.param_vector = parent.param_vector + np.random.normal(0.0, self.mutation_power, self.num_params)
-                    print('mutating for a in-limit parameters...')
-
-        if len(ind.param_vector) > 32:
-            print(self.num_params, ind.param_vector[32:])
+            for i in range(len(self.bound_constraints)):
+                if self.bound_constraints[i] != None:
+                    min_val, max_val = self.bound_constraints[i]
+                    ind.param_vector[i] = np.clip(ind.param_vector[i], min_val, max_val)
 
         self.individuals_disbatched += 1
         return ind
@@ -213,11 +221,15 @@ class RandomGenerator(QDAlgorithmBase):
 
     def is_blocking(self):
         return False
-        # return self.individuals_disbatched == self.initial_population and self.individuals_evaluated == 0
 
     def generate_individual(self):
         ind = Individual()
         unscaled_params = np.random.normal(0.0, 1.0, self.num_params)
+        for i in range(len(self.bound_constraints)):
+            if self.bound_constraints[i] != None:
+                min_val, max_val = self.bound_constraints[i]
+                unscaled_params[i] = np.clip(ind.unscaled_params[i], min_val, max_val)
+
         ind.param_vector = unscaled_params
         self.individuals_disbatched += 1
         return ind
@@ -227,3 +239,238 @@ class RandomGenerator(QDAlgorithmBase):
         self.individuals_evaluated += 1
         self.feature_map.add(ind)
         return ind
+
+class ImprovementEmitter:
+
+    def __init__(self, mutation_power, population_size, feature_map, num_params):
+        self.population_size = population_size
+        self.sigma = mutation_power
+        self.individuals_disbatched = 0
+        self.individuals_evaluated = 0
+        self.individuals_released = 0
+        self.generation = 0
+        self.num_params = num_params
+
+        self.parents = []
+        self.population = []
+        self.feature_map=feature_map
+        
+        self.reset()
+
+    def reset(self):
+        self.mutation_power = self.sigma
+        if len(self.feature_map.elite_map) == 0:
+            self.mean = np.asarray([0.0] * self.num_params)
+        else:
+            self.mean = self.feature_map.get_random_elite().param_vector
+
+        # Setup evolution path variables
+        self.pc = np.zeros((num_params,), dtype=np.float_)
+        self.ps = np.zeros((num_params,), dtype=np.float_)
+
+        # Setup the covariance matrix
+        self.C = DecompMatrix(num_params)
+
+        # Reset the individuals evaluated
+        self.individuals_evaluated = 0
+
+
+    def check_stop(self, parents):
+        if self.C.condition_number > 1e14:
+            return True
+
+        area = self.mutation_power * math.sqrt(max(self.C.eigenvalues))
+        if area < 1e-11:
+            return True
+        if abs(parents[0].fitness-parents[-1].fitness) < 1e-12:
+            return True
+
+        return False
+
+	def is_blocking(self):
+		return self.individuals_disbatched > self.population_size * 1.1
+
+    def add_bound_constraint(self, index, bounds):
+
+        if len(self.bound_constraints) <= index:
+            new_bound_constraints = [
+                self.bound_constraints[i] if i < len(self.bound_constraints) else None \
+                for i in range(index+1)
+            ]
+            self.bound_constraints = new_bound_constraints
+
+        self.bound_constraints[index] = bounds
+
+    def generate_individual(self):
+
+        # Resampling method for bound constraints
+        while True:
+            unscaled_params = np.random.normal(0.0, self.mutation_power, num_params) \
+                            * np.sqrt(self.C.eigenvalues)
+            unscaled_params = np.matmul(self.C.eigenbasis, unscaled_params)
+            unscaled_params = self.mean + np.array(unscaled_params)
+            
+            is_within_bounds = True
+            for i in range(self.bound_constraints):
+                if self.bound_constriants[i] != None:
+                    min_val, max_val = self.bound_constraints[i]
+                    if unscaled_params[i] < min_val or unscaled_params[i] > max_val:
+                        is_within_bounds = False
+                        break
+
+            if is_within_bounds:
+                break
+
+        ind = Individual()
+        ind.param_vector = unscaled_params
+        ind.generation = self.generation
+
+        self.individuals_disbatched += 1
+        self.individuals_released += 1
+
+        return ind
+
+    def return_evaluated_individual(self, ind):
+        self.population.append(ind)
+        self.individuals_evaluated += 1
+        if self.feature_map.add(ind):
+            self.parents.append(ind)
+        if (ind.generation != self.generation)
+            return
+
+        if len(self.population) < self.population_size:
+            return
+
+        # Only filter by this generation
+        num_parents = len(self.parents)
+        needs_restart = num_parents == 0
+
+        # Only update if there are parents
+        if num_parents > 0:
+            parents = sorted(self.parents, key=lambda x: x.delta)[::-1]
+
+            # Create fresh weights for the number of elites found
+            weights = [math.log(num_parents + 0.5) \
+                    - math.log(i+1) for i in range(num_parents)] 
+            total_weights = sum(weights)
+            weights = np.array([w/total_weights for w in weights])
+        
+            # Dynamically update these parameters
+            mueff = sum(weights) ** 2 / sum(weights ** 2)
+            cc = (4+mueff/self.num_params)/(self.num_params+4 + 2*mueff/self.num_params)
+            cs = (mueff+2)/(self.num_params+mueff+5)
+            c1 = 2/((self.num_params+1.3)**2+mueff)
+            cmu = min(1-c1,2*(mueff-2+1/mueff)/((self.num_params+2)**2+mueff))
+            damps = 1 + 2*max(0,math.sqrt((mueff-1)/(self.num_params+1))-1)+cs
+            chiN = self.num_params**0.5 * (1-1/(4*self.num_params)+1./(21*self.num_params**2))
+
+            # Recombination of the new mean
+            old_mean = self.mean
+            self.mean = sum(ind.param_vector * w for ind, w in zip(parents, weights))
+
+            # Update the evolution path
+            y = self.mean - old_mean
+            z = np.matmul(self.C.invsqrt, y)
+            self.ps = (1-cs) * self.ps +\
+                (math.sqrt(cs * (2 - cs) * mueff) / self.mutation_power) * z
+            left = sum(x**2 for x in self.ps) / self.num_params \
+                / (1-(1-cs)**(2*self.individuals_evaluated / self.population_size)) 
+            right = 2 + 4./(self.num_params+1)
+            hsig = 1 if left < right else 0
+
+            self.pc = (1-cc) * self.pc + \
+                hsig * math.sqrt(cc*(2-cc)*mueff) * y
+
+            # Adapt the covariance matrix
+            c1a = c1 * (1 - (1-hsig**2) * cc * (2 - cc))
+            self.C.C *= (1 - c1a - cmu)
+            self.C.C += c1 * np.outer(self.pc, self.pc)
+            for k, w in enumerate(weights):
+                dv = parents[k].param_vector - old_mean
+                self.C.C += w * cmu * np.outer(dv, dv) / (self.mutation_power ** 2)
+
+            # Update the covariance matrix decomposition and inverse
+            if self.check_stop(parents):
+                needs_restart = True
+            else:
+                self.C.update_eigensystem()
+    
+            # Update sigma
+            cn, sum_square_ps = cs / damps, sum(x**2 for x in self.ps)
+            self.mutation_power *= math.exp(min(1, cn * (sum_square_ps / self.num_params - 1) / 2))
+
+        if needs_restart:
+            self.reset()
+
+        # Reset the population
+        self.generation += 1
+        self.population.clear()
+        self.parents.clear()
+
+class CMA_ME_Algorithm(QDAlgorithmBase):
+
+	def __init__(self,
+			 mutation_power,
+			 num_to_evaluate,
+			 population_size,
+			 feature_map,
+			 running_individual_log,
+			 frequent_map_log,
+			 map_summary_log,
+			 num_params=32):
+
+		super().__init__(feature_map, running_individual_log, 
+                         frequent_map_log,
+                         map_summary_log)
+
+        self.initial_population = initial_population
+        self.num_to_evaluate = num_to_evaluate
+        self.individuals_disbatched = 0
+        self.individuals_evaluated = 0
+        self.feature_map = feature_map
+        self.mutation_power = mutation_power
+        self.population_size = population_size
+
+        self.trial_name=trial_name
+        self.bc_names=bc_names
+
+	    self.emitters += [ImprovementEmitter(self.mutation_power, self.population_size, \
+                          self.feature_map, num_params) for i in range(5)]
+
+    def is_running(self):
+        return self.individuals_evaluated < self.num_to_evaluate
+
+	def is_blocking(self):
+		# If any of our emitters are not blocking, we are not blocking
+		for emitter in self.emitters:
+			if not emitter.is_blocking():
+				return False
+		return True
+
+    def add_bound_constraint(self, index, bounds):
+        for emitter in self.emitters:
+            emitter.add_bound_constraint(index, bounds)
+
+    def generate_individual(self):
+		pos = 0
+        emitter = None
+		for i in range(len(self.emitters)):
+			if not self.emitters[i].is_blocking() and \
+               (emitter == None or emitter.individuals_released > emitters[i].individuals_released):
+                emitter = self.emitters[i]
+                pos = i
+		
+		ind = emitter.generate_individual()
+		ind.emitter_id = pos
+
+        self.individuals_disbatched += 1
+        return ind
+
+    def return_evaluated_individual(self, ind):
+        ind.ID = self.individuals_evaluated
+        self.individuals_evaluated += 1
+
+        if ind.emitter_id == -1:
+            self.feature_map.add(ind)
+        else:
+            self.emitters[ind.emitter_id].return_evaluated_individual(ind)

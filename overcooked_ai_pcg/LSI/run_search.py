@@ -172,6 +172,20 @@ def search(dask_client, base_log_dir, num_simulations, algorithm_config, elite_m
             map_summary_log,
             num_params
         )
+    elif algorithm_name = "CMAME":
+        print("Start CMA-ME")
+        mutation_power = algorithm_config["mutation_power"]
+        pop_size = algorithm_config["population_size"]
+        algorithm = CMA_ME_Algorithm(
+            mutation_power,
+            num_simulations,
+            pop_size,
+            feature_map,
+            running_individual_log,
+            frequent_map_log,
+            map_summary_log,
+            num_params
+        )
 
     # run search
     start_time = time.time()
