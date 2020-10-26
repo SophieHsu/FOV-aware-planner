@@ -13,7 +13,8 @@ from overcooked_ai_pcg.helper import read_gan_param, read_in_lsi_config
 from overcooked_ai_pcg.LSI.evaluator import run_overcooked_eval
 from overcooked_ai_pcg.LSI.logger import (FrequentMapLog, MapSummaryLog,
                                           RunningIndividualLog)
-from overcooked_ai_pcg.LSI.qd_algorithms import (FeatureMap,
+from overcooked_ai_pcg.LSI.qd_algorithms import (CMA_ME_Algorithm,
+                                                 FeatureMap,
                                                  MapElitesAlgorithm,
                                                  RandomGenerator)
 
