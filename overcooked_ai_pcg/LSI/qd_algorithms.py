@@ -163,8 +163,8 @@ class QDAlgorithmBase(ABC):
                 running.
         """
         if self.is_running():
-            evaluated_ind = self.return_evaluated_individual(ind)
-            self.running_individual_log.log_individual(evaluated_ind)
+            self.return_evaluated_individual(ind)
+            self.running_individual_log.log_individual(ind)
             self.frequent_map_log.log_map(self.feature_map)
             self.map_summary_log.log_summary(self.feature_map,
                                              self.individuals_evaluated)
@@ -224,7 +224,6 @@ class MapElitesAlgorithm(QDAlgorithmBase):
         ind.ID = self.individuals_evaluated
         self.individuals_evaluated += 1
         self.feature_map.add(ind)
-        return ind
 
 
 class RandomGenerator(QDAlgorithmBase):
@@ -263,7 +262,6 @@ class RandomGenerator(QDAlgorithmBase):
         ind.ID = self.individuals_evaluated
         self.individuals_evaluated += 1
         self.feature_map.add(ind)
-        return ind
 
 class ImprovementEmitter:
 
