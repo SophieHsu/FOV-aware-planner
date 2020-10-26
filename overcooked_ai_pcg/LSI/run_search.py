@@ -172,7 +172,7 @@ def search(dask_client, base_log_dir, num_simulations, algorithm_config, elite_m
             map_summary_log,
             num_params
         )
-    elif algorithm_name = "CMAME":
+    elif algorithm_name == "CMAME":
         print("Start CMA-ME")
         mutation_power = algorithm_config["mutation_power"]
         pop_size = algorithm_config["population_size"]

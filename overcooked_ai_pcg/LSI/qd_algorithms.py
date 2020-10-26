@@ -287,8 +287,8 @@ class ImprovementEmitter:
 
         return False
 
-	def is_blocking(self):
-		return self.individuals_disbatched > self.population_size * 1.1
+    def is_blocking(self):
+        return self.individuals_disbatched > self.population_size * 1.1
 
     def add_bound_constraint(self, index, bounds):
 
@@ -335,7 +335,7 @@ class ImprovementEmitter:
         self.individuals_evaluated += 1
         if self.feature_map.add(ind):
             self.parents.append(ind)
-        if (ind.generation != self.generation)
+        if ind.generation != self.generation:
             return
 
         if len(self.population) < self.population_size:
@@ -409,20 +409,20 @@ class ImprovementEmitter:
 
 class CMA_ME_Algorithm(QDAlgorithmBase):
 
-	def __init__(self,
-			 mutation_power,
-			 num_to_evaluate,
-			 population_size,
-			 feature_map,
-			 running_individual_log,
-			 frequent_map_log,
-			 map_summary_log,
-			 num_params=32):
+    def __init__(self,
+             mutation_power,
+             num_to_evaluate,
+             population_size,
+             feature_map,
+             running_individual_log,
+             frequent_map_log,
+             map_summary_log,
+             num_params=32):
 
-		super().__init__(feature_map, running_individual_log, 
+        super().__init__(feature_map, running_individual_log, 
                          frequent_map_log,
                          map_summary_log)
-
+        
         self.initial_population = initial_population
         self.num_to_evaluate = num_to_evaluate
         self.individuals_disbatched = 0
@@ -434,34 +434,34 @@ class CMA_ME_Algorithm(QDAlgorithmBase):
         self.trial_name=trial_name
         self.bc_names=bc_names
 
-	    self.emitters += [ImprovementEmitter(self.mutation_power, self.population_size, \
+        self.emitters += [ImprovementEmitter(self.mutation_power, self.population_size, \
                           self.feature_map, num_params) for i in range(5)]
 
     def is_running(self):
         return self.individuals_evaluated < self.num_to_evaluate
 
-	def is_blocking(self):
-		# If any of our emitters are not blocking, we are not blocking
-		for emitter in self.emitters:
-			if not emitter.is_blocking():
-				return False
-		return True
+    def is_blocking(self):
+        # If any of our emitters are not blocking, we are not blocking
+        for emitter in self.emitters:
+            if not emitter.is_blocking():
+                return False
+        return True
 
     def add_bound_constraint(self, index, bounds):
         for emitter in self.emitters:
             emitter.add_bound_constraint(index, bounds)
 
     def generate_individual(self):
-		pos = 0
+        pos = 0
         emitter = None
-		for i in range(len(self.emitters)):
-			if not self.emitters[i].is_blocking() and \
+        for i in range(len(self.emitters)):
+            if not self.emitters[i].is_blocking() and \
                (emitter == None or emitter.individuals_released > emitters[i].individuals_released):
                 emitter = self.emitters[i]
                 pos = i
-		
-		ind = emitter.generate_individual()
-		ind.emitter_id = pos
+        
+        ind = emitter.generate_individual()
+        ind.emitter_id = pos
 
         self.individuals_disbatched += 1
         return ind
