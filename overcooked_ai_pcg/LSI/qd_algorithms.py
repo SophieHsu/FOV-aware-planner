@@ -22,6 +22,31 @@ class Individual:
     human_preference = None # float from 0 to 1 indicating human's subtask preference
     human_adaptiveness = None # float from 0 to 1; human's flexability to adapte to gameplay 
 
+class DecompMatrix:
+    def __init__(self, dimension):
+        self.C = np.eye(dimension, dtype=np.float_) 
+        self.eigenbasis = np.eye(dimension, dtype=np.float_)
+        self.eigenvalues = np.ones((dimension,), dtype=np.float_)
+        self.condition_number = 1
+        self.invsqrt = np.eye(dimension, dtype=np.float_)
+
+    def update_eigensystem(self):
+        for i in range(len(self.C)):
+            for j in range(i):
+                self.C[i,j] = self.C[j,i]
+        
+        self.eigenvalues, self.eigenbasis = eig(self.C) 
+        self.eigenvalues = np.real(self.eigenvalues)
+        self.eigenbasis = np.real(self.eigenbasis)
+        self.condition_number = max(self.eigenvalues) / min(self.eigenvalues)
+
+        for i in range(len(self.C)):
+            for j in range(i+1):
+                self.invsqrt[i,j] = self.invsqrt[j,i] = sum(
+                        self.eigenbasis[i,k] * self.eigenbasis[j,k]
+                        / self.eigenvalues[k] ** 0.5 for k in range(len(self.C))
+                    )
+
 class FeatureMap:
 
     def __init__(self, max_individuals, feature_ranges, resolutions):
@@ -254,6 +279,7 @@ class ImprovementEmitter:
         self.parents = []
         self.population = []
         self.feature_map=feature_map
+        self.bound_constraints = []
         
         self.reset()
 
@@ -265,11 +291,11 @@ class ImprovementEmitter:
             self.mean = self.feature_map.get_random_elite().param_vector
 
         # Setup evolution path variables
-        self.pc = np.zeros((num_params,), dtype=np.float_)
-        self.ps = np.zeros((num_params,), dtype=np.float_)
+        self.pc = np.zeros((self.num_params,), dtype=np.float_)
+        self.ps = np.zeros((self.num_params,), dtype=np.float_)
 
         # Setup the covariance matrix
-        self.C = DecompMatrix(num_params)
+        self.C = DecompMatrix(self.num_params)
 
         # Reset the individuals evaluated
         self.individuals_evaluated = 0
@@ -305,13 +331,13 @@ class ImprovementEmitter:
 
         # Resampling method for bound constraints
         while True:
-            unscaled_params = np.random.normal(0.0, self.mutation_power, num_params) \
+            unscaled_params = np.random.normal(0.0, self.mutation_power, self.num_params) \
                             * np.sqrt(self.C.eigenvalues)
             unscaled_params = np.matmul(self.C.eigenbasis, unscaled_params)
             unscaled_params = self.mean + np.array(unscaled_params)
             
             is_within_bounds = True
-            for i in range(self.bound_constraints):
+            for i in range(len(self.bound_constraints)):
                 if self.bound_constriants[i] != None:
                     min_val, max_val = self.bound_constraints[i]
                     if unscaled_params[i] < min_val or unscaled_params[i] > max_val:
@@ -423,7 +449,6 @@ class CMA_ME_Algorithm(QDAlgorithmBase):
                          frequent_map_log,
                          map_summary_log)
         
-        self.initial_population = initial_population
         self.num_to_evaluate = num_to_evaluate
         self.individuals_disbatched = 0
         self.individuals_evaluated = 0
@@ -431,11 +456,8 @@ class CMA_ME_Algorithm(QDAlgorithmBase):
         self.mutation_power = mutation_power
         self.population_size = population_size
 
-        self.trial_name=trial_name
-        self.bc_names=bc_names
-
-        self.emitters += [ImprovementEmitter(self.mutation_power, self.population_size, \
-                          self.feature_map, num_params) for i in range(5)]
+        self.emitters = [ImprovementEmitter(self.mutation_power, self.population_size, \
+                         self.feature_map, num_params) for i in range(5)]
 
     def is_running(self):
         return self.individuals_evaluated < self.num_to_evaluate
@@ -456,7 +478,7 @@ class CMA_ME_Algorithm(QDAlgorithmBase):
         emitter = None
         for i in range(len(self.emitters)):
             if not self.emitters[i].is_blocking() and \
-               (emitter == None or emitter.individuals_released > emitters[i].individuals_released):
+               (emitter == None or emitter.individuals_released > self.emitters[i].individuals_released):
                 emitter = self.emitters[i]
                 pos = i
         
