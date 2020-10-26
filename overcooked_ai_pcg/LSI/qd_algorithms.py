@@ -131,7 +131,6 @@ class QDAlgorithmBase(ABC):
     def is_blocking(self):
         pass
 
-    @abstractmethod
     def add_bound_constraint(self, index, bounds):
         
         if len(self.bound_constraints) <= index:
