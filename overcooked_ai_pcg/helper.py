@@ -256,6 +256,7 @@ def run_overcooked_game(ind, lvl_str, agent_config, render=True, worker_id=0):
     agent1, agent2, env = setup_env_from_grid(grid, agent_config, worker_id=worker_id, human_preference=ind.human_preference, human_adaptiveness=ind.human_adaptiveness)
     done = False
     total_sparse_reward = 0
+    time_last_reward_achieved = 0
     last_state = None
     timestep = 0
     while not done:
@@ -269,6 +270,8 @@ def run_overcooked_game(ind, lvl_str, agent_config, render=True, worker_id=0):
         total_sparse_reward += timestep_sparse_reward
         last_state = next_state
         timestep += 1
+        if timestep_sparse_reward > 0:
+            time_last_reward_achieved = timestep
 
     workloads = last_state.get_player_workload()
 
@@ -276,7 +279,7 @@ def run_overcooked_game(ind, lvl_str, agent_config, render=True, worker_id=0):
     gc.collect()
 
     # smooth fitness by subtracting timestep
-    fitness = (total_sparse_reward + 1) * 10 ** 6 - timestep
+    fitness = total_sparse_reward * 1000 - time_last_reward_achieved
     return fitness, total_sparse_reward, timestep, workloads
 
 def gen_int_rnd_lvl(size):
