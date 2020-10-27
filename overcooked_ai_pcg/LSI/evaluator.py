@@ -1,6 +1,8 @@
 """Defines a Ray remote function for running evaluations."""
 import resource
 
+import gc
+
 from overcooked_ai_pcg.GAN_training import dcgan
 from overcooked_ai_pcg.gen_lvl import generate_lvl
 from overcooked_ai_pcg.helper import run_overcooked_game
@@ -61,12 +63,15 @@ def run_overcooked_eval(ind, visualize, elite_map_config, agent_config, G_params
 
     # run simulation
     try:
-        ind.fitness, ind.score, ind.timestep, ind.player_workload = run_overcooked_game(ind, ind.level, agent_config, render=visualize, worker_id=worker_id)
+        ind.fitness, ind.score, ind.checkpoints, ind.player_workload = run_overcooked_game(ind, ind.level, agent_config, render=visualize, worker_id=worker_id)
     except TimeoutError:
         print(
             "worker(%d): Level generated taking too much time to plan. Skipping"
             % worker_id)
         return None
+
+    # run the garbage collector after each simulation
+    gc.collect()
 
     print_mem_usage("after running overcooked game", worker_id)
     

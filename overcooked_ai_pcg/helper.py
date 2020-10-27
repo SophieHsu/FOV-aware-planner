@@ -256,9 +256,13 @@ def run_overcooked_game(ind, lvl_str, agent_config, render=True, worker_id=0):
     agent1, agent2, env = setup_env_from_grid(grid, agent_config, worker_id=worker_id, human_preference=ind.human_preference, human_adaptiveness=ind.human_adaptiveness)
     done = False
     total_sparse_reward = 0
-    time_last_reward_achieved = 0
     last_state = None
     timestep = 0
+
+    # Saves when each soup (order) was delivered
+    checkpoints = [env.horizon-1] * env.num_orders
+    cur_order = 0
+
     while not done:
         if render:
             env.render()
@@ -268,19 +272,28 @@ def run_overcooked_game(ind, lvl_str, agent_config, render=True, worker_id=0):
         # print(joint_action)
         next_state, timestep_sparse_reward, done, info = env.step(joint_action)
         total_sparse_reward += timestep_sparse_reward
+        
+        if timestep_sparse_reward > 0:
+            checkpoints[cur_order] = timestep
+            cur_order += 1
+        
         last_state = next_state
         timestep += 1
-        if timestep_sparse_reward > 0:
-            time_last_reward_achieved = timestep
 
     workloads = last_state.get_player_workload()
 
-    del agent1, agent2, env
-    gc.collect()
+    # Smooth fitness is the total reward tie-broken by soup delivery times.
+    # Later soup deliveries are higher priority.
+    fitness = total_sparse_reward
+    for time in reversed(checkpoints):
+        fitness *= env.horizon
+        fitness += time
 
-    # smooth fitness by subtracting timestep
-    fitness = total_sparse_reward * 1000 - time_last_reward_achieved
-    return fitness, total_sparse_reward, time_last_reward_achieved, workloads
+    # Free up some memory
+    del agent1, agent2, env
+    
+    print("COMPLETE:", fitness, total_sparse_reward, checkpoints)
+    return fitness, total_sparse_reward, checkpoints, workloads
 
 def gen_int_rnd_lvl(size):
     """

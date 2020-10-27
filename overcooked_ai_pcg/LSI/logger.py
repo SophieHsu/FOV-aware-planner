@@ -41,7 +41,9 @@ class RunningIndividualLog(LoggerBase):
             os.remove(self._log_path)
 
         # construct labels
-        data_labels = ["ID", "fitness", "score", "timestep"]
+        data_labels = ["ID", "fitness", "score"]
+        # We need to be told how many orders we have
+        data_labels += ['order_delivered({})'.format(i+1) for i in range(2)]
         for bc in self._elite_map_config["Map"]["Features"]:
             data_labels.append(bc["name"])
         data_labels.append("lvl_str")
@@ -52,7 +54,7 @@ class RunningIndividualLog(LoggerBase):
             ind.ID,
             ind.fitness,
             ind.score,
-            ind.timestep,
+            *ind.checkpoints,
             *ind.features,
             ind.level,
         ]
