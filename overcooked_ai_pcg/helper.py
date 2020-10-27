@@ -1,7 +1,6 @@
 import os
 import json
 import torch
-import time
 import toml
 import numpy as np
 from matplotlib import pyplot as plt
@@ -13,7 +12,7 @@ from overcooked_ai_py.planning.planners import Heuristic
 from overcooked_ai_py import read_layout_dict
 from overcooked_ai_py import LAYOUTS_DIR
 from overcooked_ai_pcg import ERR_LOG_PIC, G_PARAM_FILE, LSI_CONFIG_ALGO_DIR, LSI_CONFIG_MAP_DIR, LSI_CONFIG_AGENT_DIR
-
+import time
 import gc
 
 obj_types = "12XSPOD "
@@ -258,6 +257,7 @@ def run_overcooked_game(ind, lvl_str, agent_config, render=True, worker_id=0):
     total_sparse_reward = 0
     last_state = None
     timestep = 0
+    np.random.seed(ind.rand_seed)
 
     # Saves when each soup (order) was delivered
     checkpoints = [env.horizon-1] * env.num_orders
@@ -285,9 +285,9 @@ def run_overcooked_game(ind, lvl_str, agent_config, render=True, worker_id=0):
     # Smooth fitness is the total reward tie-broken by soup delivery times.
     # Later soup deliveries are higher priority.
     fitness = total_sparse_reward + 1
-    for time in reversed(checkpoints):
+    for t in reversed(checkpoints):
         fitness *= env.horizon
-        fitness -= time
+        fitness -= t
 
     # Free up some memory
     del agent1, agent2, env

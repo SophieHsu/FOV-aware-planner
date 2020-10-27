@@ -76,6 +76,13 @@ def run_overcooked_eval(ind, visualize, elite_map_config, agent_config, G_params
     print_mem_usage("after running overcooked game", worker_id)
     
     # calculate bc out of the game
+    worker_id, ind = calculate_bc(worker_id, ind, elite_map_config)
+
+    print_mem_usage("end", worker_id)
+    gc.collect()
+    return ind
+
+def calculate_bc(worker_id, ind, elite_map_config):
     ind.features = []
     for bc in elite_map_config["Map"]["Features"]:
         # get the function that calculates bc
@@ -86,6 +93,4 @@ def run_overcooked_eval(ind, visualize, elite_map_config, agent_config, G_params
     ind.features = tuple(ind.features)
     print("worker(%d): Game end; fitness = %d" % (worker_id, ind.fitness))
 
-    print_mem_usage("end", worker_id)
-    gc.collect()
-    return ind
+    return worker_id, ind

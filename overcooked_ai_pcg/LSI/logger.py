@@ -19,6 +19,11 @@ class LoggerBase(ABC):
             writer.writerow(to_add)
             f.close()
 
+    def _read_row(self):
+        with open(self._log_path, 'r') as f:
+            # Read all the data from the csv file
+            allRows = list(csv.reader(f, delimiter=','))
+
 
 class RunningIndividualLog(LoggerBase):
     """
@@ -46,7 +51,7 @@ class RunningIndividualLog(LoggerBase):
         data_labels += ['order_delivered({})'.format(i+1) for i in range(2)]
         for bc in self._elite_map_config["Map"]["Features"]:
             data_labels.append(bc["name"])
-        data_labels.append("lvl_str")
+        data_labels += ["player_workload", "human_preference", "human_adaptiveness", "rand_seed", "lvl_str"]
         self._write_row(data_labels)
 
     def log_individual(self, ind):
@@ -56,6 +61,10 @@ class RunningIndividualLog(LoggerBase):
             ind.score,
             *ind.checkpoints,
             *ind.features,
+            ind.player_workload,
+            ind.human_preference,
+            ind.human_adaptiveness,
+            ind.rand_seed,
             ind.level,
         ]
         self._write_row(to_add)

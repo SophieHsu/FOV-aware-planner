@@ -23,6 +23,7 @@ class Individual:
     # human model params
     human_preference = None # float from 0 to 1 indicating human's subtask preference
     human_adaptiveness = None # float from 0 to 1; human's flexability to adapte to gameplay 
+    rand_seed = 0
 
 class DecompMatrix:
     def __init__(self, dimension):
