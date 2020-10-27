@@ -8,11 +8,7 @@ from overcooked_ai_pcg.helper import run_overcooked_game, read_in_lsi_config
 from overcooked_ai_pcg.LSI.qd_algorithms import Individual
 
 
-def play(elite_map,
-         agent_config,
-         individuals,
-         f1, f2,
-         row_idx, col_idx):
+def play(elite_map, agent_config, individuals, f1, f2, row_idx, col_idx):
     """
     Find the individual in the specified cell in the elite map
     and run overcooked game with the specified agents
@@ -35,14 +31,13 @@ def play(elite_map,
             print("Playing in individual %d" % ind_id)
             print(lvl_str)
             ind = Individual()
-            # TODO: add human params here from log
-            ind.human_preference = 0.3
-            ind.human_adaptiveness = 0.5
-            fitness, _, _, _ = run_overcooked_game(ind,
-                                                   lvl_str,
-                                                   agent_config,
-                                                   render=True)
-            print("Fitness: %d" % fitness)
+            ind.human_preference = individuals["human_preference"][ind_id]
+            ind.human_adaptiveness = individuals["human_adaptiveness"][ind_id]
+            ind.rand_seed = individuals["rand_seed"][ind_id]
+            ind.fitness, ind.score, ind.checkpoints, ind.player_workload = run_overcooked_game(
+                ind, lvl_str, agent_config, render=True)
+            print("Fitness: %d" % ind.fitness)
+            print("Score: %d" % ind.score)
             return
 
     print("No individual found in the specified cell")
@@ -53,17 +48,19 @@ if __name__ == "__main__":
     parser.add_argument('-c',
                         '--config',
                         help='path of experiment config file',
-                        required=False,
-                        default=os.path.join(
-                            LSI_CONFIG_EXP_DIR,
-                            "MAPELITES_workloads_diff_fixed_plan.tml"))
+                        required=True)
     parser.add_argument('-l',
                         '--log_dir',
                         help='path of log directory',
-                        required=False,
-                        default=os.path.join(
-                            LSI_LOG_DIR,
-                            "2020-10-25_ 1-18-35_MAPELITES-workloads-diff"))
+                        required=True)
+    parser.add_argument('-row',
+                        '--row_idx',
+                        help='index f1 in elite map',
+                        required=True)
+    parser.add_argument('-col',
+                        '--col_idx',
+                        help='index f2 in elite map',
+                        required=True)
     parser.add_argument('-f1',
                         '--feature1_idx',
                         help='index of the first feature to be used',
@@ -74,14 +71,6 @@ if __name__ == "__main__":
                         help='index of the second feature to be used',
                         required=False,
                         default=1)
-    parser.add_argument('-row',
-                        '--row_idx',
-                        help='index f1 in elite map',
-                        required=True)
-    parser.add_argument('-col',
-                        '--col_idx',
-                        help='index f2 in elite map',
-                        required=True)
 
     opt = parser.parse_args()
 
@@ -104,15 +93,15 @@ if __name__ == "__main__":
     num_features = len(features)
     f1 = int(opt.feature1_idx)
     f2 = int(opt.feature2_idx)
-    assert(f1<num_features)
-    assert(f2<num_features)
+    assert (f1 < num_features)
+    assert (f2 < num_features)
 
     # read in row/col index
     num_row = features[f1]['resolution']
     num_col = features[f2]['resolution']
     row_idx = int(opt.row_idx)
     col_idx = int(opt.col_idx)
-    assert(row_idx<num_row)
-    assert(col_idx<num_col)
+    assert (row_idx < num_row)
+    assert (col_idx < num_col)
 
     play(elite_map, agent_config, individuals, f1, f2, row_idx, col_idx)
