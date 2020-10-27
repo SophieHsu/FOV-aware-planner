@@ -4,7 +4,7 @@
 #SBATCH --mem-per-cpu=4GB
 #SBATCH --nodes=1
 #SBATCH --tasks-per-node=1
-#SBATCH --time=36:00:00
+#SBATCH --time=7:00:00
 #SBATCH --account=nikolaid_548
 #SBATCH --output ./logs/slurm-%j.out
 #SBATCH --error ./logs/slurm-%j.out

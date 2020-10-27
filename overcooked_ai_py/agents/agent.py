@@ -562,7 +562,7 @@ class oneGoalHumanModel(Agent):
     
     Note: may not work if the onion can not be directly deliveried to the pot
     """
-    def __init__(self, ml_action_manager, one_goal=None, auto_unstuck=True):
+    def __init__(self, ml_action_manager, one_goal=None, auto_unstuck=False):
         self.ml_action_manager = ml_action_manager
         self.mdp = self.ml_action_manager.mdp
         self.mp = ml_action_manager.motion_planner
@@ -637,13 +637,13 @@ class oneGoalHumanModel(Agent):
         # HACK: if two agents get stuck, select an action at random that would
         # change the player positions if the other player were not to move
         if self.prev_state is not None and state.players_pos_and_or == self.prev_state.players_pos_and_or:
-            if self.agent_index == 0:
-                joint_actions = list(itertools.product(Action.ALL_ACTIONS, [Action.STAY]))
-            elif self.agent_index == 1:
-                joint_actions = list(itertools.product([Action.STAY], Action.ALL_ACTIONS))
-            else:
-                raise ValueError("Player index not recognized")
-
+            # if self.agent_index == 0:
+            #     joint_actions = list(itertools.product(Action.ALL_ACTIONS, [Action.STAY]))
+            # elif self.agent_index == 1:
+            #     joint_actions = list(itertools.product([Action.STAY], Action.ALL_ACTIONS))
+            # else:
+            #     raise ValueError("Player index not recognized")
+            joint_actions = list(itertools.product(Action.MOTION_ACTIONS, Action.MOTION_ACTIONS))
             unblocking_joint_actions = []
             for j_a in joint_actions:
                 new_state, _, _, _ = self.mdp.get_state_transition(state, j_a)
@@ -836,8 +836,7 @@ class biasHumanModel(oneGoalHumanModel):
     The human has a preference distribution over being a type of one-goal human model. Distribution is pre-defined once the model is initiated. The final task the human chooses to execute depends on the initial distribution and the environment.
     """
 
-    def __init__(self, ml_action_manager, goal_preference, adaptiveness, auto_unstuck=True):
-        super().__init__(ml_action_manager, auto_unstuck)
+    def __init__(self, ml_action_manager, goal_preference, adaptiveness, auto_unstuck=False):
         
         # A list containing probability of executing each task. The total probability should sum up to 1.
         self.goal_preference = np.array(goal_preference)
@@ -845,6 +844,8 @@ class biasHumanModel(oneGoalHumanModel):
         self.prev_goal_dstb = self.goal_preference
         self.sub_goals = {'Onion cooker':0, 'Soup server':1}
         self.prev_goal = None
+
+        super().__init__(ml_action_manager, auto_unstuck=auto_unstuck)
 
         # print('Initial human task preference: {:.3f}% onion cooker, {:.3f}% soup server'.format(self.prev_goal_dstb[0]*100, self.prev_goal_dstb[1]*100))
 
@@ -1082,15 +1083,9 @@ class MediumMdpPlanningAgent(Agent):
 
     def resolve_stuck(self, state, chosen_action, action_probs):
         # HACK: if two agents get stuck, select an action at random that would
-        # change the player positions if the other player were not to move
+        # change the player positions if the other player were to move
         if self.prev_state is not None and state.players_pos_and_or == self.prev_state.players_pos_and_or:
-            if self.agent_index == 0:
-                joint_actions = list(itertools.product(Action.ALL_ACTIONS, [Action.STAY]))
-            elif self.agent_index == 1:
-                joint_actions = list(itertools.product([Action.STAY], Action.ALL_ACTIONS))
-            else:
-                raise ValueError("Player index not recognized")
-
+            joint_actions = list(itertools.product(Action.MOTION_ACTIONS, Action.MOTION_ACTIONS))
             unblocking_joint_actions = []
             for j_a in joint_actions:
                 new_state, _, _, _ = self.mdp_planner.mdp.get_state_transition(state, j_a)

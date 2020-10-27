@@ -4,6 +4,7 @@ import pygame
 # import matplotlib.pyplot as plt
 from argparse import ArgumentParser
 import numpy as np
+import gc
 
 from overcooked_ai_py.mdp.overcooked_mdp import OvercookedGridworld, OvercookedState, Direction, Action, PlayerState, ObjectState
 from overcooked_ai_py.mdp.overcooked_env import OvercookedEnv
@@ -152,18 +153,15 @@ if __name__ == "__main__" :
     #     [P((2, 1), s, Obj('onion', (2, 1))),
     #      P((3, 2), s)],
     #     {}, order_list=['onion','onion'])
-    env = OvercookedEnv.from_mdp(scenario_1_mdp)
+    env = OvercookedEnv.from_mdp(scenario_1_mdp, horizon = 1000)
 
-    print('starting MediumLevelActionManager')
     ml_action_manager = planners.MediumLevelActionManager(scenario_1_mdp, NO_COUNTERS_PARAMS)
 
     # a0 = agent.GreedyHumanModel(mlp)
 
-    print('starting HumanMediumLevelPlanner')
-    hmlp = planners.HumanMediumLevelPlanner(scenario_1_mdp, ml_action_manager, [0.4, 0.6], 0.3)
-    a0 = agent.biasHumanModel(ml_action_manager, [0.4, 0.6], 0.3, auto_unstuck=True)
+    hmlp = planners.HumanMediumLevelPlanner(scenario_1_mdp, ml_action_manager, [0.1, 0.9], 0.3)
+    a0 = agent.biasHumanModel(ml_action_manager, [0.1, 0.9], 0.3, auto_unstuck=True)
 
-    print('starting HumanAwareMediumMDPPlanner')
     # mdp_planner = planners.MediumLevelMdpPlanner.from_pickle_or_compute(scenario_1_mdp, NO_COUNTERS_PARAMS, mlp, force_compute_all=True)
     mdp_planner = planners.HumanAwareMediumMDPPlanner.from_pickle_or_compute(scenario_1_mdp, NO_COUNTERS_PARAMS, hmlp, ml_action_manager, force_compute_all=True)
     a1 = agent.MediumMdpPlanningAgent(mdp_planner, env, auto_unstuck=True)
@@ -172,8 +170,11 @@ if __name__ == "__main__" :
     # a1 = agent.biasHumanModel(mlp, [0.3, 0.7], 0.3, auto_unstuck=True)
 
     # a1 = MdpPlanningAgent(a0, mdp_planner, env)
-
+    del ml_action_manager, hmlp, mdp_planner
+    gc.collect()
     agent_pair = agent.AgentPair(a0, a1)
+
+
 
     s_t, joint_a_t, r_t, done_t = env.run_agents(agent_pair, include_final_state=True, display=DISPLAY)
 
