@@ -8,13 +8,13 @@ import dask.distributed
 import toml
 import torch
 from dask_jobqueue import SLURMCluster
+
 from overcooked_ai_pcg import GAN_TRAINING_DIR, LSI_CONFIG_EXP_DIR, LSI_LOG_DIR
 from overcooked_ai_pcg.helper import read_gan_param, read_in_lsi_config
 from overcooked_ai_pcg.LSI.evaluator import run_overcooked_eval
 from overcooked_ai_pcg.LSI.logger import (FrequentMapLog, MapSummaryLog,
                                           RunningIndividualLog)
-from overcooked_ai_pcg.LSI.qd_algorithms import (CMA_ME_Algorithm,
-                                                 FeatureMap,
+from overcooked_ai_pcg.LSI.qd_algorithms import (CMA_ME_Algorithm, FeatureMap,
                                                  MapElitesAlgorithm,
                                                  RandomGenerator)
 
@@ -36,7 +36,7 @@ def init_logging_dir(config_path, experiment_config, algorithm_config,
     # create logging directory
     exp_name = os.path.basename(config_path).replace(".tml",
                                                      "").replace("_", "-")
-    time_str = time.strftime("%Y-%m-%d_%k-%M-%S")
+    time_str = time.strftime("%Y-%m-%d_%H-%M-%S")
     base_log_dir = time_str + "_" + exp_name
     log_dir = os.path.join(LSI_LOG_DIR, base_log_dir)
     os.mkdir(log_dir)
@@ -106,7 +106,8 @@ def init_dask(experiment_config, log_dir):
     return dask.distributed.Client(cluster)
 
 
-def search(dask_client, base_log_dir, num_simulations, algorithm_config, elite_map_config, agent_config, model_path, visualize, num_cores):
+def search(dask_client, base_log_dir, num_simulations, algorithm_config,
+           elite_map_config, agent_config, model_path, visualize, num_cores):
     """
     Run search with the specified algorithm and elite map
 
@@ -152,41 +153,24 @@ def search(dask_client, base_log_dir, num_simulations, algorithm_config, elite_m
         mutation_power = algorithm_config["mutation_power"]
         initial_population = algorithm_config["initial_population"]
         # pylint: disable=no-member
-        algorithm = MapElitesAlgorithm(
-            mutation_power,
-            initial_population,
-            num_simulations,
-            feature_map,
-            running_individual_log,
-            frequent_map_log,
-            map_summary_log,
-            num_params
-        )
+        algorithm = MapElitesAlgorithm(mutation_power, initial_population,
+                                       num_simulations, feature_map,
+                                       running_individual_log, frequent_map_log,
+                                       map_summary_log, num_params)
     elif algorithm_name == "RANDOM":
         print("Start Running RANDOM")
         # pylint: disable=no-member
-        algorithm = RandomGenerator(
-            num_simulations,
-            feature_map,
-            running_individual_log,
-            frequent_map_log,
-            map_summary_log,
-            num_params
-        )
+        algorithm = RandomGenerator(num_simulations, feature_map,
+                                    running_individual_log, frequent_map_log,
+                                    map_summary_log, num_params)
     elif algorithm_name == "CMAME":
         print("Start CMA-ME")
         mutation_power = algorithm_config["mutation_power"]
         pop_size = algorithm_config["population_size"]
-        algorithm = CMA_ME_Algorithm(
-            mutation_power,
-            num_simulations,
-            pop_size,
-            feature_map,
-            running_individual_log,
-            frequent_map_log,
-            map_summary_log,
-            num_params
-        )
+        algorithm = CMA_ME_Algorithm(mutation_power, num_simulations, pop_size,
+                                     feature_map, running_individual_log,
+                                     frequent_map_log, map_summary_log,
+                                     num_params)
 
     # Super hacky! This is where we add bounded constraints for the human model.
     if num_params > 32:
@@ -296,7 +280,8 @@ def run(
         read_in_lsi_config(config)
 
     log_dir, base_log_dir = init_logging_dir(config, experiment_config,
-                                             algorithm_config, elite_map_config, agent_config)
+                                             algorithm_config, elite_map_config,
+                                             agent_config)
     print("LOGGING DIRECTORY:", log_dir)
 
     # start LSI search
