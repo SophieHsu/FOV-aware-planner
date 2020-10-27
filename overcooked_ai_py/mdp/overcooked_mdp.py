@@ -405,6 +405,27 @@ EVENT_TYPES = [
     'soup_drop'
 ]
 
+SIMPLE_EVENT_TYPES = [
+    # Onion events
+    'onion_pickup',
+    'onion_drop',
+    'onion_potting',
+
+    # Tomato events
+    'tomato_pickup',
+    'tomato_drop',
+    'tomato_potting',
+
+    # Dish events
+    'dish_pickup',
+    'dish_drop',
+
+    # Soup events
+    'soup_pickup',
+    'soup_delivery',
+    'soup_drop'
+]
+
 class OvercookedGridworld(object):
     """
     An MDP grid world based off of the Overcooked game.
@@ -902,7 +923,7 @@ class OvercookedGridworld(object):
     def get_terrain_type_at_pos(self, pos):
         x, y = pos
         return self.terrain_mtx[y][x]
-
+ 
     def get_dish_dispenser_locations(self):
         return list(self.terrain_pos_dict['D'])
 

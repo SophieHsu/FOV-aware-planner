@@ -1,0 +1,12 @@
+[Search]
+num_param=34
+type="human"
+
+[Agent1]
+name="preferenced_human"
+auto_unstuck=true
+
+[Agent2]
+name="human_aware_agent"
+auto_unstuck=true
+

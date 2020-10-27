@@ -73,6 +73,7 @@ class OvercookedEnv(object):
         self.start_state_fn = start_state_fn
         self.info_level = info_level
         self.reset()
+        self.num_orders = len(self.mdp.start_order_list)
         if self.horizon >= MAX_HORIZON and self.state.order_list is None and self.info_level > 0:
             print("Environment has (near-)infinite horizon and no terminal states. \
                 Reduce info level of OvercookedEnv to not see this message.")
@@ -285,7 +286,12 @@ class OvercookedEnv(object):
 
             if display and self.t < display_until:
                 self.print_state_transition(a_t, r_t, info)
+            
+            if self.t > 3000:
+                break
 
+            tmp = input()
+            
         assert len(trajectory) == self.t, "{} vs {}".format(len(trajectory), self.t)
 
         # Add final state
@@ -294,7 +300,7 @@ class OvercookedEnv(object):
 
         total_sparse = sum(self.game_stats["cumulative_sparse_rewards_by_agent"])
         total_shaped = sum(self.game_stats["cumulative_shaped_rewards_by_agent"])
-        return np.array(trajectory), self.t, total_sparse, total_shaped
+        return np.array(trajectory, dtype=object), self.t, total_sparse, total_shaped
 
     def get_rollouts(self, agent_pair, num_games, display=False, final_state=False, display_until=np.Inf, metadata_fn=None, metadata_info_fn=None, info=True):
         """

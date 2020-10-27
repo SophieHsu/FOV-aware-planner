@@ -3,3 +3,4 @@ num_cores=16
 num_simulations=1000
 algorithm_config="map_elites.tml"
 elite_map_config="min_dist_POPD.tml"
+agent_config="fixed_plan_w_fixed_plan.tml"

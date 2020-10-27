@@ -1,0 +1,18 @@
+{
+    "grid":  """XXXXXXXXXXXXXXX
+                X2    XX1XSXOXX
+                XX           XX
+                XX XXXXXXXX XXX
+                X    XXXXX    P
+                X   XXXXXXXX  X
+                X    XXXXXXXXXX
+                XX        XXXXX
+                X      XX XXXXX
+                XXDXOXXXXXXXXXX""",
+    "start_order_list": 'onion, any',
+    "cook_time": 10,
+    "num_items_for_soup": 3,
+    "delivery_reward": 20,
+    "rew_shaping_params": None
+}
+

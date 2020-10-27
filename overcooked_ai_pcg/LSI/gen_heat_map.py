@@ -12,7 +12,7 @@ import toml
 import argparse
 import seaborn as sns
 import pandas as pd
-from itertools import product
+from itertools import product, combinations
 from overcooked_ai_pcg import LSI_IMAGE_DIR, LSI_LOG_DIR
 from overcooked_ai_pcg.helper import read_in_lsi_config
 
@@ -32,10 +32,10 @@ FITNESS_MAX = 100
 
 
 def createRecordList(mapData, mapDims):
-    recordList = []
+    recordList = []; trackRmIndexPairs = {}
     indexPairs = [(x, y)
-                  for x, y in product(range(mapDims[0]), range(mapDims[1]))]
-    for cellData in mapData:
+                  for x, y in product(range(mapDims[ROW_INDEX]), range(mapDims[COL_INDEX]))]
+    for i, cellData in enumerate(mapData):
         # splite data from csv file
         splitedData = cellData.split(":")
         cellRow = int(splitedData[ROW_INDEX])
@@ -47,8 +47,15 @@ def createRecordList(mapData, mapDims):
         f2 = float(splitedData[nonFeatureIdx + 2 + COL_INDEX])
 
         data = [cellRow, cellCol, indID, fitness, f1, f2]
-        recordList.append(data)
-        indexPairs.remove((cellRow, cellCol))
+
+        if (cellRow, cellCol) in indexPairs:
+            indexPairs.remove((cellRow, cellCol))
+            trackRmIndexPairs[str(cellRow)+'_'+str(cellCol)] = len(recordList)
+            recordList.append(data)
+        else:
+            track_idx = trackRmIndexPairs[str(cellRow)+'_'+str(cellCol)]
+            if data[3] > recordList[track_idx][3]:
+                recordList[track_idx] = data
 
     # Put in the blank cells
     for x, y in indexPairs:
@@ -92,8 +99,8 @@ def createImage(rowData, filename):
     fitnessMap.sort_index(level=1, ascending=False, inplace=True)
     with sns.axes_style("white"):
         numTicks = 5  #11
-        numTicksX = mapDims[0] // numTicks + 1
-        numTicksY = mapDims[1] // numTicks + 1
+        numTicksX = mapDims[ROW_INDEX] // numTicks + 1
+        numTicksY = mapDims[COL_INDEX] // numTicks + 1
         plt.figure(figsize=(3, 3))
         g = sns.heatmap(
             fitnessMap,
@@ -145,21 +152,16 @@ def generateAll(logPath):
         # Read all the data from the csv file
         allRows = list(csv.reader(csvfile, delimiter=','))
 
-        # Clear out the previous images
-        tmpImageFolder = LSI_IMAGE_DIR
-        if not os.path.exists(tmpImageFolder):
-            os.mkdir(tmpImageFolder)
-        for curFile in glob.glob(tmpImageFolder + '/*'):
-            os.remove(curFile)
+        
 
         # generate the movie
         template = os.path.join(tmpImageFolder, 'grid_{:05d}.png')
         createImages(STEP_SIZE, allRows[1:], template)
-        movieFilename = 'fitness.avi'
+        movieFilename = 'fitness_'+str(ROW_INDEX)+'_'+str(COL_INDEX)+'.avi'
         createMovie(tmpImageFolder, movieFilename)
 
         # Create the final image we need
-        imageFilename = 'fitnessMap.png'
+        imageFilename = 'fitnessMap_'+str(ROW_INDEX)+'_'+str(COL_INDEX)+'.png'
         createImage(allRows[-1], os.path.join(LSI_IMAGE_DIR, imageFilename))
 
 
@@ -183,7 +185,7 @@ if __name__ == "__main__":
                         '--step_size',
                         help='step size of the animation to generate',
                         required=False,
-                        default=5)
+                        default=100)
     parser.add_argument('-l',
                         '--log_file',
                         help='filepath to the elite map log file',
@@ -192,18 +194,24 @@ if __name__ == "__main__":
     opt = parser.parse_args()
 
     # read in the name of the algorithm and features to plot
-    experiment_config, algorithm_config, elite_map_config = read_in_lsi_config(
+    experiment_config, algorithm_config, elite_map_config, agent_config = read_in_lsi_config(
         opt.config)
     features = elite_map_config['Map']['Features']
 
     # read in parameters
     NUM_FEATURES = len(features)
-    ROW_INDEX = int(opt.feature1_idx)
-    COL_INDEX = int(opt.feature2_idx)
-    STEP_SIZE = int(opt.step_size)
-    IMAGE_TITLE = algorithm_config['name']
-    FEATURE1_LABEL = features[ROW_INDEX]['name']
-    FEATURE2_LABEL = features[COL_INDEX]['name']
     LOG_FILE_NAME = opt.log_file
+    # Clear out the previous images
+    tmpImageFolder = LSI_IMAGE_DIR  
+    if not os.path.exists(tmpImageFolder):
+        os.mkdir(tmpImageFolder)
+    for curFile in glob.glob(tmpImageFolder + '/*'):
+        os.remove(curFile)
 
-    generateAll(LOG_FILE_NAME)
+    for ROW_INDEX, COL_INDEX in combinations(range(NUM_FEATURES), 2):
+        STEP_SIZE = int(opt.step_size)
+        IMAGE_TITLE = algorithm_config['name']
+        FEATURE1_LABEL = features[ROW_INDEX]['name']
+        FEATURE2_LABEL = features[COL_INDEX]['name']
+
+        generateAll(LOG_FILE_NAME)
