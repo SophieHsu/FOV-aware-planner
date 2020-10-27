@@ -285,9 +285,9 @@ def run_overcooked_game(ind, lvl_str, agent_config, render=True, worker_id=0):
     # Smooth fitness is the total reward tie-broken by soup delivery times.
     # Later soup deliveries are higher priority.
     fitness = total_sparse_reward + 1
-    for t in reversed(checkpoints):
+    for timestep in reversed(checkpoints):
         fitness *= env.horizon
-        fitness -= t
+        fitness -= timestep
 
     # Free up some memory
     del agent1, agent2, env

@@ -200,7 +200,7 @@ if __name__ == "__main__":
     NUM_FEATURES = len(features)
     LOG_FILE_NAME = opt.log_file
     # Clear out the previous images
-    tmpImageFolder = LSI_IMAGE_DIR  
+    tmpImageFolder = LSI_IMAGE_DIR
     if not os.path.exists(tmpImageFolder):
         os.mkdir(tmpImageFolder)
     for curFile in glob.glob(tmpImageFolder + '/*'):
