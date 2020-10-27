@@ -6,8 +6,8 @@
 #SBATCH --tasks-per-node=1
 #SBATCH --time=02:00:00
 #SBATCH --account=nikolaid_548
-#SBATCH --output ./logs/slurm-%j.out
-#SBATCH --error ./logs/slurm-%j.out
+#SBATCH --output ./hpc/logs/slurm-%j.out
+#SBATCH --error ./hpc/logs/slurm-%j.out
 
 # The configuration of this main job is very small because Dask spawns other
 # jobs.
