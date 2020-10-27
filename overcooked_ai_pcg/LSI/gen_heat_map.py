@@ -152,8 +152,6 @@ def generateAll(logPath):
         # Read all the data from the csv file
         allRows = list(csv.reader(csvfile, delimiter=','))
 
-        
-
         # generate the movie
         template = os.path.join(tmpImageFolder, 'grid_{:05d}.png')
         createImages(STEP_SIZE, allRows[1:], template)
@@ -202,7 +200,7 @@ if __name__ == "__main__":
     NUM_FEATURES = len(features)
     LOG_FILE_NAME = opt.log_file
     # Clear out the previous images
-    tmpImageFolder = LSI_IMAGE_DIR  
+    tmpImageFolder = LSI_IMAGE_DIR
     if not os.path.exists(tmpImageFolder):
         os.mkdir(tmpImageFolder)
     for curFile in glob.glob(tmpImageFolder + '/*'):

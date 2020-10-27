@@ -14,7 +14,7 @@ from overcooked_ai_pcg.GAN_training import dcgan
 from overcooked_ai_pcg.helper import (gen_int_rnd_lvl, lvl_number2str,
                                       obj_types, read_gan_param,
                                       run_overcooked_game, setup_env_from_grid,
-                                      read_in_lsi_config)
+                                      read_in_lsi_config, lvl_str2grid)
 from overcooked_ai_pcg.milp_repair import repair_lvl
 from overcooked_ai_pcg.LSI.qd_algorithms import Individual
 
@@ -142,7 +142,6 @@ def main(config):
     #              """
     # lvl_str = generate_rnd_lvl((5, 5))
 
-    grid = [layout_row.strip() for layout_row in lvl_str.split("\n")][:-1]
     ind = Individual()
     fitness, _, _, _ = run_overcooked_game(ind, lvl_str, agent_config, render=True)
     print("fitness: %d" % fitness)

@@ -1,0 +1,118 @@
+import os
+import csv
+import time
+import argparse
+import pandas as pd
+from overcooked_ai_pcg import LSI_CONFIG_EXP_DIR, LSI_LOG_DIR
+from overcooked_ai_pcg.helper import run_overcooked_game, read_in_lsi_config
+from overcooked_ai_pcg.LSI.qd_algorithms import Individual
+
+
+def play(elite_map,
+         agent_config,
+         individuals,
+         f1, f2,
+         row_idx, col_idx):
+    """
+    Find the individual in the specified cell in the elite map
+    and run overcooked game with the specified agents
+
+    Args:
+        elite_map (list): list of logged cell strings.
+                          See elite_map.csv for detail.
+        agent_config: toml config object of agents
+        individuals (pd.dataFrame): all individuals logged
+        f1, f2 (int, int): index of the features to use
+        row_idx, col_idx (int, int): index of the cell in the elite map
+    """
+    for elite in elite_map:
+        splited = elite.split(":")
+        curr_row_idx = int(splited[f1])
+        curr_col_idx = int(splited[f2])
+        if curr_row_idx == row_idx and curr_col_idx == col_idx:
+            ind_id = int(splited[num_features])
+            lvl_str = individuals["lvl_str"][ind_id]
+            print("Playing in individual %d" % ind_id)
+            print(lvl_str)
+            ind = Individual()
+            # TODO: add human params here from log
+            ind.human_preference = 0.3
+            ind.human_adaptiveness = 0.5
+            fitness, _, _, _ = run_overcooked_game(ind,
+                                                   lvl_str,
+                                                   agent_config,
+                                                   render=True)
+            print("Fitness: %d" % fitness)
+            return
+
+    print("No individual found in the specified cell")
+
+
+if __name__ == "__main__":
+    parser = argparse.ArgumentParser()
+    parser.add_argument('-c',
+                        '--config',
+                        help='path of experiment config file',
+                        required=False,
+                        default=os.path.join(
+                            LSI_CONFIG_EXP_DIR,
+                            "MAPELITES_workloads_diff_fixed_plan.tml"))
+    parser.add_argument('-l',
+                        '--log_dir',
+                        help='path of log directory',
+                        required=False,
+                        default=os.path.join(
+                            LSI_LOG_DIR,
+                            "2020-10-25_ 1-18-35_MAPELITES-workloads-diff"))
+    parser.add_argument('-f1',
+                        '--feature1_idx',
+                        help='index of the first feature to be used',
+                        required=False,
+                        default=0)
+    parser.add_argument('-f2',
+                        '--feature2_idx',
+                        help='index of the second feature to be used',
+                        required=False,
+                        default=1)
+    parser.add_argument('-row',
+                        '--row_idx',
+                        help='index f1 in elite map',
+                        required=True)
+    parser.add_argument('-col',
+                        '--col_idx',
+                        help='index f2 in elite map',
+                        required=True)
+
+    opt = parser.parse_args()
+
+    # read in full elite map
+    log_dir = opt.log_dir
+    elite_map_log_file = os.path.join(log_dir, "elite_map.csv")
+    elite_map_log = open(elite_map_log_file, 'r')
+    all_rows = list(csv.reader(elite_map_log, delimiter=','))
+    elite_map = all_rows[-1][1:]
+    elite_map_log.close()
+
+    # read in individuals
+    individuals = pd.read_csv(os.path.join(log_dir, "individuals_log.csv"))
+
+    # read in configs
+    _, _, elite_map_config, agent_config = read_in_lsi_config(opt.config)
+
+    # read in feature index
+    features = elite_map_config['Map']['Features']
+    num_features = len(features)
+    f1 = int(opt.feature1_idx)
+    f2 = int(opt.feature2_idx)
+    assert(f1<num_features)
+    assert(f2<num_features)
+
+    # read in row/col index
+    num_row = features[f1]['resolution']
+    num_col = features[f2]['resolution']
+    row_idx = int(opt.row_idx)
+    col_idx = int(opt.col_idx)
+    assert(row_idx<num_row)
+    assert(col_idx<num_col)
+
+    play(elite_map, agent_config, individuals, f1, f2, row_idx, col_idx)
