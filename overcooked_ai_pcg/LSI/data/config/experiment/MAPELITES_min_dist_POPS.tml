@@ -1,6 +1,6 @@
 visualize=false
 num_cores=1
 num_simulations=100
-algorithm_config="cma_me.tml"
+algorithm_config="map_elites.tml"
 elite_map_config="min_dist_POPS.tml"
 agent_config="fixed_plan_w_fixed_plan.tml"
