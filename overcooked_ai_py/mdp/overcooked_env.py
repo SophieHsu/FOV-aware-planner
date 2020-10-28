@@ -433,8 +433,8 @@ class OvercookedEnv(object):
     ###################
     # RENDER FUNCTION #
     ###################
-    def render(self,):
-        self.mdp.render(self.state)
+    def render(self, mode="human"):
+        self.mdp.render(self.state, mode)
 
 
 class Overcooked(gym.Env):

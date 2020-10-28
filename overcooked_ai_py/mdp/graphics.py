@@ -55,7 +55,8 @@ def load_image(path):
     Args:
         path(string): file path to the image file
     """
-    obj = pygame.image.load(path)
+    obj = pygame.image.load(path).convert()
+    obj.set_colorkey((255, 255, 255))
     return pygame.transform.scale(obj, (SPRITE_LENGTH, SPRITE_LENGTH))
 
 def blit_terrain(x, y, terrain_mtx, viewer):
@@ -128,5 +129,5 @@ def get_object_sprite(obj, on_pot = False):
             obj_img_path = os.path.join(ASSETS_DIR, OBJECT_DIR, '%s.png' % obj_name)
     else:
         soup_type, num_items, cook_time = obj.state
-        obj_img_path = os.path.join(ASSETS_DIR, OBJECT_DIR, 'soup-%s-%d-cooking.png' % (soup_type, num_items)) 
+        obj_img_path = os.path.join(ASSETS_DIR, OBJECT_DIR, 'soup-%s-%d-cooking.png' % (soup_type, num_items))
     return load_image(obj_img_path)

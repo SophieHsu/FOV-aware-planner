@@ -110,19 +110,19 @@ def generate_rnd_lvl(size, worker_id=0):
 
 def main(config):
     _, _, _, agent_config = read_in_lsi_config(config)
-    G_params = read_gan_param()
-    gan_state_dict = torch.load(os.path.join(GAN_TRAINING_DIR,
-                                             "netG_epoch_49999_999.pth"),
-                                map_location=lambda storage, loc: storage)
-    generator = dcgan.DCGAN_G(**G_params)
-    generator.load_state_dict(gan_state_dict)
-    lvl_str = generate_lvl(1, generator)
+    # G_params = read_gan_param()
+    # gan_state_dict = torch.load(os.path.join(GAN_TRAINING_DIR,
+    #                                          "netG_epoch_49999_999.pth"),
+    #                             map_location=lambda storage, loc: storage)
+    # generator = dcgan.DCGAN_G(**G_params)
+    # generator.load_state_dict(gan_state_dict)
+    # lvl_str = generate_lvl(1, generator)
 
-    # lvl_str = """XXPXX
-    #              T  2T
-    #              X1  O
-    #              XXDSX
-    #              """
+    lvl_str = """XXPXX
+                 T  2T
+                 X1  O
+                 XXDSX
+                 """
     # lvl_str = """XXXPPXXX
     #              X  2   X
     #              D XXXX S
@@ -143,8 +143,9 @@ def main(config):
     # lvl_str = generate_rnd_lvl((5, 5))
 
     ind = Individual()
-    fitness, _, _, _ = run_overcooked_game(ind, lvl_str, agent_config, render=True)
-    print("fitness: %d" % fitness)
+    ind.level = lvl_str
+    ind = run_overcooked_game(ind, agent_config, render=False)
+    print("fitness: %d" % ind.fitness)
 
 
 if __name__ == "__main__":

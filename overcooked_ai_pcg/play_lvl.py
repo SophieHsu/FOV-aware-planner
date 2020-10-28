@@ -1,6 +1,7 @@
 import os
 import csv
 import time
+import json
 import argparse
 import pandas as pd
 from overcooked_ai_pcg import LSI_CONFIG_EXP_DIR, LSI_LOG_DIR
@@ -8,7 +9,37 @@ from overcooked_ai_pcg.helper import run_overcooked_game, read_in_lsi_config
 from overcooked_ai_pcg.LSI.qd_algorithms import Individual
 
 
-def play(elite_map, agent_config, individuals, f1, f2, row_idx, col_idx):
+def log_actions(ind, agent_config, log_dir):
+    agent1_config = agent_config["Agent1"]
+    agent2_config = agent_config["Agent2"]
+
+    log_file = ""
+
+    if agent1_config["name"] == "fixed_plan_agent" and agent2_config[
+            "name"] == "fixed_plan_agent":
+        log_file = "fixed_plan"
+
+    elif agent1_config["name"] == "preferenced_human" and agent2_config[
+            "name"] == "human_aware_agent":
+        log_file = "human_aware"
+
+    log_file += "_joint_actions.json"
+    full_path = os.path.join(log_dir, log_file)
+    if os.path.exists(full_path):
+        print("Joint actions logged before, skipping...")
+        return
+
+    # log the joint actions if not logged before
+    with open(full_path, "w") as f:
+        json.dump({
+                "joint_actions": ind.joint_actions,
+                "lvl_str": ind.level,
+            }, f)
+        print("Joint actions saved")
+
+
+def play(elite_map, agent_config, individuals, f1, f2, row_idx, col_idx,
+         log_dir):
     """
     Find the individual in the specified cell in the elite map
     and run overcooked game with the specified agents
@@ -31,13 +62,14 @@ def play(elite_map, agent_config, individuals, f1, f2, row_idx, col_idx):
             print("Playing in individual %d" % ind_id)
             print(lvl_str)
             ind = Individual()
+            ind.level = lvl_str
             ind.human_preference = individuals["human_preference"][ind_id]
             ind.human_adaptiveness = individuals["human_adaptiveness"][ind_id]
             ind.rand_seed = individuals["rand_seed"][ind_id]
-            ind.fitness, ind.score, ind.checkpoints, ind.player_workload = run_overcooked_game(
-                ind, lvl_str, agent_config, render=True)
+            ind = run_overcooked_game(ind, agent_config, render=False)
             print("Fitness: %d" % ind.fitness)
             print("Score: %d" % ind.score)
+            log_actions(ind, agent_config, log_dir)
             return
 
     print("No individual found in the specified cell")
@@ -104,4 +136,5 @@ if __name__ == "__main__":
     assert (row_idx < num_row)
     assert (col_idx < num_col)
 
-    play(elite_map, agent_config, individuals, f1, f2, row_idx, col_idx)
+    play(elite_map, agent_config, individuals, f1, f2, row_idx, col_idx,
+         log_dir)
