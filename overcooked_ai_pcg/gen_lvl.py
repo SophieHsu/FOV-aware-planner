@@ -1,22 +1,27 @@
+import argparse
 import json
 import os
 import subprocess
 import time
-import argparse
 
 import numpy as np
 import torch
-from overcooked_ai_py.mdp.overcooked_mdp import OvercookedGridworld
 from torch.autograd import Variable
 
 from overcooked_ai_pcg import GAN_TRAINING_DIR, LSI_CONFIG_EXP_DIR
 from overcooked_ai_pcg.GAN_training import dcgan
 from overcooked_ai_pcg.helper import (gen_int_rnd_lvl, lvl_number2str,
-                                      obj_types, read_gan_param,
-                                      run_overcooked_game, setup_env_from_grid,
-                                      read_in_lsi_config, lvl_str2grid)
-from overcooked_ai_pcg.milp_repair import repair_lvl
+                                      lvl_str2grid, obj_types, read_gan_param,
+                                      read_in_lsi_config, run_overcooked_game,
+                                      setup_env_from_grid)
 from overcooked_ai_pcg.LSI.qd_algorithms import Individual
+from overcooked_ai_pcg.milp_repair import repair_lvl
+from overcooked_ai_py.mdp.overcooked_mdp import OvercookedGridworld
+
+
+class DocplexFailedError(Exception):
+    pass
+
 
 def generate_lvl(batch_size, generator, latent_vector=None, worker_id=0):
     """
@@ -75,7 +80,12 @@ print(repaired_lvl)
         stdout=subprocess.PIPE,
     ).stdout.decode('utf-8')
     # Array comes after the delimiter.
-    output = output.split(delimiter)[1]
+    try:
+        output = output.split(delimiter)[1]
+    except IndexError:
+        # The delimiter was not printed due to some error, so split() only gave
+        # one token.
+        raise DocplexFailedError
     # The repr uses array and uint8 without np, so we make it available for eval
     # here.
     array, uint8 = np.array, np.uint8  # pylint: disable = unused-variable
@@ -143,7 +153,10 @@ def main(config):
     # lvl_str = generate_rnd_lvl((5, 5))
 
     ind = Individual()
-    fitness, _, _, _ = run_overcooked_game(ind, lvl_str, agent_config, render=True)
+    fitness, _, _, _ = run_overcooked_game(ind,
+                                           lvl_str,
+                                           agent_config,
+                                           render=True)
     print("fitness: %d" % fitness)
 
 
@@ -153,7 +166,8 @@ if __name__ == "__main__":
                         '--config',
                         help='path of experiment config file',
                         required=False,
-                        default=os.path.join(LSI_CONFIG_EXP_DIR,
-                                             "MAPELITES_workloads_diff_fixed_plan.tml"))
+                        default=os.path.join(
+                            LSI_CONFIG_EXP_DIR,
+                            "MAPELITES_workloads_diff_fixed_plan.tml"))
     opt = parser.parse_args()
     main(opt.config)
