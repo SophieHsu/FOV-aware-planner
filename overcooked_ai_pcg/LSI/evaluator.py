@@ -1,14 +1,12 @@
 """Defines a Ray remote function for running evaluations."""
+import gc
 import resource
 
-import gc
-
 from overcooked_ai_pcg.GAN_training import dcgan
-from overcooked_ai_pcg.gen_lvl import generate_lvl
+from overcooked_ai_pcg.gen_lvl import DocplexFailedError, generate_lvl
 from overcooked_ai_pcg.helper import run_overcooked_game
 from overcooked_ai_pcg.LSI import bc_calculate
 
-import gc
 
 
 def print_mem_usage(info, worker_id):
@@ -41,15 +39,21 @@ def run_overcooked_eval(ind, visualize, elite_map_config, agent_config,
     print_mem_usage("after loading GAN", worker_id)
 
     # generate new level
-    ind.level = generate_lvl(
-        1,
-        generator,
-        # since this vector originates from the algorithm actor, Ray makes it
-        # read-only; thus, we should copy it so generate_lvl can do whatever it
-        # wants with it
-        ind.param_vector[:32].copy(),
-        worker_id=worker_id,
-    )
+    try:
+        ind.level = generate_lvl(
+            1,
+            generator,
+            # since this vector originates from the algorithm actor, Ray makes it
+            # read-only; thus, we should copy it so generate_lvl can do whatever it
+            # wants with it
+            ind.param_vector[:32].copy(),
+            worker_id=worker_id,
+        )
+    except DocplexFailedError:
+        print("worker(%d): The Docplex subprocess seems to have failed." %
+              worker_id)
+        return None
+
     # ind.level = generate_rnd_lvl((6, 8), worker_id=self.id)
 
     if agent_config["Search"]["type"] == 'human':
