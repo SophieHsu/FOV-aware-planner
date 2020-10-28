@@ -1367,8 +1367,12 @@ class OvercookedGridworld(object):
             assert len(player_idx_lst) == 1
 
             player_pgobj, player_hat_pgobj = get_player_sprite(player, player_idx_lst[0])
-            player_pgobj.set_alpha(150)
-            player_hat_pgobj.set_alpha(150)
+
+            if mode == "blur":
+                player_pgobj.set_alpha(150)
+                player_hat_pgobj.set_alpha(150)
+                draw_arrow(self.viewer, player, player_idx_lst[0], curr_pos)
+
             self.viewer.blit(player_pgobj, curr_pos)
             self.viewer.blit(player_hat_pgobj, curr_pos)
 
