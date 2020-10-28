@@ -1,10 +1,10 @@
 #!/bin/bash
-#SBATCH --job-name=run-lsi-search
+#SBATCH --job-name=cmame-fixed-plan
 #SBATCH --cpus-per-task=4
-#SBATCH --mem-per-cpu=3GB
+#SBATCH --mem-per-cpu=4GB
 #SBATCH --nodes=1
 #SBATCH --tasks-per-node=1
-#SBATCH --time=12:00:00
+#SBATCH --time=24:00:00
 #SBATCH --account=nikolaid_548
 #SBATCH --output ./hpc/logs/slurm-%j.out
 #SBATCH --error ./hpc/logs/slurm-%j.out
