@@ -26,9 +26,10 @@ def vertical_flip(np_lvl):
     height, width = np_lvl.shape
     for x in range(height):
         for y in range(width):
-            np_lvl_vflip[x][y] = np_lvl[x][width-y-1]
+            np_lvl_vflip[x][y] = np_lvl[x][width - y - 1]
 
     return np_lvl_vflip.astype(np.uint8)
+
 
 def horizontal_flip(np_lvl):
     """
@@ -37,8 +38,9 @@ def horizontal_flip(np_lvl):
     np_lvl_hflip = np.zeros(np_lvl.shape)
     height = np_lvl.shape[0]
     for x in range(height):
-        np_lvl_hflip[x] = np_lvl[height-x-1]
+        np_lvl_hflip[x] = np_lvl[height - x - 1]
     return np_lvl_hflip.astype(np.uint8)
+
 
 def lvl_str2number(raw_layout):
     """
@@ -48,8 +50,9 @@ def lvl_str2number(raw_layout):
     for x, row in enumerate(raw_layout):
         row = row.strip()
         for y, tile in enumerate(row):
-            np_lvl[x,y] = obj_types.index(tile)
+            np_lvl[x, y] = obj_types.index(tile)
     return np_lvl
+
 
 def lvl_number2str(np_lvl):
     """
@@ -62,11 +65,13 @@ def lvl_number2str(np_lvl):
         lvl_str += "\n"
     return lvl_str
 
+
 def lvl_str2grid(lvl_str):
     """
     Turns pure string formatted lvl to grid format compatible with overcooked-AI env
     """
     return [layout_row.strip() for layout_row in lvl_str.split("\n")][:-1]
+
 
 def read_in_training_data(data_path):
     """
@@ -99,25 +104,25 @@ def read_in_training_data(data_path):
 
     return np.array(lvls)
 
+
 # print(read_in_training_data(LAYOUTS_DIR))
+
 
 def read_in_lsi_config(exp_config_file):
     experiment_config = toml.load(exp_config_file)
     algorithm_config = toml.load(
         os.path.join(LSI_CONFIG_ALGO_DIR,
-                    experiment_config["algorithm_config"]))
+                     experiment_config["algorithm_config"]))
     elite_map_config = toml.load(
-        os.path.join(LSI_CONFIG_MAP_DIR, experiment_config["elite_map_config"]))
+        os.path.join(LSI_CONFIG_MAP_DIR,
+                     experiment_config["elite_map_config"]))
     agent_config = toml.load(
         os.path.join(LSI_CONFIG_AGENT_DIR, experiment_config["agent_config"]))
     return experiment_config, algorithm_config, elite_map_config, agent_config
 
-def plot_err(average_errG_log,
-             average_errD_log,
-             average_errD_fake_log,
-             average_errD_real_log,
-             average_D_x_log,
-             average_D_G_z1_log,
+
+def plot_err(average_errG_log, average_errD_log, average_errD_fake_log,
+             average_errD_real_log, average_D_x_log, average_D_G_z1_log,
              average_D_G_z2_log):
     """
     Given lists of recorded errors and plot them.
@@ -144,7 +149,12 @@ def plot_err(average_errG_log,
     plt.savefig(ERR_LOG_PIC)
     plt.show()
 
-def setup_env_from_grid(layout_grid, agent_config, worker_id=0, human_preference=0.3, human_adaptiveness=0.5):
+
+def setup_env_from_grid(layout_grid,
+                        agent_config,
+                        worker_id=0,
+                        human_preference=0.3,
+                        human_adaptiveness=0.5):
     """
     Set up random agents and overcooked env to run demo game.
 
@@ -159,7 +169,7 @@ def setup_env_from_grid(layout_grid, agent_config, worker_id=0, human_preference
         "rew_shaping_params": None
     }
     mdp = OvercookedGridworld.from_grid(layout_grid, config)
-    env = OvercookedEnv.from_mdp(mdp, info_level = 0, horizon = 100)
+    env = OvercookedEnv.from_mdp(mdp, info_level=0, horizon=100)
 
     base_params = {
         'start_orientations': False,
@@ -170,7 +180,7 @@ def setup_env_from_grid(layout_grid, agent_config, worker_id=0, human_preference
         'same_motion_goals': True
     }
     start_time = time.time()
-    
+
     agent1_config = agent_config["Agent1"]
     agent2_config = agent_config["Agent2"]
 
@@ -187,7 +197,8 @@ def setup_env_from_grid(layout_grid, agent_config, worker_id=0, human_preference
     # agent2 = GreedyHumanModel(mlp_planner, env)
 
     # Set up 3: Fixed plan agents
-    if agent1_config["name"] == "fixed_plan_agent" and agent2_config["name"] == "fixed_plan_agent":
+    if agent1_config["name"] == "fixed_plan_agent" and agent2_config[
+            "name"] == "fixed_plan_agent":
         print("worker(%d): Pre-constructing graph..." % (worker_id))
         mlp_planner = MediumLevelPlanner(mdp, base_params)
         print("worker(%d): Planning..." % (worker_id))
@@ -210,24 +221,31 @@ def setup_env_from_grid(layout_grid, agent_config, worker_id=0, human_preference
         del mlp_planner
 
     # Set up 4: Preferenced human + human-aware agent
-    elif agent1_config["name"] == "preferenced_human" and agent2_config["name"] == "human_aware_agent":
+    elif agent1_config["name"] == "preferenced_human" and agent2_config[
+            "name"] == "human_aware_agent":
         print("worker(%d): Pre-constructing graph..." % (worker_id))
         ml_action_manager = MediumLevelActionManager(mdp, base_params)
-        hmlp = HumanMediumLevelPlanner(mdp, ml_action_manager, [human_preference, 1.0-human_preference], human_adaptiveness)
+        hmlp = HumanMediumLevelPlanner(
+            mdp, ml_action_manager, [human_preference, 1.0 - human_preference],
+            human_adaptiveness)
         print("worker(%d): Planning..." % (worker_id))
 
-        agent1 = biasHumanModel(ml_action_manager, [human_preference, 1.0-human_preference], human_adaptiveness, auto_unstuck=agent1_config["auto_unstuck"])
+        agent1 = biasHumanModel(ml_action_manager,
+                                [human_preference, 1.0 - human_preference],
+                                human_adaptiveness,
+                                auto_unstuck=agent1_config["auto_unstuck"])
         # agent1 = oneGoalHumanModel(mlp_planner, 'Onion cooker', auto_unstuck=True)
         print("worker(%d): Pre-constructing mdp plan..." % (worker_id))
-        
-        mdp_planner = HumanAwareMediumMDPPlanner.from_pickle_or_compute(mdp, base_params, hmlp, ml_action_manager, force_compute_all=True)
+
+        mdp_planner = HumanAwareMediumMDPPlanner.from_pickle_or_compute(
+            mdp, base_params, hmlp, ml_action_manager, force_compute_all=True)
         print("worker(%d): MDP agent planning..." % (worker_id))
-        
-        agent2 = MediumMdpPlanningAgent(mdp_planner, env, auto_unstuck=agent2_config["auto_unstuck"])
 
+        agent2 = MediumMdpPlanningAgent(
+            mdp_planner, env, auto_unstuck=agent2_config["auto_unstuck"])
 
-        print("worker(%d): Preprocess take %d seconds"
-            % (worker_id, time.time() - start_time))
+        print("worker(%d): Preprocess take %d seconds" %
+              (worker_id, time.time() - start_time))
         agent1.set_agent_index(0)
         agent2.set_agent_index(1)
         agent1.set_mdp(mdp)
@@ -238,21 +256,34 @@ def setup_env_from_grid(layout_grid, agent_config, worker_id=0, human_preference
 
     return agent1, agent2, env
 
+
 def save_gan_param(G_params):
     with open(G_PARAM_FILE, "w") as f:
         json.dump(G_params, f)
+
 
 def read_gan_param():
     with open(G_PARAM_FILE, "r") as f:
         G_params = json.load(f)
     return G_params
 
-def run_overcooked_game(ind, lvl_str, agent_config, render=True, worker_id=0):
+
+def run_overcooked_game(ind,
+                        lvl_str,
+                        agent_config,
+                        render=True,
+                        worker_id=0,
+                        log_actions=False):
     """
     Run one turn of overcooked game and return the sparse reward as fitness
     """
     grid = lvl_str2grid(lvl_str)
-    agent1, agent2, env = setup_env_from_grid(grid, agent_config, worker_id=worker_id, human_preference=ind.human_preference, human_adaptiveness=ind.human_adaptiveness)
+    agent1, agent2, env = setup_env_from_grid(
+        grid,
+        agent_config,
+        worker_id=worker_id,
+        human_preference=ind.human_preference,
+        human_adaptiveness=ind.human_adaptiveness)
     done = False
     total_sparse_reward = 0
     last_state = None
@@ -260,7 +291,7 @@ def run_overcooked_game(ind, lvl_str, agent_config, render=True, worker_id=0):
     np.random.seed(ind.rand_seed)
 
     # Saves when each soup (order) was delivered
-    checkpoints = [env.horizon-1] * env.num_orders
+    checkpoints = [env.horizon - 1] * env.num_orders
     cur_order = 0
 
     while not done:
@@ -268,15 +299,16 @@ def run_overcooked_game(ind, lvl_str, agent_config, render=True, worker_id=0):
             env.render()
             time.sleep(0.5)
         # print("start compute actions")
-        joint_action = (agent1.action(env.state)[0], agent2.action(env.state)[0])
-        # print(joint_action)
+        joint_action = (agent1.action(env.state)[0],
+                        agent2.action(env.state)[0])
+        print(joint_action)
         next_state, timestep_sparse_reward, done, info = env.step(joint_action)
         total_sparse_reward += timestep_sparse_reward
-        
+
         if timestep_sparse_reward > 0:
             checkpoints[cur_order] = timestep
             cur_order += 1
-        
+
         last_state = next_state
         timestep += 1
 
@@ -291,8 +323,9 @@ def run_overcooked_game(ind, lvl_str, agent_config, render=True, worker_id=0):
 
     # Free up some memory
     del agent1, agent2, env
-    
+
     return fitness, total_sparse_reward, checkpoints, workloads
+
 
 def gen_int_rnd_lvl(size):
     """
