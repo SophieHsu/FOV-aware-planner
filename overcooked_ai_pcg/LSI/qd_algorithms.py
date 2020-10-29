@@ -430,6 +430,7 @@ class ImprovementEmitter:
             self.reset()
 
         # Reset the population
+        self.individuals_disbatched = 0
         self.generation += 1
         self.population.clear()
         self.parents.clear()

@@ -20,7 +20,7 @@ class ObjectState(object):
         """
         name (str): The name of the object
         position (int, int): Tuple for the current location of the object.
-        state (tuple or None):  
+        state (tuple or None):
             Extra information about the object. Is None for all objects 
             except soups, for which `state` is a tuple:
             (soup_type, num_items, cook_time)
@@ -119,13 +119,13 @@ class PlayerState(object):
         assert not self.has_object()
         obj.position = self.position
         self.held_object = obj
- 
+
     def remove_object(self):
         assert self.has_object()
         obj = self.held_object
         self.held_object = None
         return obj
-    
+
     def update_pos_and_or(self, new_position, new_orientation):
         self.position = new_position
         self.orientation = new_orientation
@@ -293,7 +293,7 @@ class OvercookedState(object):
         positions and orientations and order list
         """
         return OvercookedState(
-            [PlayerState(*player_pos_and_or) for player_pos_and_or in players_pos_and_or], 
+            [PlayerState(*player_pos_and_or) for player_pos_and_or in players_pos_and_or],
             objects={}, order_list=order_list)
 
     @staticmethod
@@ -345,7 +345,7 @@ class OvercookedState(object):
         object_list = [ObjectState.from_dict(o) for o in state_dict["objects"]]
         state_dict["objects"] = { ob.position : ob for ob in object_list }
         return OvercookedState(**state_dict)
-    
+
     @staticmethod
     def from_json(filename):
         return load_from_json(filename)
@@ -562,7 +562,7 @@ class OvercookedGridworld(object):
                 self.delivery_reward == other.delivery_reward and \
                 self.reward_shaping_params == other.reward_shaping_params and \
                 self.layout_name == other.layout_name
-    
+
     def copy(self):
         return OvercookedGridworld(
             terrain=self.terrain_mtx.copy(),
@@ -667,8 +667,8 @@ class OvercookedGridworld(object):
         Returns the next state, sparse reward and reward shaping.
         Assumes all actions are deterministic.
 
-        NOTE: Sparse reward is given only when soups are delivered, 
-        shaped reward is given only for completion of subgoals 
+        NOTE: Sparse reward is given only when soups are delivered,
+        shaped reward is given only for completion of subgoals
         (not soup deliveries).
         """
         events_infos = { event : [False] * self.num_players for event in EVENT_TYPES }
@@ -685,7 +685,7 @@ class OvercookedGridworld(object):
 
         assert new_state.player_positions == state.player_positions
         assert new_state.player_orientations == state.player_orientations
-        
+
         # Resolve player movements
         self.resolve_movement(new_state, joint_action)
 
@@ -701,12 +701,12 @@ class OvercookedGridworld(object):
         """
         Resolve any INTERACT actions, if present.
 
-        Currently if two players both interact with a terrain, we resolve player 1's interact 
+        Currently if two players both interact with a terrain, we resolve player 1's interact
         first and then player 2's, without doing anything like collision checking.
         """
         pot_states = self.get_pot_states(new_state)
         # We divide reward by agent to keep track of who contributed
-        sparse_reward, shaped_reward = [0] * self.num_players, [0] * self.num_players 
+        sparse_reward, shaped_reward = [0] * self.num_players, [0] * self.num_players
 
         for player_idx, (player, action) in enumerate(zip(new_state.players, joint_action)):
 
@@ -728,7 +728,7 @@ class OvercookedGridworld(object):
                     # Drop object on counter
                     obj = player.remove_object()
                     new_state.add_object(obj, i_pos)
-                    
+
                 elif not player.has_object() and new_state.has_object(i_pos):
                     obj_name = new_state.get_object(i_pos).name
                     self.log_object_pickup(events_infos, new_state, obj_name, pot_states, player_idx)
@@ -736,7 +736,7 @@ class OvercookedGridworld(object):
                     # Pick up object from counter
                     obj = new_state.remove_object(i_pos)
                     player.set_object(obj)
-                    
+
 
             elif terrain_type == 'O' and player.held_object is None:
                 self.log_object_pickup(events_infos, new_state, "onion", pot_states, player_idx)
@@ -830,14 +830,14 @@ class OvercookedGridworld(object):
 
         if state.order_list is None:
             return state, self.delivery_reward
-    
+
         # If the delivered soup is the one currently required
         assert not self.is_terminal(state)
         current_order = state.order_list[0]
         if current_order == 'any' or soup_type == current_order:
             state.order_list = state.order_list[1:]
             return state, self.delivery_reward
-        
+
         return state, 0
 
     def resolve_movement(self, state, joint_action):
@@ -869,7 +869,7 @@ class OvercookedGridworld(object):
 
     def is_joint_position_collision(self, joint_position):
         return any(pos0 == pos1 for pos0, pos1 in itertools.combinations(joint_position, 2))
-            
+
     def step_environment_effects(self, state):
         for obj in state.objects.values():
             if obj.name == 'soup':
@@ -950,7 +950,7 @@ class OvercookedGridworld(object):
     def get_terrain_type_at_pos(self, pos):
         x, y = pos
         return self.terrain_mtx[y][x]
- 
+
     def get_dish_dispenser_locations(self):
         return list(self.terrain_pos_dict['D'])
 
@@ -1009,7 +1009,7 @@ class OvercookedGridworld(object):
 
                 if 0 < num_items < self.num_items_for_soup:
                     pots_states_dict[soup_type]['partially_full'].append(pot_pos)
-                
+
         return pots_states_dict
 
     def get_counter_objects_dict(self, state, counter_subset=None):
@@ -1150,7 +1150,7 @@ class OvercookedGridworld(object):
         if obj_pickup_key not in events_infos:
             raise ValueError("Unknown event {}".format(obj_pickup_key))
         events_infos[obj_pickup_key][player_index] = True
-        
+
         USEFUL_PICKUP_FNS = {
             "onion": self.is_onion_pickup_useful,
             "dish": self.is_dish_pickup_useful
@@ -1169,7 +1169,7 @@ class OvercookedGridworld(object):
                 return
             raise ValueError("Unknown event {}".format(obj_drop_key))
         events_infos[obj_drop_key][player_index] = True
-        
+
         USEFUL_DROP_FNS = {
             "onion": self.is_onion_drop_useful,
             "dish": self.is_dish_drop_useful
@@ -1184,7 +1184,7 @@ class OvercookedGridworld(object):
         NOTE: this only works if self.num_players == 2
         Useful if:
         - Pot is ready/cooking and there is no player with a dish               \ 
-        - 2 pots are ready/cooking and there is one player with a dish          | -> number of dishes in players hands < number of ready/cooking/partially full soups 
+        - 2 pots are ready/cooking and there is one player with a dish          | -> number of dishes in players hands < number of ready/cooking/partially full soups
         - Partially full pot is ok if the other player is on course to fill it  /
 
         We also want to prevent picking up and dropping dishes, so add the condition
@@ -1224,7 +1224,7 @@ class OvercookedGridworld(object):
         other_player = state.players[1 - player_index]
         other_player_has_dish = other_player.has_object() and other_player.get_object().name == "dish"
         return not (all_pots_full and not other_player_has_dish)
-        
+
     def is_onion_drop_useful(self, state, pot_states, player_index):
         """
         NOTE: this only works if self.num_players == 2
@@ -1282,7 +1282,7 @@ class OvercookedGridworld(object):
 
                         if num_items == self.num_items_for_soup:
                             grid_string += str(cook_time)
-                        
+
                         # NOTE: do not currently have terminal graphics 
                         # support for cooking times greater than 3.
                         elif num_items == 2:
@@ -1293,7 +1293,7 @@ class OvercookedGridworld(object):
                         grid_string += element + " "
 
             grid_string += "\n"
-        
+
         if state.order_list is not None:
             grid_string += "Current orders: {}/{} are any's\n".format(
                 len(state.order_list), len([order == "any" for order in state.order_list])
@@ -1304,12 +1304,15 @@ class OvercookedGridworld(object):
     # RENDER FUNCTION #
     ###################
 
-    def render(self, state, time_left=None):
+    def render(self, state, mode, time_left=None):
         """
         Function that renders the game
 
         Args:
             state(OvercookedState): state to render
+            mode (string): mode of rendering
+                           For "human", render normally
+                           For "blur", render trajectory of both players
             time_left(int): timestep left for the game
         """
         players_dict = {player.position: player for player in state.players}
@@ -1374,11 +1377,12 @@ class OvercookedGridworld(object):
                         text_pos.midbottom = curr_pos.midbottom
                         self.viewer.blit(cook_time_text_surface, text_pos)
 
-        # remove chefs from last state
-        if self.pre_players_pos is not None:
-            for pos in self.pre_players_pos:
-                x, y = pos
-                blit_terrain(x, y, self.terrain_mtx, self.viewer)
+        if mode == "human":
+            # remove chefs from last state
+            if self.pre_players_pos is not None:
+                for pos in self.pre_players_pos:
+                    x, y = pos
+                    blit_terrain(x, y, self.terrain_mtx, self.viewer)
 
         # render the chefs at new location
         for pos, player in players_dict.items():
@@ -1390,6 +1394,12 @@ class OvercookedGridworld(object):
             assert len(player_idx_lst) == 1
 
             player_pgobj, player_hat_pgobj = get_player_sprite(player, player_idx_lst[0])
+
+            if mode == "blur":
+                player_pgobj.set_alpha(150)
+                player_hat_pgobj.set_alpha(150)
+                draw_arrow(self.viewer, player, player_idx_lst[0], curr_pos)
+
             self.viewer.blit(player_pgobj, curr_pos)
             self.viewer.blit(player_hat_pgobj, curr_pos)
 
@@ -1599,7 +1609,7 @@ class OvercookedGridworld(object):
         Adding reward shaping based on distance to certain features.
         """
         distance_based_shaped_reward = 0
-        
+
         pot_states = self.get_pot_states(new_state)
         ready_pots = pot_states["tomato"]["ready"] + pot_states["onion"]["ready"]
         cooking_pots = ready_pots + pot_states["tomato"]["cooking"] + pot_states["onion"]["cooking"]
@@ -1647,7 +1657,7 @@ class OvercookedGridworld(object):
 
                     if old_dist < min_dist_to_s_old:
                         min_dist_to_s_old = old_dist
-                
+
                 if min_dist_to_s_old > min_dist_to_s_new:
                     distance_based_shaped_reward += self.reward_shaping_params["SOUP_DISTANCE_REW"] * (1 - min(min_dist_to_s_new / max_dist, 1))
 

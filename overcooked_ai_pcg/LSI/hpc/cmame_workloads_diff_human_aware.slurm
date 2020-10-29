@@ -1,10 +1,10 @@
 #!/bin/bash
 #SBATCH --job-name=run-lsi-search
 #SBATCH --cpus-per-task=4
-#SBATCH --mem-per-cpu=4GB
+#SBATCH --mem-per-cpu=3GB
 #SBATCH --nodes=1
 #SBATCH --tasks-per-node=1
-#SBATCH --time=7:00:00
+#SBATCH --time=12:00:00
 #SBATCH --account=nikolaid_548
 #SBATCH --output ./hpc/logs/slurm-%j.out
 #SBATCH --error ./hpc/logs/slurm-%j.out
@@ -49,7 +49,7 @@ echo
 echo "========== Starting Dask Python script =========="
 
 # The "-u" option removes buffers from stdin and stdout.
-python -u run_search.py --config data/config/experiment/MAPELITES_workloads_diff_slurm.tml
+python -u run_search.py --config data/config/experiment/CMAME_workloads_diff_human_aware_slurm.tml
 
 echo
 echo "========== Done =========="
