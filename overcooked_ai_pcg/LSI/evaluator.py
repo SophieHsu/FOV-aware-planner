@@ -52,6 +52,10 @@ def run_overcooked_eval(ind, visualize, elite_map_config, agent_config,
         print("worker(%d): The Docplex subprocess seems to have failed." %
               worker_id)
         return None
+    except Exception:
+        print("worker(%d): Something seems to have failed in generate_lvl." %
+              worker_id)
+        return None
 
     # ind.level = generate_rnd_lvl((6, 8), worker_id=self.id)
 
