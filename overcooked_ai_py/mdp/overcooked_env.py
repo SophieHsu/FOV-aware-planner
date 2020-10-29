@@ -289,7 +289,7 @@ class OvercookedEnv(object):
             
             if self.t > 3000:
                 break
-
+            
             tmp = input()
             
         assert len(trajectory) == self.t, "{} vs {}".format(len(trajectory), self.t)

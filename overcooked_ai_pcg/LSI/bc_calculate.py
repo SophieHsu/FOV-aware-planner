@@ -85,3 +85,9 @@ def human_preference(ind):
     # print('bc human_preference =', ind.human_preference)
     return ind.human_preference
 
+def cc_active(ind):
+    return ind.concurr_active
+
+def stuck_time(ind):
+    return ind.stuck_time
+

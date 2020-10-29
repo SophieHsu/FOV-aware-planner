@@ -281,6 +281,8 @@ def run_overcooked_game(ind, lvl_str, agent_config, render=True, worker_id=0):
         timestep += 1
 
     workloads = last_state.get_player_workload()
+    concurr_active = last_state.cal_concurrent_active_sum()
+    stuck_time = last_state.cal_total_stuck_time()
 
     # Smooth fitness is the total reward tie-broken by soup delivery times.
     # Later soup deliveries are higher priority.
@@ -292,7 +294,7 @@ def run_overcooked_game(ind, lvl_str, agent_config, render=True, worker_id=0):
     # Free up some memory
     del agent1, agent2, env
     
-    return fitness, total_sparse_reward, checkpoints, workloads
+    return fitness, total_sparse_reward, checkpoints, workloads, concurr_active, stuck_time
 
 def gen_int_rnd_lvl(size):
     """

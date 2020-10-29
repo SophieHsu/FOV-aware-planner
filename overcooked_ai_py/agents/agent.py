@@ -601,11 +601,13 @@ class oneGoalHumanModel(Agent):
         chosen_goal = []; chosen_action = []; action_probs = []
         if not WAIT:
             chosen_goal, chosen_action, action_probs = self.choose_motion_goal(start_pos_and_or, one_goal_motion_goals)
+            state.players[self.agent_index].active_log += [1]
 
         else: # if action is to stay at the same place
             # chosen_goal = one_goal_motion_goals[0]
             chosen_action = Action.STAY
             action_probs = self.a_probs_from_action(chosen_action)
+            state.players[self.agent_index].active_log += [0]
 
         if self.auto_unstuck:
             chosen_action, action_probs = self.resolve_stuck(state, chosen_action, action_probs)
@@ -655,7 +657,13 @@ class oneGoalHumanModel(Agent):
             else:
                 chosen_action = Action.STAY
             action_probs = self.a_probs_from_action(chosen_action)
+            
+            state.players[self.agent_index].stuck_log += [1]
         
+        else:
+            state.players[self.agent_index].stuck_log += [0]
+
+
         return chosen_action, action_probs        
 
     def onion_cooker_ml_action(self, state):
@@ -878,9 +886,11 @@ class biasHumanModel(oneGoalHumanModel):
         if not WAIT:
             chosen_goal, chosen_action, action_probs = self.choose_motion_goal(start_pos_and_or, one_goal_motion_goals)
             self.prev_goal = chosen_goal
+            state.players[self.agent_index].active_log += [1]
         else: # if action is to stay at the same place
             chosen_action = Action.STAY
             action_probs = self.a_probs_from_action(chosen_action)
+            state.players[self.agent_index].active_log += [0]
 
         if self.auto_unstuck:
             chosen_action, action_probs = self.resolve_stuck(state, chosen_action, action_probs)
@@ -892,7 +902,7 @@ class biasHumanModel(oneGoalHumanModel):
         if state.players[self.agent_index].position == chosen_goal[0] and chosen_action == Action.INTERACT:
             # reset the task prob choice to the player's interest
             self.prev_goal_dstb = self.goal_preference
-            
+
         return chosen_action, {"action_probs": action_probs}
 
     def logic_ml_action(self, state):
@@ -1044,6 +1054,7 @@ class MediumMdpPlanningAgent(Agent):
         if state_str not in self.mdp_planner.state_idx_dict:
             print('State = ', state_str, ';\nNot in dictionary. Action = North')
             action = Action.ALL_ACTIONS[0]#random.choice(Action.ALL_ACTIONS)
+            state.players[self.agent_index].active_log += [0]
         
         else:
             # retrieve medium level action from policy
@@ -1057,7 +1068,7 @@ class MediumMdpPlanningAgent(Agent):
             possible_motion_goals = self.mdp_planner.map_action_to_location(state, state_str, action_object_pair[0], action_object_pair[1])
 
             # initialize
-            action = Action.ALL_ACTIONS[0]
+            action = Action.STAY
             minimum_cost = 100000.0
             # print(state)
             # print('possible_motion_goals =', possible_motion_goals)
@@ -1079,6 +1090,11 @@ class MediumMdpPlanningAgent(Agent):
             # NOTE: Assumes that calls to the action method are sequential
             self.prev_state = state
 
+        if action == Action.STAY:
+            state.players[self.agent_index].active_log += [0]
+        else:
+            state.players[self.agent_index].active_log += [1]
+
         return action, {"action_probs": action_probs}
 
     def resolve_stuck(self, state, chosen_action, action_probs):
@@ -1098,4 +1114,9 @@ class MediumMdpPlanningAgent(Agent):
                 chosen_action = Action.STAY
             action_probs = self.a_probs_from_action(chosen_action)
         
-        return chosen_action, action_probs        
+            state.players[self.agent_index].stuck_log += [1]
+        
+        else:
+            state.players[self.agent_index].stuck_log += [0]
+        
+        return chosen_action, action_probs

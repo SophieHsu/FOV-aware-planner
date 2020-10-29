@@ -19,7 +19,8 @@ class Individual:
     timestep = None  # timestep to finish the level
     ID = None  # ID of the individual after being inserted to the map
     player_workload = None # list of dic that summarize workload of all players
-
+    concurr_active = None
+    stuck_time = None
     # human model params
     human_preference = None # float from 0 to 1 indicating human's subtask preference
     human_adaptiveness = None # float from 0 to 1; human's flexability to adapte to gameplay 

@@ -63,7 +63,7 @@ def run_overcooked_eval(ind, visualize, elite_map_config, agent_config, G_params
 
     # run simulation
     try:
-        ind.fitness, ind.score, ind.checkpoints, ind.player_workload = run_overcooked_game(ind, ind.level, agent_config, render=visualize, worker_id=worker_id)
+        ind.fitness, ind.score, ind.checkpoints, ind.player_workload, ind.concurr_active, ind.stuck_time = run_overcooked_game(ind, ind.level, agent_config, render=visualize, worker_id=worker_id)
     except TimeoutError:
         print(
             "worker(%d): Level generated taking too much time to plan. Skipping"

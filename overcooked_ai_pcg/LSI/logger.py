@@ -51,7 +51,7 @@ class RunningIndividualLog(LoggerBase):
         data_labels += ['order_delivered({})'.format(i+1) for i in range(2)]
         for bc in self._elite_map_config["Map"]["Features"]:
             data_labels.append(bc["name"])
-        data_labels += ["player_workload", "human_preference", "human_adaptiveness", "rand_seed", "lvl_str"]
+        data_labels += ["player_workload", "human_preference", "human_adaptiveness", "concurr_active","stuck_time","rand_seed", "lvl_str"]
         self._write_row(data_labels)
 
     def log_individual(self, ind):
@@ -64,6 +64,8 @@ class RunningIndividualLog(LoggerBase):
             ind.player_workload,
             ind.human_preference,
             ind.human_adaptiveness,
+            ind.concurr_active,
+            ind.stuck_time,
             ind.rand_seed,
             ind.level,
         ]
