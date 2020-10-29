@@ -8,13 +8,12 @@ from overcooked_ai_pcg.helper import run_overcooked_game
 from overcooked_ai_pcg.LSI import bc_calculate
 
 
-
 def print_mem_usage(info, worker_id):
     print(f"worker({worker_id}): Memory usage ({info}):",
           resource.getrusage(resource.RUSAGE_SELF).ru_maxrss)
 
 
-def run_overcooked_eval(ind, visualize, elite_map_config, agent_config,
+def run_overcooked_eval(ind, visualize, elite_map_config, agent_configs,
                         G_params, gan_state_dict, worker_id):
     """
     Evaluates overcooked game by running a game and calculating relevant BC's.
@@ -55,31 +54,54 @@ def run_overcooked_eval(ind, visualize, elite_map_config, agent_config,
         return None
 
     # ind.level = generate_rnd_lvl((6, 8), worker_id=self.id)
-
-    if agent_config["Search"]["type"] == 'human':
-        # generate human worker preference and adaptiveness
-        ind.human_preference = ind.param_vector[32]
-        ind.human_adaptiveness = ind.param_vector[33]
-        # print('human parameters =', ind.human_preference, ind.human_adaptiveness)
-
     del generator
 
-    print_mem_usage("after generating level", worker_id)
+    fitnesses = []
+    scores = []
+    checkpoints = []
+    player_workloads = []
+    joint_actions = []
 
-    # run simulation
-    try:
-        ind = run_overcooked_game(ind,
-                                  agent_config,
-                                  render=visualize,
-                                  worker_id=worker_id)
-    except TimeoutError:
-        print(
-            "worker(%d): Level generated taking too much time to plan. Skipping"
-            % worker_id)
-        return None
+    # run evaluation for all sets of agent configs
+    # normalize the fitness if more than 1 sets are running
+    for agent_config in agent_configs:
+        if agent_config["Search"]["type"] == 'human':
+            # generate human worker preference and adaptiveness
+            ind.human_preference = ind.param_vector[32]
+            ind.human_adaptiveness = ind.param_vector[33]
 
-    # run the garbage collector after each simulation
-    gc.collect()
+        print_mem_usage("after generating level", worker_id)
+
+        # run simulation
+        try:
+            fitness, score, checkpoint, workload, joint_action = run_overcooked_game(
+                ind, agent_config, render=visualize, worker_id=worker_id)
+            fitnesses.append(fitness)
+            scores.append(score)
+            checkpoints.append(checkpoint)
+            player_workloads.append(workload)
+            joint_actions.append(joint_action)
+        except TimeoutError:
+            print(
+                "worker(%d): Level generated taking too much time to plan. Skipping"
+                % worker_id)
+            return None
+
+        # run the garbage collector after each simulation
+        gc.collect()
+
+    ind.fitnesses = tuple(fitnesses)
+    ind.scores = tuple(scores)
+    ind.checkpoints = tuple(checkpoints)
+    ind.player_workloads = tuple(player_workloads)
+    ind.joint_actions = tuple(joint_actions)
+
+    # for unnormalized version, fitness is scale
+    if len(agent_configs) == 1:
+        ind.fitness = ind.fitnesses[0]
+    # for normalized version, fitness is the difference between two runs
+    elif len(agent_configs) == 2:
+        ind.fitness = ind.fitnesses[0] - ind.fitnesses[1]
 
     print_mem_usage("after running overcooked game", worker_id)
 
