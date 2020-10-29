@@ -133,9 +133,12 @@ def read_in_lsi_config(exp_config_file):
     elite_map_config = toml.load(
         os.path.join(LSI_CONFIG_MAP_DIR,
                      experiment_config["elite_map_config"]))
-    agent_config = toml.load(
-        os.path.join(LSI_CONFIG_AGENT_DIR, experiment_config["agent_config"]))
-    return experiment_config, algorithm_config, elite_map_config, agent_config
+    agent_configs = []
+    for agent_config_file in experiment_config["agent_config"]:
+        agent_config = toml.load(os.path.join(LSI_CONFIG_AGENT_DIR,
+                                 agent_config_file))
+        agent_configs.append(agent_config)
+    return experiment_config, algorithm_config, elite_map_config, agent_configs
 
 
 def plot_err(average_errG_log, average_errD_log, average_errD_fake_log,
@@ -181,7 +184,6 @@ def setup_env_from_grid(layout_grid,
 
     mdp = OvercookedGridworld.from_grid(layout_grid, CONFIG)
     env = OvercookedEnv.from_mdp(mdp, info_level=0, horizon=100)
-
 
     start_time = time.time()
 
@@ -272,10 +274,7 @@ def read_gan_param():
     return G_params
 
 
-def run_overcooked_game(ind,
-                        agent_config,
-                        render=True,
-                        worker_id=0):
+def run_overcooked_game(ind, agent_config, render=True, worker_id=0):
     """
     Run one turn of overcooked game and return the sparse reward as fitness
     """
@@ -332,16 +331,15 @@ def run_overcooked_game(ind,
     # Free up some memory
     del agent1, agent2, env
 
-    # set necessary variables for ind
-    ind.fitness = fitness
-    ind.score = total_sparse_reward
-    ind.checkpoints = checkpoints
-    ind.player_workload = workloads
-    ind.joint_actions = joint_actions
-    ind.concurr_active = concurr_active
-    ind.stuck_time = stuck_time
+    # # set necessary variables for ind
+    # ind.fitnesses.append(fitness)
+    # ind.scores.append(total_sparse_reward)
+    # ind.checkpoints.append(checkpoints)
+    # ind.player_workloads.append(workloads)
+    # ind.joint_actions.append(joint_actions)
 
-    return ind
+    return fitness, total_sparse_reward, checkpoints, workloads, joint_actions, concurr_active, stuck_time
+    # return ind
 
 def gen_int_rnd_lvl(size):
     """

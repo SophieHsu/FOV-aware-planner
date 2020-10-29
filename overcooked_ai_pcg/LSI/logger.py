@@ -32,12 +32,14 @@ class RunningIndividualLog(LoggerBase):
     Args:
         log_path (string): filename of the log file
         elite_map_config: toml config object of the feature maps
+        agent_configs (list): list of toml config object of agents
     """
-    def __init__(self, log_path, elite_map_config):
+    def __init__(self, log_path, elite_map_config, agent_configs):
         super().__init__()
         self._log_path = os.path.join(LSI_LOG_DIR, log_path)
         self._isInitialized = False
         self._elite_map_config = elite_map_config
+        self._agent_configs = agent_configs
         self.init_log()
 
     def init_log(self, ):
@@ -46,26 +48,54 @@ class RunningIndividualLog(LoggerBase):
             os.remove(self._log_path)
 
         # construct labels
-        data_labels = ["ID", "fitness", "score"]
+        data_labels = ["ID", "fitness"]
         # We need to be told how many orders we have
-        data_labels += ['order_delivered({})'.format(i+1) for i in range(2)]
+
+        data_labels += [
+            'fitness_{}_w_{}'.format(agent_config["Agent1"]["name"],
+                                     agent_config["Agent2"]["name"])
+            for agent_config in self._agent_configs
+        ]
+        data_labels += [
+            'score_{}_w_{}'.format(agent_config["Agent1"]["name"],
+                                   agent_config["Agent2"]["name"])
+            for agent_config in self._agent_configs
+        ]
+        data_labels += [
+            'order_delivered_{}_w_{}'.format(agent_config["Agent1"]["name"],
+                                             agent_config["Agent2"]["name"])
+            for agent_config in self._agent_configs
+        ]
+        data_labels += [
+            'player_workload_{}_w_{}'.format(agent_config["Agent1"]["name"],
+                                             agent_config["Agent2"]["name"])
+            for agent_config in self._agent_configs
+        ]
+        data_labels += [
+            'joint_action{}_w_{}'.format(agent_config["Agent1"]["name"],
+                                         agent_config["Agent2"]["name"])
+            for agent_config in self._agent_configs
+        ]
+
         for bc in self._elite_map_config["Map"]["Features"]:
             data_labels.append(bc["name"])
-        data_labels += ["player_workload", "human_preference", "human_adaptiveness", "concurr_active","stuck_time","rand_seed", "lvl_str"]
+        data_labels += [
+            "human_preference", "human_adaptiveness", "rand_seed", "lvl_str"
+        ]
         self._write_row(data_labels)
 
     def log_individual(self, ind):
         to_add = [
             ind.ID,
             ind.fitness,
-            ind.score,
+            *ind.fitnesses,
+            *ind.scores,
             *ind.checkpoints,
+            *ind.player_workloads,
+            *ind.joint_actions,
             *ind.features,
-            ind.player_workload,
             ind.human_preference,
             ind.human_adaptiveness,
-            ind.concurr_active,
-            ind.stuck_time,
             ind.rand_seed,
             ind.level,
         ]

@@ -12,23 +12,29 @@ class Individual:
     """Data for a single individual in a QD algorithm."""
     features = None  # BC's
     param_vector = None  # genotype
-    level = None  # an Overcooked game level
-    fitness = None  # fitness in the level = score - timestep
-    score = None  # raw score of the level,
-    # proportional to the number of soup delivered
-    timestep = None  # timestep to finish the level
+    level = None  # an Overcooked game level (string version)
     ID = None  # ID of the individual after being inserted to the map
-    player_workload = None # list of dic that summarize workload of all players
-    concurr_active = None
-    stuck_time = None
+    fitness = None  # fitness in the level = score - timestep
+    fitnesses: tuple = None # fitness score of two runs the level
+    scores: tuple = None  # raw score of two runs on the level
+                          # proportional to the number of soup delivered
+    player_workloads:tuple = None # list of list of dic that summarize workload
+                                  # of all players
+    checkpoints:tuple = None # the timestep that the players deliver an order
+    joint_actions:tuple = None # action sequence of the players
     # human model params
-    human_preference = None # float from 0 to 1 indicating human's subtask preference
-    human_adaptiveness = None # float from 0 to 1; human's flexability to adapte to gameplay 
-    rand_seed = 0
+    human_preference = None # float from 0 to 1;
+                            # human's subtask preference
+    human_adaptiveness = None # float from 0 to 1;
+                              # human's flexability to adapte to gameplay
+    rand_seed = 0 # random seed for agent's random action choice
+    concurr_active:tuple = None # times that both agents are moving
+    stuck_time:tuple = None # times when agents are stuck
+
 
 class DecompMatrix:
     def __init__(self, dimension):
-        self.C = np.eye(dimension, dtype=np.float_) 
+        self.C = np.eye(dimension, dtype=np.float_)
         self.eigenbasis = np.eye(dimension, dtype=np.float_)
         self.eigenvalues = np.ones((dimension,), dtype=np.float_)
         self.condition_number = 1
@@ -38,8 +44,8 @@ class DecompMatrix:
         for i in range(len(self.C)):
             for j in range(i):
                 self.C[i,j] = self.C[j,i]
-        
-        self.eigenvalues, self.eigenbasis = eig(self.C) 
+
+        self.eigenvalues, self.eigenbasis = eig(self.C)
         self.eigenvalues = np.real(self.eigenvalues)
         self.eigenbasis = np.real(self.eigenbasis)
         self.condition_number = max(self.eigenvalues) / min(self.eigenvalues)

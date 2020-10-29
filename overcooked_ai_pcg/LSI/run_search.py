@@ -20,7 +20,7 @@ from overcooked_ai_pcg.LSI.qd_algorithms import (CMA_ME_Algorithm, FeatureMap,
 
 
 def init_logging_dir(config_path, experiment_config, algorithm_config,
-                     elite_map_config, agent_config):
+                     elite_map_config, agent_configs):
     """Creates the logging directory, saves configs to it, and starts a README.
 
     Args:
@@ -28,7 +28,7 @@ def init_logging_dir(config_path, experiment_config, algorithm_config,
         experiment_config (toml): toml config object of current experiment
         algorithm_config: toml config object of QD algorithm
         elite_map_config: toml config object of the feature maps
-        agent_config: toml config object of the agents used
+        agent_configs: toml config object of the agents used
     Returns:
         log_dir: full path to the logging directory
         base_log_dir: the path without LSI_LOG_DIR prepended
@@ -48,7 +48,7 @@ def init_logging_dir(config_path, experiment_config, algorithm_config,
                 "experiment_config": experiment_config,
                 "algorithm_config": algorithm_config,
                 "elite_map_config": elite_map_config,
-                "agent_config": agent_config,
+                "agent_configs": agent_configs,
             },
             file,
         )
@@ -107,7 +107,7 @@ def init_dask(experiment_config, log_dir):
 
 
 def search(dask_client, base_log_dir, num_simulations, algorithm_config,
-           elite_map_config, agent_config, model_path, visualize, num_cores):
+           elite_map_config, agent_configs, model_path, visualize, num_cores):
     """
     Run search with the specified algorithm and elite map
 
@@ -119,6 +119,7 @@ def search(dask_client, base_log_dir, num_simulations, algorithm_config,
         num_simulations (int): total number of evaluations of QD algorithm to run.
         algorithm_config: toml config object of QD algorithm
         elite_map_config: toml config object of the feature maps
+        agent_configs (list): list of toml config object of agents
         model_path (string): file path to the GAN model
         visualize (bool): render the game or not
         num_cores (int): number of processes to run
@@ -135,7 +136,7 @@ def search(dask_client, base_log_dir, num_simulations, algorithm_config,
     # create loggers
     running_individual_log = RunningIndividualLog(
         os.path.join(base_log_dir, "individuals_log.csv"),
-        elite_map_config,
+        elite_map_config, agent_configs
     )
     frequent_map_log = FrequentMapLog(
         os.path.join(base_log_dir, "elite_map.csv"),
@@ -147,7 +148,11 @@ def search(dask_client, base_log_dir, num_simulations, algorithm_config,
     # config algorithm instance -> it runs on the head node so that it can
     # access the logger files
     algorithm_name = algorithm_config["name"]
-    num_params = agent_config["Search"]["num_param"]
+
+    # take the max of all num params of all agent configs
+    num_params = 0
+    for agent_config in agent_configs:
+        num_params = max(num_params, agent_config["Search"]["num_param"])
     if algorithm_name == "MAPELITES":
         print("Start Running MAPELITES")
         mutation_power = algorithm_config["mutation_power"]
@@ -195,7 +200,7 @@ def search(dask_client, base_log_dir, num_simulations, algorithm_config,
                 algorithm.generate_individual(),
                 visualize,
                 elite_map_config,
-                agent_config,
+                agent_configs,
                 G_params,
                 gan_state_dict,
                 active_evals + 1,  # worker_id
@@ -246,7 +251,7 @@ def search(dask_client, base_log_dir, num_simulations, algorithm_config,
                     new_ind,
                     visualize,
                     elite_map_config,
-                    agent_config,
+                    agent_configs,
                     G_params,
                     gan_state_dict,
                     # since there are no more "workers", we just pass in the
@@ -276,12 +281,12 @@ def run(
         config (toml): toml config path of current experiment
         model_path (string): file path to the GAN model
     """
-    experiment_config, algorithm_config, elite_map_config, agent_config = \
+    experiment_config, algorithm_config, elite_map_config, agent_configs = \
         read_in_lsi_config(config)
 
     log_dir, base_log_dir = init_logging_dir(config, experiment_config,
                                              algorithm_config, elite_map_config,
-                                             agent_config)
+                                             agent_configs)
     print("LOGGING DIRECTORY:", log_dir)
 
     # start LSI search
@@ -291,7 +296,7 @@ def run(
         experiment_config["num_simulations"],
         algorithm_config,
         elite_map_config,
-        agent_config,
+        agent_configs,
         model_path,
         experiment_config["visualize"],
         experiment_config["num_cores"],
