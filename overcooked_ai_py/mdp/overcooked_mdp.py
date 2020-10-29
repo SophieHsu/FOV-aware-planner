@@ -368,6 +368,8 @@ class OvercookedState(object):
 
     def cal_concurrent_active_log(self,):
         active_logs = self.get_player_active_log()
+        if len(active_logs[0]) == 0:
+            return []
         return np.array(active_logs[0]) & np.array(active_logs[1])
 
     def get_player_active_log(self,):
