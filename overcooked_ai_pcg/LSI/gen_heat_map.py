@@ -14,7 +14,6 @@ import seaborn as sns
 import pandas as pd
 from itertools import product, combinations
 from overcooked_ai_pcg import LSI_IMAGE_DIR, LSI_LOG_DIR
-from overcooked_ai_pcg.helper import read_in_lsi_config
 
 # handled by command line argument parser
 FEATURE1_LABEL = None # label of the first feature to plot
@@ -29,6 +28,18 @@ COL_INDEX = None  # index of feature 2 to plot
 # max and min value of fitness
 FITNESS_MIN = -100
 FITNESS_MAX = 100
+
+def read_in_lsi_config(exp_config_file):
+    experiment_config = toml.load(exp_config_file)
+    algorithm_config = toml.load(
+        os.path.join(LSI_CONFIG_ALGO_DIR,
+                     experiment_config["experiment_config"]["algorithm_config"]))
+    elite_map_config = toml.load(
+        os.path.join(LSI_CONFIG_MAP_DIR,
+                     experiment_config["experiment_config"]["elite_map_config"]))
+    agent_config = toml.load(
+        os.path.join(LSI_CONFIG_AGENT_DIR, experiment_config["experiment_config"]["agent_config"]))
+    return experiment_config, algorithm_config, elite_map_config, agent_config
 
 
 def createRecordList(mapData, mapDims):
