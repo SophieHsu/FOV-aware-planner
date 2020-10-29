@@ -38,7 +38,7 @@ def log_actions(ind, agent_config, log_dir):
         print("Joint actions saved")
 
 
-def play(elite_map, agent_config, individuals, f1, f2, row_idx, col_idx,
+def play(elite_map, agent_configs, individuals, f1, f2, row_idx, col_idx,
          log_dir):
     """
     Find the individual in the specified cell in the elite map
@@ -47,7 +47,7 @@ def play(elite_map, agent_config, individuals, f1, f2, row_idx, col_idx,
     Args:
         elite_map (list): list of logged cell strings.
                           See elite_map.csv for detail.
-        agent_config: toml config object of agents
+        agent_configs: toml config object of agents
         individuals (pd.dataFrame): all individuals logged
         f1, f2 (int, int): index of the features to use
         row_idx, col_idx (int, int): index of the cell in the elite map
@@ -66,10 +66,10 @@ def play(elite_map, agent_config, individuals, f1, f2, row_idx, col_idx,
             ind.human_preference = individuals["human_preference"][ind_id]
             ind.human_adaptiveness = individuals["human_adaptiveness"][ind_id]
             ind.rand_seed = individuals["rand_seed"][ind_id]
-            ind = run_overcooked_game(ind, agent_config, render=False)
-            print("Fitness: %d" % ind.fitness)
-            print("Score: %d" % ind.score)
-            log_actions(ind, agent_config, log_dir)
+            for agent_config in agent_configs:
+                fitness, _, _, _, _ = run_overcooked_game(ind, agent_config, render=False)
+                print("Fitness: %d" % fitness)
+                log_actions(ind, agent_config, log_dir)
             return
 
     print("No individual found in the specified cell")
@@ -118,7 +118,7 @@ if __name__ == "__main__":
     individuals = pd.read_csv(os.path.join(log_dir, "individuals_log.csv"))
 
     # read in configs
-    _, _, elite_map_config, agent_config = read_in_lsi_config(opt.config)
+    _, _, elite_map_config, agent_configs = read_in_lsi_config(opt.config)
 
     # read in feature index
     features = elite_map_config['Map']['Features']
@@ -136,5 +136,5 @@ if __name__ == "__main__":
     assert (row_idx < num_row)
     assert (col_idx < num_col)
 
-    play(elite_map, agent_config, individuals, f1, f2, row_idx, col_idx,
+    play(elite_map, agent_configs, individuals, f1, f2, row_idx, col_idx,
          log_dir)
