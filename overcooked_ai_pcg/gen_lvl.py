@@ -65,9 +65,10 @@ def generate_lvl(batch_size, generator, latent_vector=None, worker_id=0):
 
     # Allows us to separate the array from the rest of the process's output.
     delimiter = "----DELIMITER----DELIMITER----"
-    output = subprocess.run(
-        [
-            'python', '-c', f"""\
+    try:
+        output = subprocess.run(
+            [
+                'python', '-c', f"""\
 import numpy as np
 from numpy import array
 from overcooked_ai_pcg.milp_repair import repair_lvl
@@ -76,10 +77,12 @@ repaired_lvl = np.array_repr(repair_lvl(np_lvl))
 print("{delimiter}")
 print(repaired_lvl)
 """
-        ],
-        stdout=subprocess.PIPE,
-    ).stdout.decode('utf-8')
-    # Array comes after the delimiter.
+            ],
+            stdout=subprocess.PIPE,
+        ).stdout.decode('utf-8')
+    except OSError:
+        raise DocplexFailedError
+    # The result array comes after the delimiter.
     try:
         output = output.split(delimiter)[1]
     except IndexError:
