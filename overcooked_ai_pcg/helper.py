@@ -224,6 +224,7 @@ def setup_env_from_grid(layout_grid,
 
         agent1 = FixedPlanAgent(plan1)
         agent2 = FixedPlanAgent(plan2)
+
         del mlp_planner
 
     # Set up 4: Preferenced human + human-aware agent
@@ -252,12 +253,15 @@ def setup_env_from_grid(layout_grid,
 
         print("worker(%d): Preprocess take %d seconds" %
               (worker_id, time.time() - start_time))
-        agent1.set_agent_index(0)
-        agent2.set_agent_index(1)
+        
         agent1.set_mdp(mdp)
         agent2.set_mdp(mdp)
 
         del ml_action_manager, hmlp, mdp_planner
+    
+    agent1.set_agent_index(0)
+    agent2.set_agent_index(1)
+    
     gc.collect()
 
     return agent1, agent2, env

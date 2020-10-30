@@ -246,9 +246,17 @@ class FixedPlanAgent(Agent):
     
     def action(self, state):
         if self.i >= len(self.plan):
+            state.players[self.agent_index].active_log += [0]
             return Action.STAY, {}
+
         curr_action = self.plan[self.i]
         self.i += 1
+
+        if curr_action == Action.STAY:
+            state.players[self.agent_index].active_log += [0]
+        else:
+            state.players[self.agent_index].active_log += [1]
+
         return curr_action, {}
 
     def reset(self):

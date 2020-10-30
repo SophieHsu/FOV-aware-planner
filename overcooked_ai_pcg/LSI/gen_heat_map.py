@@ -13,8 +13,7 @@ import argparse
 import seaborn as sns
 import pandas as pd
 from itertools import product, combinations
-from overcooked_ai_pcg import LSI_IMAGE_DIR, LSI_LOG_DIR
-from overcooked_ai_pcg.helper import read_in_lsi_config
+from overcooked_ai_pcg import LSI_IMAGE_DIR, LSI_LOG_DIR, LSI_CONFIG_ALGO_DIR, LSI_CONFIG_MAP_DIR, LSI_CONFIG_AGENT_DIR
 
 # handled by command line argument parser
 FEATURE1_LABEL = None # label of the first feature to plot
@@ -27,8 +26,20 @@ ROW_INDEX = None  # index of feature 1 to plot
 COL_INDEX = None  # index of feature 2 to plot
 
 # max and min value of fitness
-FITNESS_MIN = -100
-FITNESS_MAX = 100
+FITNESS_MIN = -500000
+FITNESS_MAX = 500000
+
+def read_in_lsi_config(exp_config_file):
+    experiment_config = toml.load(exp_config_file)
+    algorithm_config = toml.load(
+        os.path.join(LSI_CONFIG_ALGO_DIR,
+                     experiment_config["experiment_config"]["algorithm_config"]))
+    elite_map_config = toml.load(
+        os.path.join(LSI_CONFIG_MAP_DIR,
+                     experiment_config["experiment_config"]["elite_map_config"]))
+    # agent_config = toml.load(
+        # os.path.join(LSI_CONFIG_AGENT_DIR, experiment_config["experiment_config"]["agent_config"][1]))
+    return experiment_config, algorithm_config, elite_map_config, None
 
 
 def createRecordList(mapData, mapDims):
@@ -165,9 +176,9 @@ def generateAll(logPath):
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
-    parser.add_argument('-c',
-                        '--config',
-                        help='path to the experiment config file',
+    parser.add_argument('-l',
+                        '--log_file',
+                        help='path to the experiment log file',
                         required=True)
     parser.add_argument('-f1',
                         '--feature1_idx',
@@ -184,21 +195,21 @@ if __name__ == "__main__":
                         help='step size of the animation to generate',
                         required=False,
                         default=100)
-    parser.add_argument('-l',
-                        '--log_file',
-                        help='filepath to the elite map log file',
-                        required=False,
-                        default=os.path.join(LSI_LOG_DIR, "elite_map.csv"))
+    # parser.add_argument('-l',
+    #                     '--log_file',
+    #                     help='filepath to the elite map log file',
+    #                     required=False,
+    #                     default=os.path.join((parser.parse_args().log_file), "elite_map.csv"))
     opt = parser.parse_args()
 
     # read in the name of the algorithm and features to plot
-    experiment_config, algorithm_config, elite_map_config, agent_config = read_in_lsi_config(
-        opt.config)
+    experiment_config, algorithm_config, elite_map_config, _ = read_in_lsi_config(
+        os.path.join(opt.log_file, "config.tml"))
     features = elite_map_config['Map']['Features']
 
     # read in parameters
     NUM_FEATURES = len(features)
-    LOG_FILE_NAME = opt.log_file
+    LOG_FILE_NAME = os.path.join(opt.log_file, "elite_map.csv")
     # Clear out the previous images
     tmpImageFolder = LSI_IMAGE_DIR
     if not os.path.exists(tmpImageFolder):
