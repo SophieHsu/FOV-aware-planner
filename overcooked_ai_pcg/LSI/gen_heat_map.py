@@ -26,8 +26,8 @@ ROW_INDEX = None  # index of feature 1 to plot
 COL_INDEX = None  # index of feature 2 to plot
 
 # max and min value of fitness
-FITNESS_MIN = -500000
-FITNESS_MAX = 500000
+FITNESS_MIN = 0
+FITNESS_MAX = 20000
 
 def read_in_lsi_config(exp_config_file):
     experiment_config = toml.load(exp_config_file)
@@ -54,6 +54,16 @@ def createRecordList(mapData, mapDims):
         nonFeatureIdx = NUM_FEATURES
         indID = int(splitedData[nonFeatureIdx])
         fitness = float(splitedData[nonFeatureIdx + 1])
+
+        # re-range the fitness
+        if fitness == 1:
+            fitness = 0
+        elif fitness >= 200000 and fitness < 400000:
+            fitness -= 200000
+        elif fitness >= 400000:
+            fitness -= 390000
+
+
         f1 = float(splitedData[nonFeatureIdx + 2 + ROW_INDEX])
         f2 = float(splitedData[nonFeatureIdx + 2 + COL_INDEX])
 
