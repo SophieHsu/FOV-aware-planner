@@ -139,6 +139,7 @@ def createImage(rowData, filename):
                                    columns=dataLabels[0],
                                    values='Fitness')
     fitnessMap.sort_index(level=1, ascending=False, inplace=True)
+    sns.color_palette("flare", as_cmap=True)
     with sns.axes_style("white"):
         numTicks = 5  #11
         numTicksX = mapDims[ROW_INDEX] // numTicks + 1
@@ -147,6 +148,7 @@ def createImage(rowData, filename):
         g = sns.heatmap(
             fitnessMap,
             annot=False,
+            cmap="flare_r",
             fmt=".0f",
             xticklabels=numTicksX,
             yticklabels=numTicksY,
