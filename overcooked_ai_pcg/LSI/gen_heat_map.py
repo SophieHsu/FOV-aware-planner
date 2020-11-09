@@ -16,41 +16,63 @@ from itertools import product, combinations
 from overcooked_ai_pcg import LSI_IMAGE_DIR, LSI_LOG_DIR, LSI_CONFIG_ALGO_DIR, LSI_CONFIG_MAP_DIR, LSI_CONFIG_AGENT_DIR
 
 # handled by command line argument parser
-FEATURE1_LABEL = None # label of the first feature to plot
-FEATURE2_LABEL = None # label of the second feature to plot
-IMAGE_TITLE = None # title of the image, aka name of the algorithm
-STEP_SIZE = None # step size of the animation to generate
-LOG_FILE_NAME = None # filepath to the elite map log file
+FEATURE1_LABEL = None  # label of the first feature to plot
+FEATURE2_LABEL = None  # label of the second feature to plot
+IMAGE_TITLE = None  # title of the image, aka name of the algorithm
+STEP_SIZE = None  # step size of the animation to generate
+LOG_FILE_NAME = None  # filepath to the elite map log file
 NUM_FEATURES = None  # total number of features (bc) used in the experiment
 ROW_INDEX = None  # index of feature 1 to plot
 COL_INDEX = None  # index of feature 2 to plot
+ELITE_MAP_NAME = None  # type of feature map used
 
 # max and min value of fitness
 FITNESS_MIN = 0
 FITNESS_MAX = 20000
 
+
 def read_in_lsi_config(exp_config_file):
     experiment_config = toml.load(exp_config_file)
     algorithm_config = toml.load(
-        os.path.join(LSI_CONFIG_ALGO_DIR,
-                     experiment_config["experiment_config"]["algorithm_config"]))
+        os.path.join(
+            LSI_CONFIG_ALGO_DIR,
+            experiment_config["experiment_config"]["algorithm_config"]))
     elite_map_config = toml.load(
-        os.path.join(LSI_CONFIG_MAP_DIR,
-                     experiment_config["experiment_config"]["elite_map_config"]))
+        os.path.join(
+            LSI_CONFIG_MAP_DIR,
+            experiment_config["experiment_config"]["elite_map_config"]))
     # agent_config = toml.load(
-        # os.path.join(LSI_CONFIG_AGENT_DIR, experiment_config["experiment_config"]["agent_config"][1]))
+    # os.path.join(LSI_CONFIG_AGENT_DIR, experiment_config["experiment_config"]["agent_config"][1]))
     return experiment_config, algorithm_config, elite_map_config, None
 
 
 def createRecordList(mapData, mapDims):
-    recordList = []; trackRmIndexPairs = {}
-    indexPairs = [(x, y)
-                  for x, y in product(range(mapDims[ROW_INDEX]), range(mapDims[COL_INDEX]))]
+    recordList = []
+    trackRmIndexPairs = {}
+
+    # create custom indexPairs if needed:
+    if ELITE_MAP_NAME == "workloads_diff.tml":
+        lows = np.array([-6, -2, -2])
+        highs = np.array([6, 2, 2]) + 1
+        indexPairs = [
+            (x, y)
+            for x, y in product(range(lows[ROW_INDEX], highs[ROW_INDEX]),
+                                range(lows[COL_INDEX], highs[COL_INDEX]))
+        ]
+    else:
+        indexPairs = [(x, y) for x, y in product(range(mapDims[ROW_INDEX]),
+                                                 range(mapDims[COL_INDEX]))]
     for i, cellData in enumerate(mapData):
         # splite data from csv file
         splitedData = cellData.split(":")
-        cellRow = int(splitedData[ROW_INDEX])
-        cellCol = int(splitedData[COL_INDEX])
+        # re-range the bc if needed:
+        indexes = np.array([int(splitedData[i]) for i in range(NUM_FEATURES)])
+        if ELITE_MAP_NAME == "workloads_diff.tml":
+            indexes[0] -= 6
+            indexes[1:] -= 2
+
+        cellRow = indexes[ROW_INDEX]
+        cellCol = indexes[COL_INDEX]
         nonFeatureIdx = NUM_FEATURES
         indID = int(splitedData[nonFeatureIdx])
         fitness = float(splitedData[nonFeatureIdx + 1])
@@ -63,18 +85,17 @@ def createRecordList(mapData, mapDims):
         elif fitness >= 400000:
             fitness -= 390000
 
-
         f1 = float(splitedData[nonFeatureIdx + 2 + ROW_INDEX])
         f2 = float(splitedData[nonFeatureIdx + 2 + COL_INDEX])
 
         data = [cellRow, cellCol, indID, fitness, f1, f2]
-
         if (cellRow, cellCol) in indexPairs:
             indexPairs.remove((cellRow, cellCol))
-            trackRmIndexPairs[str(cellRow)+'_'+str(cellCol)] = len(recordList)
+            trackRmIndexPairs[str(cellRow) + '_' +
+                              str(cellCol)] = len(recordList)
             recordList.append(data)
         else:
-            track_idx = trackRmIndexPairs[str(cellRow)+'_'+str(cellCol)]
+            track_idx = trackRmIndexPairs[str(cellRow) + '_' + str(cellCol)]
             if data[3] > recordList[track_idx][3]:
                 recordList[track_idx] = data
 
@@ -178,11 +199,13 @@ def generateAll(logPath):
         # generate the movie
         template = os.path.join(tmpImageFolder, 'grid_{:05d}.png')
         createImages(STEP_SIZE, allRows[1:], template)
-        movieFilename = 'fitness_'+str(ROW_INDEX)+'_'+str(COL_INDEX)+'.avi'
+        movieFilename = 'fitness_' + str(ROW_INDEX) + '_' + str(
+            COL_INDEX) + '.avi'
         createMovie(tmpImageFolder, movieFilename)
 
         # Create the final image we need
-        imageFilename = 'fitnessMap_'+str(ROW_INDEX)+'_'+str(COL_INDEX)+'.png'
+        imageFilename = 'fitnessMap_' + str(ROW_INDEX) + '_' + str(
+            COL_INDEX) + '.png'
         createImage(allRows[-1], os.path.join(LSI_IMAGE_DIR, imageFilename))
 
 
@@ -218,6 +241,8 @@ if __name__ == "__main__":
     experiment_config, algorithm_config, elite_map_config, _ = read_in_lsi_config(
         os.path.join(opt.log_file, "config.tml"))
     features = elite_map_config['Map']['Features']
+    ELITE_MAP_NAME = experiment_config["experiment_config"]["elite_map_config"]
+    print(ELITE_MAP_NAME)
 
     # read in parameters
     NUM_FEATURES = len(features)
