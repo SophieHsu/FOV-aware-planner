@@ -2,14 +2,30 @@ import os
 import csv
 import time
 import json
+import toml
 import argparse
 import pandas as pd
-from overcooked_ai_pcg import LSI_CONFIG_EXP_DIR, LSI_LOG_DIR
+from overcooked_ai_pcg import LSI_CONFIG_EXP_DIR, LSI_LOG_DIR, LSI_CONFIG_ALGO_DIR, LSI_CONFIG_MAP_DIR, LSI_CONFIG_AGENT_DIR
 from overcooked_ai_pcg.helper import run_overcooked_game, read_in_lsi_config
 from overcooked_ai_pcg.LSI.qd_algorithms import Individual
 
+# def read_in_lsi_config(exp_config_file):
+#     experiment_config = toml.load(exp_config_file)
+#     algorithm_config = toml.load(
+#         os.path.join(LSI_CONFIG_ALGO_DIR,
+#                      experiment_config["experiment_config"]["algorithm_config"]))
+#     elite_map_config = toml.load(
+#         os.path.join(LSI_CONFIG_MAP_DIR,
+#                      experiment_config["experiment_config"]["elite_map_config"]))
+#     agent_configs = []
+#     for agent_config_file in experiment_config["agent_config"]:
+#         agent_config = toml.load(
+#         os.path.join(LSI_CONFIG_AGENT_DIR, experiment_config["experiment_config"]["agent_config"]))
+#         agent_configs.append(agent_config)
+#     return experiment_config, algorithm_config, elite_map_config, agent_configs
 
-def log_actions(ind, agent_config, log_dir):
+
+def log_actions(ind, agent_config, log_dir, f1, f2, row_idx, col_idx, ind_id):
     agent1_config = agent_config["Agent1"]
     agent2_config = agent_config["Agent2"]
 
@@ -23,7 +39,7 @@ def log_actions(ind, agent_config, log_dir):
             "name"] == "human_aware_agent":
         log_file = "human_aware"
 
-    log_file += "_joint_actions.json"
+    log_file += ("_joint_actions_"+str(f1)+"_"+str(f2)+"_"+str(row_idx)+"_"+str(col_idx)+"_"+str(ind_id)+".json")
     full_path = os.path.join(log_dir, log_file)
     if os.path.exists(full_path):
         print("Joint actions logged before, skipping...")
@@ -67,9 +83,9 @@ def play(elite_map, agent_configs, individuals, f1, f2, row_idx, col_idx,
             ind.human_adaptiveness = individuals["human_adaptiveness"][ind_id]
             ind.rand_seed = individuals["rand_seed"][ind_id]
             for agent_config in agent_configs:
-                fitness, _, _, _, _ = run_overcooked_game(ind, agent_config, render=False)
+                fitness, _, _, _, ind.joint_actions, _, _ = run_overcooked_game(ind, agent_config, render=False)
                 print("Fitness: %d" % fitness)
-                log_actions(ind, agent_config, log_dir)
+                log_actions(ind, agent_config, log_dir, f1, f2, row_idx, col_idx, ind_id)
             return
 
     print("No individual found in the specified cell")

@@ -231,6 +231,7 @@ def setup_env_from_grid(layout_grid,
     elif agent1_config["name"] == "preferenced_human" and agent2_config[
             "name"] == "human_aware_agent":
         print("worker(%d): Pre-constructing graph..." % (worker_id))
+        # print(human_preference, human_adaptiveness)
         ml_action_manager = MediumLevelActionManager(mdp, BASE_PARAMS)
         hmlp = HumanMediumLevelPlanner(
             mdp, ml_action_manager, [human_preference, 1.0 - human_preference],

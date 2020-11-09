@@ -261,7 +261,7 @@ class RandomGenerator(QDAlgorithmBase):
         for i in range(len(self.bound_constraints)):
             if self.bound_constraints[i] != None:
                 min_val, max_val = self.bound_constraints[i]
-                unscaled_params[i] = np.clip(ind.unscaled_params[i], min_val, max_val)
+                unscaled_params[i] = np.clip(unscaled_params[i], min_val, max_val)
 
         ind.param_vector = unscaled_params
         self.individuals_disbatched += 1
