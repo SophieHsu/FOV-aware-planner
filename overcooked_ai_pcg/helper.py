@@ -283,14 +283,7 @@ def run_overcooked_game(ind, agent_config, render=True, worker_id=0):
     """
     Run one turn of overcooked game and return the sparse reward as fitness
     """
-    lvl_str = ind.level
-    grid = lvl_str2grid(lvl_str)
-    agent1, agent2, env = setup_env_from_grid(
-        grid,
-        agent_config,
-        worker_id=worker_id,
-        human_preference=ind.human_preference,
-        human_adaptiveness=ind.human_adaptiveness)
+    agent1, agent2, env = init_env_and_agent(ind, agent_config, worker_id)
     done = False
     total_sparse_reward = 0
     last_state = None
@@ -345,6 +338,18 @@ def run_overcooked_game(ind, agent_config, render=True, worker_id=0):
 
     return fitness, total_sparse_reward, checkpoints, workloads, joint_actions, concurr_active, stuck_time
     # return ind
+
+def init_env_and_agent(ind, agent_config, worker_id=0):
+    lvl_str = ind.level
+    grid = lvl_str2grid(lvl_str)
+    agent1, agent2, env = setup_env_from_grid(
+        grid,
+        agent_config,
+        worker_id=worker_id,
+        human_preference=ind.human_preference,
+        human_adaptiveness=ind.human_adaptiveness)
+
+    return agent1, agent2, env
 
 def gen_int_rnd_lvl(size):
     """

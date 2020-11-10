@@ -19,7 +19,7 @@ def render_blur(joint_action_log, log_dir, lb, ub):
     t = 0
     while not done:
         if t >= lb and t <= ub:
-            env.render("blur")
+            env.render()
             time.sleep(0.1)
         agent1_action = joint_actions[t][0]
         agent2_action = joint_actions[t][1]
@@ -36,6 +36,14 @@ def render_blur(joint_action_log, log_dir, lb, ub):
         env.mdp.viewer,
         os.path.join(log_dir, "blurred_play_%sto%s.png" % (str(lb), str(ub))))
 
+
+    print("fitness =", joint_action_log["fitness"])
+    print("score =", joint_action_log["score"])
+    print("checkpoints =", joint_action_log["checkpoints"])
+    print("player_workloads =", joint_action_log["player_workloads"])
+    print("concurr_active =", joint_action_log["concurr_active"])
+    print("stuck_time =", joint_action_log["stuck_time"])
+    print("rand_seed =", joint_action_log["rand_seed"])
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
