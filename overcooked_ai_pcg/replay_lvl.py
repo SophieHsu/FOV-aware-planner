@@ -55,7 +55,7 @@ def log_actions(ind, agent_config, log_dir, f1, f2, row_idx, col_idx, ind_id):
 
 
 def play(elite_map, agent_configs, individuals, f1, f2, row_idx, col_idx,
-         log_dir):
+         log_dir, ind_id):
     """
     Find the individual in the specified cell in the elite map
     and run overcooked game with the specified agents
@@ -68,25 +68,26 @@ def play(elite_map, agent_configs, individuals, f1, f2, row_idx, col_idx,
         f1, f2 (int, int): index of the features to use
         row_idx, col_idx (int, int): index of the cell in the elite map
     """
-    for elite in elite_map:
-        splited = elite.split(":")
-        curr_row_idx = int(splited[f1])
-        curr_col_idx = int(splited[f2])
-        if curr_row_idx == row_idx and curr_col_idx == col_idx:
-            ind_id = int(splited[num_features])
-            lvl_str = individuals["lvl_str"][ind_id]
-            print("Playing in individual %d" % ind_id)
-            print(lvl_str)
-            ind = Individual()
-            ind.level = lvl_str
-            ind.human_preference = individuals["human_preference"][ind_id]
-            ind.human_adaptiveness = individuals["human_adaptiveness"][ind_id]
-            ind.rand_seed = individuals["rand_seed"][ind_id]
-            for agent_config in agent_configs:
-                fitness, _, _, _, ind.joint_actions, _, _ = run_overcooked_game(ind, agent_config, render=False)
-                print("Fitness: %d" % fitness)
-                log_actions(ind, agent_config, log_dir, f1, f2, row_idx, col_idx, ind_id)
-            return
+    # for elite in elite_map:
+    #     splited = elite.split(":")
+    #     curr_row_idx = int(splited[f1])
+    #     curr_col_idx = int(splited[f2])
+    #     if curr_row_idx == row_idx and curr_col_idx == col_idx:
+    #         ind_id = int(splited[num_features])
+    ind_id = int(ind_id)
+    lvl_str = individuals["lvl_str"][ind_id]
+    print("Playing in individual %d" % ind_id)
+    print(lvl_str)
+    ind = Individual()
+    ind.level = lvl_str
+    ind.human_preference = individuals["human_preference"][ind_id]
+    ind.human_adaptiveness = individuals["human_adaptiveness"][ind_id]
+    ind.rand_seed = individuals["rand_seed"][ind_id]
+    for agent_config in agent_configs:
+        fitness, _, _, _, ind.joint_actions, _, _ = run_overcooked_game(ind, agent_config, render=False)
+        print("Fitness: %d" % fitness)
+        log_actions(ind, agent_config, log_dir, f1, f2, row_idx, col_idx, ind_id)
+    return
 
     print("No individual found in the specified cell")
 
@@ -117,6 +118,11 @@ if __name__ == "__main__":
     parser.add_argument('-f2',
                         '--feature2_idx',
                         help='index of the second feature to be used',
+                        required=False,
+                        default=1)
+    parser.add_argument('-id',
+                        '--ind_id',
+                        help='id of the individual',
                         required=False,
                         default=1)
 
@@ -153,4 +159,4 @@ if __name__ == "__main__":
     assert (col_idx < num_col)
 
     play(elite_map, agent_configs, individuals, f1, f2, row_idx, col_idx,
-         log_dir)
+         log_dir, opt.ind_id)
