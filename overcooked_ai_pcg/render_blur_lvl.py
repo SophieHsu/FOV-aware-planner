@@ -19,6 +19,7 @@ def render_blur(joint_action_log, log_dir, lb, ub):
     t = 0
     while not done:
         if t >= lb and t <= ub:
+            # env.render("blur", time_left=t)
             env.render()
             time.sleep(0.1)
         agent1_action = joint_actions[t][0]
@@ -29,7 +30,7 @@ def render_blur(joint_action_log, log_dir, lb, ub):
         next_state, timestep_sparse_reward, done, info = env.step(joint_action)
         t += 1
         # print(t)
-        # tmp = input()
+        tmp = input()
 
     # save the rendered blur image
     pygame.image.save(

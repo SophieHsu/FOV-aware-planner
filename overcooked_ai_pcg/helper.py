@@ -2,6 +2,7 @@ import os
 import json
 import torch
 import toml
+import pickle
 import numpy as np
 from matplotlib import pyplot as plt
 from overcooked_ai_py.mdp.overcooked_mdp import OvercookedGridworld
@@ -250,7 +251,7 @@ def setup_env_from_grid(layout_grid,
         print("worker(%d): MDP agent planning..." % (worker_id))
 
         agent2 = MediumMdpPlanningAgent(
-            mdp_planner, env, auto_unstuck=agent2_config["auto_unstuck"])
+            mdp_planner, auto_unstuck=agent2_config["auto_unstuck"])
 
         print("worker(%d): Preprocess take %d seconds" %
               (worker_id, time.time() - start_time))
@@ -265,7 +266,7 @@ def setup_env_from_grid(layout_grid,
     
     gc.collect()
 
-    return agent1, agent2, env
+    return agent1, agent2, env, mdp
 
 
 def save_gan_param(G_params):
@@ -283,7 +284,7 @@ def run_overcooked_game(ind, agent_config, render=True, worker_id=0):
     """
     Run one turn of overcooked game and return the sparse reward as fitness
     """
-    agent1, agent2, env = init_env_and_agent(ind, agent_config, worker_id)
+    agent1, agent2, env, _ = init_env_and_agent(ind, agent_config, worker_id=worker_id)
     done = False
     total_sparse_reward = 0
     last_state = None
@@ -342,14 +343,14 @@ def run_overcooked_game(ind, agent_config, render=True, worker_id=0):
 def init_env_and_agent(ind, agent_config, worker_id=0):
     lvl_str = ind.level
     grid = lvl_str2grid(lvl_str)
-    agent1, agent2, env = setup_env_from_grid(
+    agent1, agent2, env, mdp = setup_env_from_grid(
         grid,
         agent_config,
         worker_id=worker_id,
         human_preference=ind.human_preference,
         human_adaptiveness=ind.human_adaptiveness)
 
-    return agent1, agent2, env
+    return agent1, agent2, env, mdp
 
 def gen_int_rnd_lvl(size):
     """

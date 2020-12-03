@@ -1400,7 +1400,7 @@ class OvercookedGridworld(object):
             if mode == "blur":
                 player_pgobj.set_alpha(150)
                 player_hat_pgobj.set_alpha(150)
-                draw_arrow(self.viewer, player, player_idx_lst[0], curr_pos)
+                draw_arrow(self.viewer, player, player_idx_lst[0], curr_pos, time_left)
 
             self.viewer.blit(player_pgobj, curr_pos)
             self.viewer.blit(player_hat_pgobj, curr_pos)

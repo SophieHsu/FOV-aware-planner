@@ -1,6 +1,7 @@
 import os
 import pygame
 import time
+import numpy as np
 from overcooked_ai_py import ASSETS_DIR
 from overcooked_ai_py.mdp.actions import Action, Direction
 pygame.init()
@@ -30,24 +31,60 @@ PLAYER_HAT_COLOR = {
 
 PLAYER_ARROW_COLOR = {0: (0, 255, 0, 128), 1: (0, 0, 255, 128)}
 
+# PLAYER_ARROW_ORIENTATION = {
+#     Direction.DIRECTION_TO_STRING[Direction.NORTH]:
+#     ((125, 300), (175, 300), (175, 100), (225, 100),
+#      (150, 0), (75, 100), (125, 100)),
+
+#     Direction.DIRECTION_TO_STRING[Direction.SOUTH]:
+#     ((125, 0), (175, 0), (175, 200), (225, 200),
+#      (150, 300), (75, 200), (125, 200)),
+
+#     Direction.DIRECTION_TO_STRING[Direction.EAST]:
+#     ((0, 125), (0, 175), (200, 175), (200, 225),
+#      (300, 150), (200, 75), (200, 125)),
+
+#     Direction.DIRECTION_TO_STRING[Direction.WEST]:
+#     ((300, 125), (300, 175), (100, 175), (100, 225),
+#      (0, 150), (100, 75), (100, 125)),
+# }
+
+
 PLAYER_ARROW_ORIENTATION = {
     Direction.DIRECTION_TO_STRING[Direction.NORTH]:
-    ((125, 300), (175, 300), (175, 100), (225, 100),
-     (150, 0), (75, 100), (125, 100)),
+    ((15, 300), (35, 300), (35, 100), (50, 100),
+     (25, 0), (0, 100), (15, 100)),
 
     Direction.DIRECTION_TO_STRING[Direction.SOUTH]:
-    ((125, 0), (175, 0), (175, 200), (225, 200),
-     (150, 300), (75, 200), (125, 200)),
+    ((15, 0), (35, 0), (35, 200), (50, 200),
+     (25, 300), (0, 200), (15, 200)),
 
     Direction.DIRECTION_TO_STRING[Direction.EAST]:
-    ((0, 125), (0, 175), (200, 175), (200, 225),
-     (300, 150), (200, 75), (200, 125)),
+    ((0, 15), (0, 35), (200, 35), (200, 50),
+     (300, 25), (200, 0), (200, 15)),
 
     Direction.DIRECTION_TO_STRING[Direction.WEST]:
-    ((300, 125), (300, 175), (100, 175), (100, 225),
-     (0, 150), (100, 75), (100, 125)),
+    ((300, 15), (300, 35), (100, 35), (100, 50),
+     (0, 25), (100, 0), (100, 15)),
 }
 
+PLAYER_ARROW_POS_SHIFT = {
+    Direction.DIRECTION_TO_STRING[Direction.NORTH]:
+    ((1, 0), (1, 0), (1, 0), (1, 0),
+     (1, 0), (1, 0), (1, 0)),
+
+    Direction.DIRECTION_TO_STRING[Direction.SOUTH]:
+    ((1, 0), (1, 0), (1, 0), (1, 0),
+     (1, 0), (1, 0), (1, 0)),
+
+    Direction.DIRECTION_TO_STRING[Direction.EAST]:
+    ((0, 1), (0, 1), (0, 1), (0, 1),
+     (0, 1), (0, 1), (0, 1)),
+
+    Direction.DIRECTION_TO_STRING[Direction.WEST]:
+    ((0, 1), (0, 1), (0, 1), (0, 1),
+     (0, 1), (0, 1), (0, 1)),
+}
 
 def get_curr_pos(x, y):
     """
@@ -168,12 +205,15 @@ def get_object_sprite(obj, on_pot=False):
     return load_image(obj_img_path)
 
 
-def draw_arrow(window, player, player_index, pos):
+def draw_arrow(window, player, player_index, pos, time_left):
     """
     Draw an arrow indicating orientation of the player
     """
+    shift = 10.0
     orientation_str = get_orientation_str(player)
     arrow_orientation = PLAYER_ARROW_ORIENTATION[orientation_str]
+    arrow_position = [[j*shift*time_left for j in i] for i in PLAYER_ARROW_POS_SHIFT[orientation_str]]
+    arrow_orientation = np.add(np.array(arrow_orientation), arrow_position).tolist()
     arrow_color = PLAYER_ARROW_COLOR[player_index]
 
     arrow = pygame.Surface((300, 300)).convert()
@@ -183,7 +223,7 @@ def draw_arrow(window, player, player_index, pos):
 
     arrow = pygame.transform.scale(arrow, (SPRITE_LENGTH, SPRITE_LENGTH))
     window.blit(arrow, pos)
-
+    tmp = input()
 
 
 def get_orientation_str(player):

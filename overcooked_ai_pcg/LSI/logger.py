@@ -197,3 +197,77 @@ class MapSummaryLog(LoggerBase):
             percent_occupied,
         ]
         self._write_row(to_add)
+
+class HumanExpLogger(LoggerBase):
+    """
+    Logger that logs individuals to a csv file
+
+    Args:
+        log_path (string): filename of the log file
+        elite_map_config: toml config object of the feature maps
+        agent_configs (list): list of toml config object of agents
+    """
+    def __init__(self, log_path, elite_map_config, agent_configs):
+        super().__init__()
+        self._log_path = os.path.join(LSI_LOG_DIR, log_path)
+        self._isInitialized = False
+        self._elite_map_config = elite_map_config
+        self._agent_configs = agent_configs
+        self.init_log()
+
+    def init_log(self, ):
+        # remove the file if exists
+        if os.path.exists(self._log_path):
+            os.remove(self._log_path)
+
+        # construct labels
+        data_labels = ["ID", "feature 1", "feature 2", "row", "column", "fitness"]
+        # We need to be told how many orders we have
+
+        data_labels += [
+            'score_{}_w_{}'.format(agent_config["Agent1"]["name"],
+                                   agent_config["Agent2"]["name"])
+            for agent_config in self._agent_configs
+        ]
+        data_labels += [
+            'order_delivered_{}_w_{}'.format(agent_config["Agent1"]["name"],
+                                             agent_config["Agent2"]["name"])
+            for agent_config in self._agent_configs
+        ]
+        data_labels += [
+            'player_workload_{}_w_{}'.format(agent_config["Agent1"]["name"],
+                                             agent_config["Agent2"]["name"])
+            for agent_config in self._agent_configs
+        ]
+        data_labels += [
+            'joint_action{}_w_{}'.format(agent_config["Agent1"]["name"],
+                                         agent_config["Agent2"]["name"])
+            for agent_config in self._agent_configs
+        ]
+
+        for bc in self._elite_map_config["Map"]["Features"]:
+            data_labels.append(bc["name"])
+        data_labels += [
+            "human_preference", "human_adaptiveness", "rand_seed", "lvl_str"
+        ]
+        self._write_row(data_labels)
+
+    def log_human_exp(self, ind, f1, f2, row, col):
+        to_add = [
+            ind.ID,
+            f1,
+            f2,
+            row,
+            col,
+            ind.fitness,
+            *ind.scores,
+            *ind.checkpoints,
+            *ind.player_workloads,
+            *ind.joint_actions,
+            *ind.features,
+            ind.human_preference,
+            ind.human_adaptiveness,
+            ind.rand_seed,
+            ind.level,
+        ]
+        self._write_row(to_add)
