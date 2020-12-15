@@ -5,6 +5,7 @@ import pygame
 from argparse import ArgumentParser
 import numpy as np
 import gc
+import time
 
 from overcooked_ai_py.mdp.overcooked_mdp import OvercookedGridworld, OvercookedState, Direction, Action, PlayerState, ObjectState
 from overcooked_ai_py.mdp.overcooked_env import OvercookedEnv
@@ -99,13 +100,13 @@ class App:
 
 
     def step_env(self, my_action):
-        # agent_action = self.agent.action(self.env.state)[0]
+        agent_action = self.agent.action(self.env.state)[0]
         agent2_action = self.agent2.action(self.env.state)[0]
 
         if self.agent_idx == 0:
-            joint_action = (action, agent2_action)
+            joint_action = (agent_action, agent2_action)
         else:
-            joint_action = (agent2_action, action)
+            joint_action = (agent2_action, agent_action)
 
         next_state, timestep_sparse_reward, done, info = self.env.step(joint_action)
 
@@ -147,8 +148,8 @@ COUNTERS_PARAMS = {
 if __name__ == "__main__" :
 
     # np.random.seed(0)
-
-    scenario_1_mdp = OvercookedGridworld.from_layout_name('10x15_test1', start_order_list=['onion','onion'], cook_time=10)
+    start_time = time.time()
+    scenario_1_mdp = OvercookedGridworld.from_layout_name('gen1_basic_1-2', start_order_list=['onion','onion'], num_items_for_soup=3, cook_time=10)
     # start_state = OvercookedState(
     #     [P((2, 1), s, Obj('onion', (2, 1))),
     #      P((3, 2), s)],
@@ -157,28 +158,43 @@ if __name__ == "__main__" :
 
     ml_action_manager = planners.MediumLevelActionManager(scenario_1_mdp, NO_COUNTERS_PARAMS)
 
-    # a0 = agent.GreedyHumanModel(mlp)
+    # hmlp = planners.HumanMediumLevelPlanner(scenario_1_mdp, ml_action_manager, [0.5, (1.0-0.5)], 0.5)
+    # human_agent = agent.biasHumanModel(ml_action_manager, [0.5, (1.0-0.5)], 0.5, auto_unstuck=True)
 
-    hmlp = planners.HumanMediumLevelPlanner(scenario_1_mdp, ml_action_manager, [0.5, (1.0-0.5)], 0.5)
-    a0 = agent.biasHumanModel(ml_action_manager, [0.5, (1.0-0.5)], 0.5, auto_unstuck=True)
+    mlp = planners.MediumLevelPlanner.from_pickle_or_compute(scenario_1_mdp, NO_COUNTERS_PARAMS, force_compute=True)  
+    human_agent = agent.GreedyHumanModel(mlp)
 
-    # mdp_planner = planners.MediumLevelMdpPlanner.from_pickle_or_compute(scenario_1_mdp, NO_COUNTERS_PARAMS, mlp, force_compute_all=True)
-    mdp_planner = planners.HumanAwareMediumMDPPlanner.from_pickle_or_compute(scenario_1_mdp, NO_COUNTERS_PARAMS, hmlp, ml_action_manager, force_compute_all=True)
-    a1 = agent.MediumMdpPlanningAgent(mdp_planner, auto_unstuck=True)
+    mdp_planner = planners.HumanSubtaskQMDPPlanner.from_pickle_or_compute(scenario_1_mdp, NO_COUNTERS_PARAMS, ml_action_manager, mlp=mlp, force_compute_all=True)
+    ai_agent = agent.MediumQMdpPlanningAgent(mdp_planner, auto_unstuck=True)
 
-    # # a1 = agent.oneGoalHumanModel(mlp, 'Soup server', auto_unstuck=True)
-    # a1 = agent.biasHumanModel(mlp, [0.3, 0.7], 0.3, auto_unstuck=True)
-
-    # a1 = MdpPlanningAgent(a0, mdp_planner, env)
-    del ml_action_manager, hmlp, mdp_planner
+    del ml_action_manager, mdp_planner
     gc.collect()
-    agent_pair = agent.AgentPair(a0, a1)
+    agent_pair = agent.AgentPair(ai_agent, human_agent) # if use QMDP, the first agent has to be the AI agent
+    print("It took {} seconds for planning".format(time.time() - start_time))
 
-
-
+    start_time = time.time()
     s_t, joint_a_t, r_t, done_t = env.run_agents(agent_pair, include_final_state=True, display=DISPLAY)
+    print("It took {} seconds for playing the entire level".format(time.time() - start_time))
 
-    # print(s_t, joint_a_t, r_t, done_t)
+    done = False
+    t = 0
+    scenario_1_mdp = OvercookedGridworld.from_layout_name('gen1_basic_1-2', start_order_list=['onion','onion'], num_items_for_soup=3, cook_time=10)
+    env = OvercookedEnv.from_mdp(scenario_1_mdp, horizon = 1000)
+    while not done:
+        if t >= 0 and t <= 300:
+            # env.render("blur", time_left=t)
+            env.render()
+            time.sleep(0.1)
+        agent1_action = s_t[t][1][0]
+        agent2_action = s_t[t][1][1]
+        joint_action = (tuple(agent1_action) if isinstance(
+            agent1_action, list) else agent1_action, tuple(agent2_action)
+                        if isinstance(agent2_action, list) else agent2_action)
+        next_state, timestep_sparse_reward, done, info = env.step(joint_action)
+        t += 1
+        # print(t)
+        tmp = input()
 
-    # theApp = App(env, a0, a1, player_idx=0, slow_time=False)
+    # theApp = App(env, ai_agent, human_agent, player_idx=0, slow_time=False)
     # theApp.on_execute()
+    # print("It took {} seconds for playing the entire level".format(time.time() - start_time))

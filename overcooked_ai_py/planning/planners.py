@@ -5,7 +5,7 @@ import math
 from overcooked_ai_py.utils import pos_distance, manhattan_distance
 from overcooked_ai_py.planning.search import SearchTree, Graph
 from overcooked_ai_py.mdp.actions import Action, Direction
-from overcooked_ai_py.mdp.overcooked_mdp import OvercookedState, PlayerState, OvercookedGridworld, EVENT_TYPES, SIMPLE_EVENT_TYPES
+from overcooked_ai_py.mdp.overcooked_mdp import OvercookedState, PlayerState, ObjectState, OvercookedGridworld, EVENT_TYPES, SIMPLE_EVENT_TYPES
 from overcooked_ai_py.mdp.overcooked_env import OvercookedEnv
 from overcooked_ai_py.data.planners import load_saved_action_manager, PLANNERS_DIR
 import pprint
@@ -1124,7 +1124,7 @@ class MediumLevelPlanner(object):
         heuristic_fn = lambda state: h_fn(state)
 
         search_problem = SearchTree(start_state, goal_fn, expand_fn, heuristic_fn, debug=debug)
-        ml_plan, cost = search_problem.A_star_graph_search(info=True)
+        ml_plan, cost = search_problem.A_star_graph_search(info=False)
         return ml_plan[1:], cost
     
     def get_successor_states(self, start_state):
@@ -1706,6 +1706,7 @@ class MediumLevelMdpPlanner(object):
         self.value_matrix = value_matrix
         self.epsilon = epsilon
         self.discount = discount
+        self.q = None
 
     @staticmethod
     def from_mdp_planner_file(filename):
@@ -1784,7 +1785,7 @@ class MediumLevelMdpPlanner(object):
         # player_obj, num_item_in_pot, order_list
 
         if state_idx_dict is None:
-            objects = ['onion', 'tomato', 'soup', 'dish', 'None']
+            objects = ['onion', 'soup', 'dish', 'None'] # 'tomato'
             # common_actions = ['pickup', 'drop']
             # addition_actions = [('soup','deliver'), ('soup', 'pickup'), ('dish', 'pickup'), ('None', 'None')]
             # obj_action_pair = list(itertools.product(objects, common_actions)) + addition_actions
@@ -1836,9 +1837,9 @@ class MediumLevelMdpPlanner(object):
         # print('In init_actions()...')
 
         if actions is None:
-            objects = ['onion', 'tomato']
+            objects = ['onion', 'dish'] # 'tomato'
             common_actions = ['pickup', 'drop']
-            addition_actions = [['deliver','soup'], ['pickup', 'soup'], ['pickup', 'dish']]
+            addition_actions = [['deliver','soup'], ['pickup', 'soup']]
 
             common_action_obj_pair = list(itertools.product(common_actions, objects))
             common_action_obj_pair = [list(i) for i in common_action_obj_pair]
@@ -1970,12 +1971,16 @@ class MediumLevelMdpPlanner(object):
     def drop_item(self, state):
         return self.mdp.get_empty_counter_locations(state)
 
-    def map_action_to_location(self, state, state_str, action, obj):
-        pots_states_dict = self.mdp.get_pot_states(state)
+    def map_action_to_location(self, world_state, state_obj, action, obj, p0_obj=None):
+        """
+        Get the next location the agent will be in based on current world state and medium level actions.
+        """
+        p0_obj = p0_obj if p0_obj is not None else self.state_dict[state_obj][0]
+        pots_states_dict = self.mdp.get_pot_states(world_state)
         location = []
         if action == 'pickup' and obj != 'soup':
-            if not self._not_holding_object(state_str):
-                location = self.drop_item(state)
+            if p0_obj != 'None':
+                location = self.drop_item(world_state)
             else:
                 if obj == 'onion':
                     location = self.mdp.get_onion_dispenser_locations()
@@ -1984,11 +1989,12 @@ class MediumLevelMdpPlanner(object):
                 elif obj == 'dish':
                     location = self.mdp.get_dish_dispenser_locations()
                 else:
+                    print(p0_obj, action, obj)
                     ValueError()
         elif action == 'pickup' and obj == 'soup':
-            if self.state_dict[state_str][0] != 'dish' and not self._not_holding_object(state_str):
-                location = self.drop_item(state)
-            elif self._not_holding_object(state_str):
+            if p0_obj != 'dish' and p0_obj != 'None':
+                location = self.drop_item(world_state)
+            elif p0_obj == 'None':
                 location = self.mdp.get_dish_dispenser_locations()
             else:
                 location = self.mdp.get_ready_pots(pots_states_dict) + self.mdp.get_cooking_pots(pots_states_dict) + self.mdp.get_full_pots(pots_states_dict)
@@ -1996,16 +2002,20 @@ class MediumLevelMdpPlanner(object):
         elif action == 'drop':
             if obj == 'onion' or obj == 'tomato':
                 location = self.mdp.get_partially_full_pots(pots_states_dict) + self.mdp.get_empty_pots(pots_states_dict)
+            elif obj == 'dish':
+                location = self.drop_item(world_state)
             else:
+                print(p0_obj, action, obj)
                 ValueError()
 
         elif action == 'deliver':
-            if self.state_dict[state_str][0] != 'soup':
-                location = self.mdp.get_empty_counter_locations(state)
+            if p0_obj != 'soup':
+                location = self.mdp.get_empty_counter_locations(world_state)
             else:
                 location = self.mdp.get_serving_locations()
 
         else:
+            print(p0_obj, action, obj)
             ValueError()
 
         return location
@@ -2050,8 +2060,8 @@ class MediumLevelMdpPlanner(object):
 
         return location
 
-    def _not_holding_object(self, state_str):
-        return self.state_dict[state_str][0] == 'None'
+    def _not_holding_object(self, state_obj):
+        return self.state_dict[state_obj][0] == 'None'
 
     def init_reward(self, reward_matrix=None):
         # state: obj + action + bool(soup nearly finish) + orders
@@ -2075,8 +2085,6 @@ class MediumLevelMdpPlanner(object):
 
             # if soup_finish == self.mdp.num_items_for_soup and player_obj == 'dish':
             #     self.reward_matrix[self.action_idx_dict['pickup_soup'], self.state_idx_dict[state_key]] += self.mdp.delivery_reward/5.0
-
-
 
     def bellman_operator(self, V=None):
 
@@ -2399,6 +2407,546 @@ class HumanAwareMediumMDPPlanner(MediumLevelMdpPlanner):
         return state_str
 
 
+class HumanSubtaskQMDPPlanner(MediumLevelMdpPlanner):
+    def __init__(self, mdp, mlp_params, ml_action_manager, mlp=None, \
+        state_dict = {}, state_idx_dict = {}, action_dict = {}, action_idx_dict = {}, transition_matrix = None, reward_matrix = None, policy_matrix = None, value_matrix = None, \
+        num_states = 0, num_rounds = 0, epsilon = 0.01, discount = 0.8):
+
+        super().__init__(mdp, mlp_params, ml_action_manager, \
+        state_dict = {}, state_idx_dict = {}, action_dict = {}, action_idx_dict = {}, transition_matrix = None, reward_matrix = None, policy_matrix = None, value_matrix = None, \
+        num_states = 0, num_rounds = 0, epsilon = 0.01, discount = 0.8)
+
+        self.mlp = MediumLevelPlanner(mdp, mlp_params, ml_action_manager = ml_action_manager) if mlp is None else mlp
+        self.world_state_cost_dict = {}
+
+    @staticmethod
+    def from_pickle_or_compute(mdp, mlp_params, ml_action_manager, mlp=None, custom_filename=None, force_compute_all=False, info=True, force_compute_more=False):
+
+        assert isinstance(mdp, OvercookedGridworld)
+
+        filename = custom_filename if custom_filename is not None else mdp.layout_name + '_' + 'human_subtask_aware_qmdp' + '.pkl'
+
+        if force_compute_all:
+            mdp_planner = HumanSubtaskQMDPPlanner(mdp, mlp_params, ml_action_manager, mlp=mlp)
+            mdp_planner.compute_mdp(filename)
+            return mdp_planner
+        
+        try:
+            mdp_planner = HumanSubtaskQMDPPlanner.from_mdp_planner_file(filename)
+            
+            if force_compute_more:
+                print("Stored mdp_planner computed ", str(mdp_planner.num_rounds), " rounds. Compute another " + str(TRAINNINGUNIT) + " more...")
+                mdp_planner.compute_mdp(filename)
+                return mdp_planner
+
+        except (FileNotFoundError, ModuleNotFoundError, EOFError, AttributeError) as e:
+            print("Recomputing planner due to:", e)
+            mdp_planner = HumanSubtaskQMDPPlanner(mdp, mlp_params, ml_action_manager, mlp=mlp)
+            mdp_planner.compute_mdp(filename)
+            return mdp_planner
+
+        if info:
+            print("Loaded HumanSubtaskQMDPPlanner from {}".format(os.path.join(PLANNERS_DIR, filename)))
+
+        return mdp_planner
+
+    def init_human_aware_states(self, state_idx_dict=None, order_list=None):
+        """
+        States: agent 0 holding object, number of item in pot, order list, agent 1 (usually human) holding object, agent 1 subtask.
+        """
+
+        # set state dict as [p0_obj, num_item_in_pot, order_list]
+        self.init_states(order_list=order_list) 
+
+        # add [p1_obj, subtask] to [p0_obj, num_item_in_pot, order_list]
+        objects = ['onion', 'soup', 'dish', 'None'] # 'tomato'
+        subtasks = copy.deepcopy(self.action_dict)
+        original_state_dict = copy.deepcopy(self.state_dict)
+        self.state_dict.clear()
+        self.state_idx_dict.clear()
+        for i, obj in enumerate(objects):
+            for j, subtask in enumerate(subtasks.items()):
+                if self._is_valid_object_subtask_pair(obj, subtask[0]):
+                    for ori_key, ori_value in original_state_dict.items():
+                        new_key = ori_key+'_'+obj + '_' + subtask[0]
+                        new_obj = original_state_dict[ori_key]+[obj] + [subtask[0]]
+                        self.state_dict[new_key] = new_obj # update value
+                        self.state_idx_dict[new_key] = len(self.state_idx_dict)
+
+    def init_transition(self, transition_matrix=None):
+        """
+        This transition matrix needs to include subtask tranistion for both robot and human. Humans' state transition is conditioned on the subtask.
+        """
+        self.transition_matrix = transition_matrix if transition_matrix is not None else np.zeros((len(self.action_dict), len(self.state_idx_dict), len(self.state_idx_dict)), dtype=float)
+
+        # state transition calculation
+        for state_key, state_obj in self.state_dict.items():
+            for action_key, action_idx in self.action_idx_dict.items():
+                normalize_count = 0
+                state_idx = self.state_idx_dict[state_key]
+                
+                # decode state information
+                p0_state, p1_state, world_info = self.decode_state_info(state_obj) # p0_obj; p1_obj, p1_subtask; num_item_in_pot, order_list;
+                # calculate next states for p1 (a.k.a. human)
+                p1_nxt_states, p1_nxt_world_info = self.human_state_subtask_transition(p1_state, world_info)
+
+                # calculate next states for p0 (conditioned on p1 (a.k.a. human))
+                for p1_nxt_state in p1_nxt_states:
+                    action, next_state_key = self.state_transition(p0_state, p1_nxt_world_info, human_state=p1_nxt_state)
+                    if action_key == action:
+                        next_state_idx= self.state_idx_dict[next_state_key]
+                        self.transition_matrix[action_idx][state_idx][next_state_idx] += 1.0
+
+            if self.transition_matrix[action_idx, state_idx, :].sum() > 0.0:
+                self.transition_matrix[action_idx, state_idx, :] /= self.transition_matrix[action_idx, state_idx, :].sum()
+
+        self.transition_matrix[self.transition_matrix == 0.0] = 0.000001
+
+    def decode_state_info(self, state_obj):
+        return state_obj[0], state_obj[-2:], state_obj[1:-2]
+
+    def _is_valid_object_subtask_pair(self, obj, subtask):
+        if obj == 'None':
+            if subtask == 'pickup_dish':
+                return True
+            elif subtask == 'pickup_onion':
+                return True
+            elif subtask == 'pickup_tomato':
+                return True
+            # elif subtask == 'pickup_soup':
+            #     return True
+            else:
+                return False
+        else:
+            if obj == 'onion' and subtask == 'drop_onion':
+                return True
+            elif obj == 'tomato' and subtask == 'drop_tomato':
+                return True
+            elif (obj == 'dish') and subtask == 'pickup_soup':
+                return True
+            elif (obj == 'dish') and subtask == 'drop_dish':
+                return True
+            elif obj == 'soup' and subtask == 'deliver_soup':
+                return True
+            else:
+                return False
+        return True
+
+    def human_state_subtask_transition(self, human_state, world_info):
+        player_obj = human_state[0]; subtask = human_state[1]
+        soup_finish = world_info[0]; orders = [] if len(world_info) < 2 else world_info[1:]
+        next_obj = player_obj; next_subtasks = []; 
+        next_soup_finish = soup_finish;
+
+        if player_obj == 'None':
+            if subtask == 'pickup_dish':
+                next_obj = 'dish'
+                next_subtasks = ['pickup_soup', 'drop_dish']
+
+            elif subtask == 'pickup_onion':
+                next_obj = 'onion'
+                next_subtasks = ['drop_onion']
+            
+            elif subtask == 'pickup_tomato':
+                next_obj = 'tomato'
+                next_subtasks = ['drop_tomato']
+            
+            # elif subtask == 'pickup_soup':
+            #     next_obj = 'soup'
+            #     next_subtasks = ['deliver_soup']
+
+        else:
+            if player_obj == 'onion' and subtask == 'drop_onion':
+                next_obj = 'None'
+                next_soup_finish += 1
+                next_subtasks = ['pickup_onion', 'pickup_dish'] # 'pickup_tomato'
+
+            elif player_obj == 'tomato' and subtask == 'drop_tomato':
+                next_obj = 'None'
+                next_soup_finish += 1
+                next_subtasks = ['pickup_onion', 'pickup_dish'] # 'pickup_tomato'
+
+            elif (player_obj == 'dish') and subtask == 'pickup_soup':
+                next_obj = 'soup'
+                next_soup_finish = 0
+                next_subtasks = ['deliver_soup']
+
+            elif (player_obj == 'dish') and subtask == 'drop_dish':
+                next_obj = 'None'
+                next_subtasks = ['pickup_onion', 'pickup_dish'] # 'pickup_tomato'
+
+            elif player_obj == 'soup' and subtask == 'deliver_soup':
+                next_obj = 'None'
+                next_subtasks = ['pickup_onion', 'pickup_dish'] # 'pickup_tomato'
+                if len(orders) >= 1:
+                    orders.pop(0)
+            else:
+                print(player_obj, subtask)
+                raise ValueError()
+
+        if next_soup_finish > self.mdp.num_items_for_soup:
+            next_soup_finish = self.mdp.num_items_for_soup
+
+        p1_nxt_states = []
+        for next_subtask in next_subtasks:
+            p1_nxt_states.append([next_obj, next_subtask])
+
+        nxt_world_info = [next_soup_finish]
+        for order in orders:
+            nxt_world_info.append(order)
+
+        return p1_nxt_states, nxt_world_info
+
+    def state_transition(self, player_obj, world_info, human_state=[None, None]):
+        # game logic
+        soup_finish = world_info[0]; orders = [] if len(world_info) < 2 else world_info[1:]
+        other_obj = human_state[0]; subtask = human_state[1]
+        actions = ''; next_obj = player_obj; next_soup_finish = soup_finish
+        
+        if player_obj == 'None':
+            if (soup_finish == self.mdp.num_items_for_soup) and (other_obj != 'dish' and subtask != 'pickup_dish'):
+                actions = 'pickup_dish'
+                next_obj = 'dish'
+            else:
+                next_order = None
+                if len(orders) > 1:
+                    next_order = orders[1]
+
+                if next_order == 'onion':
+                    actions = 'pickup_onion'
+                    next_obj = 'onion'
+
+                elif next_order == 'tomato':
+                    actions = 'pickup_tomato' 
+                    next_obj = 'tomato'
+
+                else:
+                    actions = 'pickup_onion'
+                    next_obj = 'onion'
+
+        else:
+            if player_obj == 'onion':
+                actions = 'drop_onion'
+                next_obj = 'None'
+                next_soup_finish += 1
+
+            elif player_obj == 'tomato':
+                actions = 'drop_tomato'
+                next_obj = 'None'
+                next_soup_finish += 1
+
+            elif (player_obj == 'dish') and (soup_finish == self.mdp.num_items_for_soup):
+                actions = 'pickup_soup'
+                next_obj = 'soup'
+                next_soup_finish = 0
+
+            elif (player_obj == 'dish') and (soup_finish != self.mdp.num_items_for_soup):
+                actions = 'drop_dish'
+                next_obj = 'None'
+
+            elif player_obj == 'soup':
+                actions = 'deliver_soup'
+                next_obj = 'None'
+                if len(orders) >= 1:
+                    orders.pop(0)
+            else:
+                print(player_obj)
+                raise ValueError()
+
+        if next_soup_finish > self.mdp.num_items_for_soup:
+            next_soup_finish = self.mdp.num_items_for_soup
+
+        next_state_keys = next_obj + '_' + str(next_soup_finish)
+
+        for order in orders:
+            next_state_keys = next_state_keys + '_' + order
+
+        for human_info in human_state:
+            next_state_keys = next_state_keys + '_' + human_info
+
+        return actions, next_state_keys
+
+    def world_state_to_mdp_state_key(self, state, player, soup_finish, other_player, subtask):
+        # a0 pos, a0 dir, a0 hold, a1 pos, a1 dir, a1 hold, len(order_list)
+        player_obj = None; other_player_obj = None
+        if player.held_object is not None:
+            player_obj = player.held_object.name
+        if other_player.held_object is not None:
+            other_player_obj = other_player.held_object.name
+
+        order_str = None if len(state.order_list) == 0 else state.order_list[0]
+        for order in state.order_list[1:]:
+            order_str = order_str + '_' + str(order)
+
+        state_strs = str(player_obj)+'_'+str(soup_finish)+'_'+ order_str + '_' + str(other_player_obj) + '_' + subtask
+
+        return state_strs
+
+    def get_mdp_state_idx(self, mdp_state_key):
+        if mdp_state_key not in self.state_dict:
+            return None
+        else:
+            return self.state_idx_dict[mdp_state_key]
+
+    def gen_state_dict_key(self, p0_obj, p1_obj, num_item_in_pot, orders, subtasks):
+        # a0 hold, a1 hold, 
+
+        player_obj = p0_obj if p0_obj is not None else 'None'
+        other_player_obj = p1_obj if p1_obj is not None else 'None'
+
+        order_str = None if orders is None else orders
+        for order in orders:
+            order_str = order_str + '_' + str(order)
+
+        state_strs = []
+        for subtask in subtasks:
+            state_strs.appedn(str(player_obj)+'_'+str(soup_finish)+'_'+ order_str + '_' + str(other_player_obj) + '_' + subtask)
+
+        return state_strs
+
+    def get_key_from_value(self, dictionary, state_value):
+        return list(dictionary.keys())[list(dictionary.values()).index(state_value)]
+
+    def map_action_to_location(self, world_state, state_str, action, obj, p0_obj=None):
+        """
+        Get the next location the agent will be in based on current world state, medium level actions, after-action state obj.
+        """
+        p0_obj = p0_obj if p0_obj is not None else self.state_dict[state_str][0]
+        pots_states_dict = self.mdp.get_pot_states(world_state)
+        location = []
+        if action == 'pickup' and obj != 'soup':
+            if p0_obj != 'None':
+                location = self.drop_item(world_state)
+            else:
+                if obj == 'onion':
+                    location = self.mdp.get_onion_dispenser_locations()
+                elif obj == 'tomato':
+                    location = self.mdp.get_tomato_dispenser_locations()
+                elif obj == 'dish':
+                    location = self.mdp.get_dish_dispenser_locations()
+                else:
+                    print(p0_obj, action, obj)
+                    ValueError()
+        elif action == 'pickup' and obj == 'soup':
+            if p0_obj != 'dish' and p0_obj != 'None':
+                location = self.drop_item(world_state)
+            elif p0_obj == 'None':
+                location = self.mdp.get_dish_dispenser_locations()
+            else:
+                location = self.mdp.get_ready_pots(pots_states_dict) + self.mdp.get_cooking_pots(pots_states_dict) + self.mdp.get_full_pots(pots_states_dict)
+
+        elif action == 'drop':
+            if obj == 'onion' or obj == 'tomato':
+                location = self.mdp.get_partially_full_pots(pots_states_dict) + self.mdp.get_empty_pots(pots_states_dict)
+            elif obj == 'dish':
+                location = self.drop_item(world_state)
+            else:
+                print(p0_obj, action, obj)
+                ValueError()
+
+        elif action == 'deliver':
+            if p0_obj != 'soup':
+                location = self.mdp.get_empty_counter_locations(world_state)
+            else:
+                location = self.mdp.get_serving_locations()
+
+        else:
+            print(p0_obj, action, obj)
+            ValueError()
+
+        return location
+
+    def mdp_action_state_to_world_state(self, action_idx, ori_state_idx, ori_world_state):
+        new_world_state = ori_world_state.deepcopy()
+        ori_mdp_state_key = self.get_key_from_value(self.state_idx_dict, ori_state_idx)
+        mdp_state_obj = self.state_dict[ori_mdp_state_key]
+        action = self.get_key_from_value(self.action_idx_dict, action_idx)
+    
+        # get next position for AI agent
+        possible_motion_goals = self.map_action_to_location(ori_world_state, ori_mdp_state_key, self.action_dict[action][0], self.action_dict[action][1]) 
+        agent_cost, agent_feature_pos = self.mp.min_cost_to_feature(ori_world_state.players[0].pos_and_or, possible_motion_goals, with_argmin=True) # select the feature position that is closest to current player's position in world state
+        new_agent_pos = self.mp.motion_goals_for_pos[agent_feature_pos][0] if agent_feature_pos is not None else new_world_state.players[0].get_pos_and_or()
+        
+        # get next position for human (action will be the subtask)
+        possible_motion_goals = self.map_action_to_location(ori_world_state, None, self.action_dict[mdp_state_obj[-1]][0], self.action_dict[mdp_state_obj[-1]][1], p0_obj=mdp_state_obj[-2]) # get next world state from human subtask info (aka. mdp action translate into medium level goal position)
+        human_cost, human_feature_pos = self.mp.min_cost_to_feature(ori_world_state.players[1].pos_and_or, possible_motion_goals, with_argmin=True)
+        new_human_pos = self.mp.motion_goals_for_pos[human_feature_pos][0] if human_feature_pos is not None else new_world_state.players[1].get_pos_and_or()
+
+        # update next position for AI agent
+        if new_world_state.players[0].has_object():
+            new_world_state.players[0].remove_object()
+        if mdp_state_obj[0] != 'None' and mdp_state_obj[0] != 'soup':
+            new_world_state.players[0].held_object = ObjectState(mdp_state_obj[0], new_agent_pos)
+        new_world_state.players[0].update_pos_and_or(new_agent_pos[0], new_agent_pos[1])
+
+        # update next position for human
+        if new_world_state.players[1].has_object():
+            new_world_state.players[1].remove_object()
+        if mdp_state_obj[-2] != 'None' and mdp_state_obj[-2] != 'soup':
+            new_world_state.players[1].held_object = ObjectState(mdp_state_obj[-2], new_human_pos)
+        new_world_state.players[1].update_pos_and_or(new_human_pos[0], new_human_pos[1])
+
+        return new_world_state, [agent_cost, human_cost]
+
+    def step(self, world_state, player, soup_finish, other_player, belief):
+        """
+        Compute plan cost that starts from the next qmdp state defined as next_state_v().
+        Compute the action cost of excuting a step towards the next qmdp state based on the
+        current low level state information.
+        """
+        start_time = time.time()
+        next_state_v = np.zeros((len(belief), len(self.action_dict)), dtype=float)
+        action_cost = np.zeros((len(belief), len(self.action_dict)), dtype=float)
+        qmdp_q = np.zeros((len(self.action_dict), len(belief)), dtype=float)
+
+        # for each subtask, obtain next mdp state but with low level location based on finishing excuting current action and subtask
+        nxt_possible_mdp_state = []
+        nxt_possible_world_state = []
+        for i, b in enumerate(belief):
+            mdp_state_key = self.world_state_to_mdp_state_key(world_state, player, soup_finish, other_player, self.get_key_from_value(self.action_idx_dict, i))
+            print(mdp_state_key)
+            mdp_state_idx = self.get_mdp_state_idx(mdp_state_key)
+            if mdp_state_idx is not None:
+                agent_action_idx_arr, next_mdp_state_idx_arr = np.where(self.transition_matrix[:, mdp_state_idx] > 0.000001) # returns array(action idx), array(next_state_idx)
+                nxt_possible_mdp_state.append([agent_action_idx_arr, next_mdp_state_idx_arr])
+                for j, action_idx in enumerate(agent_action_idx_arr):
+                    next_state_idx = next_mdp_state_idx_arr[j]
+                    after_action_world_state, costs = self.mdp_action_state_to_world_state(action_idx, mdp_state_idx, world_state)
+                    next_state_v[i, action_idx] += self.compute_V(after_action_world_state)*self.transition_matrix[action_idx, mdp_state_idx, next_state_idx]
+                    action_cost[i, action_idx] -= max(costs)*self.transition_matrix[action_idx, mdp_state_idx, next_state_idx]
+
+        q = self.compute_Q(belief, next_state_v, action_cost)
+        action_idx = self.get_best_action(q)
+        # print('get_best_action =', action_idx, '=', self.get_key_from_value(self.action_idx_dict, action_idx))
+        print("It took {} seconds for this step".format(time.time() - start_time))
+
+        return action_idx, self.action_dict[self.get_key_from_value(self.action_idx_dict, action_idx)]
+
+    def belief_update(self, world_state, agent_player, soup_finish, human_player, belief_vector):
+        """
+        Update belief based on both human player's game logic and also it's current position and action.
+        """
+        start_time = time.time()
+
+        distance_trans_belief = np.zeros((len(belief_vector), len(belief_vector)), dtype=float)
+        human_pos_and_or = world_state.players[1].pos_and_or
+        agent_pos_and_or = world_state.players[0].pos_and_or
+
+        subtask_key = np.array([self.get_key_from_value(self.action_idx_dict, i) for i in range(len(belief_vector))])
+
+        # get next position for human
+        human_obj = human_player.held_object.name if human_player.held_object is not None else 'None'
+        game_logic_prob = np.zeros((len(belief_vector)), dtype=float)
+        dist_belief_prob = np.zeros((len(belief_vector)), dtype=float)
+        for i, belief in enumerate(belief_vector):
+            ## estimating next subtask based on game logic
+            game_logic_prob[i] = self._is_valid_object_subtask_pair(human_obj, subtask_key[i])*1.0
+    
+            ## tune subtask estimation based on current human's position and action (use minimum distance between features)
+            possible_motion_goals = self.map_action_to_location(world_state, None, self.action_dict[subtask_key[i]][0], self.action_dict[subtask_key[i]][1], p0_obj=human_obj)
+            # get next world state from human subtask info (aka. mdp action translate into medium level goal position)
+            human_dist_cost = self.mp.min_cost_to_feature(human_pos_and_or, possible_motion_goals) # select the feature position that is closest to current player's position in world state
+            dist_belief_prob[i] = (self.mdp.height+self.mdp.width) - human_dist_cost if human_dist_cost < np.inf else (self.mdp.height + self.mdp.width)
+
+        game_logic_prob /= game_logic_prob.sum()
+        dist_belief_prob /= dist_belief_prob.sum()
+        update_prob = game_logic_prob*0.8 + dist_belief_prob*0.2
+        update_prob[update_prob == 0.0] = 0.000001
+        new_belief = belief*update_prob
+
+        new_belief /= new_belief.sum()
+        print("It took {} seconds for belief update".format(time.time() - start_time))
+
+        return new_belief
+
+    def compute_V(self, next_world_state, source=None):
+        if next_world_state.players[0].position == next_world_state.players[1].position:
+            p0_pos = next_world_state.players[0].position
+            p0_ori = next_world_state.players[0].orientation
+            if self.mdp._move_if_direction(p0_pos, p0_ori, Action.ALL_ACTIONS[0])[0] != p0_pos:
+                new_pos, new_ori = self.mdp._move_if_direction(p0_pos, p0_ori, Action.ALL_ACTIONS[0])
+                next_world_state.players[0].update_pos_and_or(new_pos, new_ori)
+            elif self.mdp._move_if_direction(p0_pos, p0_ori, Action.ALL_ACTIONS[1])[0] != p0_pos:
+                new_pos, new_ori = self.mdp._move_if_direction(p0_pos, p0_ori, Action.ALL_ACTIONS[1])
+                next_world_state.players[0].update_pos_and_or(new_pos, new_ori)
+            elif self.mdp._move_if_direction(p0_pos, p0_ori, Action.ALL_ACTIONS[2])[0] != p0_pos:
+                new_pos, new_ori = self.mdp._move_if_direction(p0_pos, p0_ori, Action.ALL_ACTIONS[2])
+                next_world_state.players[0].update_pos_and_or(new_pos, new_ori)
+            elif self.mdp._move_if_direction(p0_pos, p0_ori, Action.ALL_ACTIONS[3])[0] != p0_pos:
+                new_pos, new_ori = self.mdp._move_if_direction(p0_pos, p0_ori, Action.ALL_ACTIONS[3])
+                next_world_state.players[0].update_pos_and_or(new_pos, new_ori)
+            else:
+                print('p0_pos = ', p0_pos)
+                ValueError()
+
+        next_world_state_str = self.mdp.state_string(next_world_state)
+        if next_world_state_str not in self.world_state_cost_dict:
+
+            # ml_plan, cost = self.get_ml_plan(
+            #                     next_world_state, 
+            #                     Heuristic(self.mlp.mp).simple_heuristic, 
+            #                     delivery_horizon=2, 
+            #                     debug=False, 
+            #                     goal_info=False)
+
+            # opt_joint_plan = \
+            #     self.mlp.get_low_level_action_plan(
+            #         next_world_state,
+            #         Heuristic(self.mlp.mp).simple_heuristic,
+            #         delivery_horizon=2,
+            #         debug=False,
+            #         goal_info=False)
+            delivery_horizon=2
+            debug=False
+            h_fn=Heuristic(self.mlp.mp).simple_heuristic
+            start_state = next_world_state.deepcopy()
+            if start_state.order_list is None:
+                start_state.order_list = ["any"] * delivery_horizon
+            else:
+                start_state.order_list = start_state.order_list[:delivery_horizon]
+            
+            expand_fn = lambda state: self.mlp.get_successor_states(state)
+            goal_fn = lambda state: state.num_orders_remaining == 0
+            heuristic_fn = lambda state: h_fn(state)
+
+            search_problem = SearchTree(next_world_state, goal_fn, expand_fn, heuristic_fn, debug=debug)
+            ml_plan, cost = search_problem.A_star_graph_search(info=False)
+
+            self.world_state_cost_dict[next_world_state_str] = cost
+
+        print('self.world_state_cost_dict length =', len(self.world_state_cost_dict))            
+        return (self.mdp.height*self.mdp.width)*2 - self.world_state_cost_dict[next_world_state_str]
+
+    def compute_Q(self, b, v, c):
+        print('b =', b)
+        print('v =', v)
+        print('c =', c)
+        return b@(v+c)
+
+    def get_best_action(self, q):
+        return np.argmax(q)
+
+    def init_mdp(self):
+        self.init_actions()
+        self.init_human_aware_states(order_list=self.mdp.start_order_list)
+        self.init_transition()
+
+    def compute_mdp(self, filename):
+        start_time = time.time()
+
+        final_filepath = os.path.join(PLANNERS_DIR, filename)
+        self.init_mdp()
+        self.num_states = len(self.state_dict)
+        self.num_actions = len(self.action_dict)
+        # print('Total states =', self.num_states, '; Total actions =', self.num_actions)
+
+        print("It took {} seconds to create HumanSubtaskQMDPPlanner".format(time.time() - start_time))
+        # self.save_to_file(final_filepath)
+        # tmp = input()
+        # self.save_to_file(output_mdp_path)
+        return 
+
+
 class HumanMediumLevelPlanner(object):
     def __init__(self, mdp, ml_action_manager, goal_preference, adaptiveness):
         self.mdp = mdp
@@ -2436,7 +2984,7 @@ class HumanMediumLevelPlanner(object):
         ml_logic_goals = self.logic_ml_action(obj, num_item_in_pot, order_list)
 
         curr_p = ((1.0-self.adaptiveness)*self.prev_goal_dstb + self.adaptiveness*ml_logic_goals)   
-
+        # print(self.adaptiveness, self.prev_goal_dstb, ml_logic_goals, curr_p)
         task = np.random.choice(len(self.sub_goals), p=curr_p)
         self.prev_goal_dstb = curr_p
 

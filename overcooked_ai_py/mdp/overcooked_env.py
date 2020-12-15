@@ -290,7 +290,7 @@ class OvercookedEnv(object):
             if self.t > 3000:
                 break
             
-            tmp = input()
+            # tmp = input()
             
         assert len(trajectory) == self.t, "{} vs {}".format(len(trajectory), self.t)
 
@@ -433,8 +433,8 @@ class OvercookedEnv(object):
     ###################
     # RENDER FUNCTION #
     ###################
-    def render(self, mode="human"):
-        self.mdp.render(self.state, mode)
+    def render(self, mode="human", time_left=None):
+        self.mdp.render(self.state, mode, time_left)
 
 
 class Overcooked(gym.Env):

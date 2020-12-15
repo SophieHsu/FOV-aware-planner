@@ -878,7 +878,7 @@ class biasHumanModel(oneGoalHumanModel):
 
         task = np.random.choice(len(self.sub_goals), p=curr_p)
         self.prev_goal_dstb = curr_p
-        # print('Chosen task:', list(self.sub_goals.keys())[task], '\n')
+        print('Chosen task:', list(self.sub_goals.keys())[task], '\n')
 
         one_goal_motion_goals = []; WAIT = False
         if task == self.sub_goals['Onion cooker']:
@@ -1005,11 +1005,10 @@ class MdpPlanningAgent(Agent):
 
 class MediumMdpPlanningAgent(Agent):
 
-    def __init__(self, mdp_planner, env, delivery_horizon=1, logging_level=0, auto_unstuck=False):
+    def __init__(self, mdp_planner, delivery_horizon=1, logging_level=0, auto_unstuck=False):
         # self.other_agent = other_agent
         self.delivery_horizon = delivery_horizon
         self.mdp_planner = mdp_planner
-        self.env = env
         self.logging_level = logging_level
         self.auto_unstuck = auto_unstuck
         self.reset()
@@ -1047,15 +1046,6 @@ class MediumMdpPlanningAgent(Agent):
         ready_pots = pot_states["tomato"]["ready"] + pot_states["onion"]["ready"]
         cooking_pots = ready_pots + pot_states["tomato"]["cooking"] + pot_states["onion"]["cooking"]
         nearly_ready_pots = cooking_pots + pot_states["tomato"]["partially_full"] + pot_states["onion"]["partially_full"]
-
-        # num_item_in_pot = 0
-        # if state.objects is not None and len(state.objects) > 0:
-        #     obj_state = list(state.objects.values())
-
-        #     if obj_state.name == 'soup':
-        #         num_item_in_pot = obj_state.state[1]
-
-        # state_str = self.mdp_planner.gen_state_dict_key(state, state.players[1], num_item_in_pot, state.players[0])
 
         state_str = self.get_ml_states(state)
         action = []; chosen_action = []
@@ -1102,6 +1092,97 @@ class MediumMdpPlanningAgent(Agent):
             state.players[self.agent_index].active_log += [0]
         else:
             state.players[self.agent_index].active_log += [1]
+
+        return action, {"action_probs": action_probs}
+
+    def resolve_stuck(self, state, chosen_action, action_probs):
+        # HACK: if two agents get stuck, select an action at random that would
+        # change the player positions if the other player were to move
+        if self.prev_state is not None and state.players_pos_and_or == self.prev_state.players_pos_and_or:
+            joint_actions = list(itertools.product(Action.MOTION_ACTIONS, Action.MOTION_ACTIONS))
+            unblocking_joint_actions = []
+            for j_a in joint_actions:
+                new_state, _, _, _ = self.mdp_planner.mdp.get_state_transition(state, j_a)
+                if new_state.player_positions != self.prev_state.player_positions:
+                    unblocking_joint_actions.append(j_a)
+
+            if len(unblocking_joint_actions) > 0:
+                chosen_action = unblocking_joint_actions[np.random.choice(len(unblocking_joint_actions))][self.agent_index]
+            else:
+                chosen_action = Action.STAY
+            action_probs = self.a_probs_from_action(chosen_action)
+        
+            state.players[self.agent_index].stuck_log += [1]
+        
+        else:
+            state.players[self.agent_index].stuck_log += [0]
+        
+        return chosen_action, action_probs
+
+class MediumQMdpPlanningAgent(Agent):
+    def __init__(self, mdp_planner, delivery_horizon=1, logging_level=0, auto_unstuck=False):
+        # self.other_agent = other_agent
+        self.delivery_horizon = delivery_horizon
+        self.mdp_planner = mdp_planner
+        self.logging_level = logging_level
+        self.auto_unstuck = auto_unstuck
+        self.reset()
+
+    def reset(self):
+        super().reset()
+        self.prev_state = None
+        self.belief = np.full((len(self.mdp_planner.action_dict)), 1.0/len(self.mdp_planner.action_dict), dtype=float)
+
+    def mdp_action_to_low_level_action(self, state, state_str, action_object_pair):
+        # map back the medium level action to low level action
+        ai_agent_obj = state.players[0].held_object.name if state.players[0].held_object is not None else 'None'
+        print(ai_agent_obj)
+        possible_motion_goals = self.mdp_planner.map_action_to_location(state, None, action_object_pair[0], action_object_pair[1], p0_obj=ai_agent_obj)
+
+        # initialize
+        action = Action.STAY
+        minimum_cost = 100000.0
+        # print(state)
+        # print('possible_motion_goals =', possible_motion_goals)
+
+        for possible_location in possible_motion_goals:
+            motion_goal_locations = self.mdp_planner.mp.motion_goals_for_pos[possible_location]
+            for motion_goal_location in motion_goal_locations:
+                if self.mdp_planner.mp.is_valid_motion_start_goal_pair((state.players[0].position, state.players[0].orientation), motion_goal_location):
+                    action_plan, _, cost = self.mdp_planner.mp._compute_plan((state.players[0].position, state.players[0].orientation), motion_goal_location)
+                    if cost < minimum_cost:
+                        minimum_cost = cost
+                        action = action_plan[0]
+        return action
+
+    def action(self, state):
+        num_item_in_pot = 0; pot_pos = []
+        if state.objects is not None and len(state.objects) > 0:
+            for obj_pos, obj_state in state.objects.items():
+                print(obj_state)
+                if obj_state.name == 'soup' and obj_state.state[1] > num_item_in_pot:
+                    num_item_in_pot = obj_state.state[1]
+                    pot_pos = obj_pos
+
+        self.belief = self.mdp_planner.belief_update(state, state.players[0], num_item_in_pot, state.players[1], self.belief)
+        action_idx, action_object_pair = self.mdp_planner.step(state, state.players[0], num_item_in_pot, state.players[1], self.belief)
+
+        action = self.mdp_action_to_low_level_action(state, None, action_object_pair)
+        print('action =', action, '; action_object_pair =', action_object_pair)
+        action_probs = self.a_probs_from_action(action)
+        if self.auto_unstuck:
+            action, action_probs = self.resolve_stuck(state, action, action_probs)
+            # NOTE: Assumes that calls to the action method are sequential
+            self.prev_state = state
+
+        if action == Action.STAY:
+            state.players[self.agent_index].active_log += [0]
+        else:
+            state.players[self.agent_index].active_log += [1]
+        print('\nState =', state)
+        print('Subtasks:', self.mdp_planner.action_dict.keys())
+        print('Belief =', self.belief)
+        print('Action =', action, '\n')
 
         return action, {"action_probs": action_probs}
 
