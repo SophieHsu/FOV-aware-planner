@@ -5,6 +5,7 @@ import pygame
 from argparse import ArgumentParser
 import numpy as np
 import gc
+import time
 
 from overcooked_ai_py.mdp.overcooked_mdp import OvercookedGridworld, OvercookedState, Direction, Action, PlayerState, ObjectState
 from overcooked_ai_py.mdp.overcooked_env import OvercookedEnv
@@ -147,23 +148,23 @@ COUNTERS_PARAMS = {
 if __name__ == "__main__" :
 
     # np.random.seed(0)
-
+    start_time = time.time()
     scenario_1_mdp = OvercookedGridworld.from_layout_name('10x15_test1', start_order_list=['onion','onion'], cook_time=10)
     # start_state = OvercookedState(
     #     [P((2, 1), s, Obj('onion', (2, 1))),
     #      P((3, 2), s)],
     #     {}, order_list=['onion','onion'])
     env = OvercookedEnv.from_mdp(scenario_1_mdp, horizon = 1000)
-
+    human_start_time = time.time()
     ml_action_manager = planners.MediumLevelActionManager(scenario_1_mdp, NO_COUNTERS_PARAMS)
 
     # a0 = agent.GreedyHumanModel(mlp)
 
     hmlp = planners.HumanMediumLevelPlanner(scenario_1_mdp, ml_action_manager, [0.5, (1.0-0.5)], 0.5)
     a0 = agent.biasHumanModel(ml_action_manager, [0.5, (1.0-0.5)], 0.5, auto_unstuck=True)
-
+    mdp_start_time = time.time()
     # mdp_planner = planners.MediumLevelMdpPlanner.from_pickle_or_compute(scenario_1_mdp, NO_COUNTERS_PARAMS, mlp, force_compute_all=True)
-    mdp_planner = planners.HumanAwareMediumMDPPlanner.from_pickle_or_compute(scenario_1_mdp, NO_COUNTERS_PARAMS, hmlp, ml_action_manager, force_compute_all=True)
+    mdp_planner = planners.HumanAwareMediumMDPPlanner.from_pickle_or_compute(scenario_1_mdp, NO_COUNTERS_PARAMS, hmlp, force_compute_all=True)
     a1 = agent.MediumMdpPlanningAgent(mdp_planner, auto_unstuck=True)
 
     # # a1 = agent.oneGoalHumanModel(mlp, 'Soup server', auto_unstuck=True)
@@ -175,8 +176,12 @@ if __name__ == "__main__" :
     agent_pair = agent.AgentPair(a0, a1)
 
 
-
+    game_start_time = time.time()
     s_t, joint_a_t, r_t, done_t = env.run_agents(agent_pair, include_final_state=True, display=DISPLAY)
+    print("It took {} seconds for human agent to compute".format(mdp_start_time - human_start_time))
+    print("It took {} seconds for mdp to compute".format(game_start_time - mdp_start_time))
+    print("It took {} seconds for playing the entire level".format(time.time() - game_start_time))
+    print("It took {} seconds to plan".format(time.time() - start_time))
 
     # print(s_t, joint_a_t, r_t, done_t)
 

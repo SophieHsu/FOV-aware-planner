@@ -1679,14 +1679,14 @@ class Heuristic(object):
 
 class MediumLevelMdpPlanner(object):
 
-    def __init__(self, mdp, mlp_params, ml_action_manager, \
+    def __init__(self, mdp, mlp_params, \
         state_dict = {}, state_idx_dict = {}, action_dict = {}, action_idx_dict = {}, transition_matrix = None, reward_matrix = None, policy_matrix = None, value_matrix = None, \
         num_states = 0, num_rounds = 0, epsilon = 0.01, discount = 0.8):
 
         self.mdp = mdp
         self.params = mlp_params
-        self.ml_action_manager = ml_action_manager
-        self.mp = self.ml_action_manager.motion_planner
+        self.jmp = JointMotionPlanner(mdp, mlp_params)
+        self.mp = self.jmp.motion_planner
 
         self.state_idx_dict = state_idx_dict
         self.state_dict = state_dict
@@ -1715,14 +1715,13 @@ class MediumLevelMdpPlanner(object):
             mdp_planner = pickle.load(f)
             mdp = mdp_planner[0]
             params = mdp_planner[1]
-            mlp_action_manager = mdp_planner[2]
-            
-            state_idx_dict = mdp_planner[3]
-            state_dict = mdp_planner[4]
+
+            state_idx_dict = mdp_planner[2]
+            state_dict = mdp_planner[3]
 
             # transition_matrix = mdp_planner.transition_matrix
             # reward_matrix = mdp_planner.reward_matrix
-            policy_matrix = mdp_planner[5]
+            policy_matrix = mdp_planner[4]
             # value_matrix = mdp_planner.value_matrix
             
             # num_states = mdp_planner.num_states
@@ -1731,14 +1730,14 @@ class MediumLevelMdpPlanner(object):
             return MediumLevelMdpPlanner(mdp, params, mlp_action_manager, state_dict, state_idx_dict, policy_matrix=policy_matrix)
 
     @staticmethod
-    def from_pickle_or_compute(mdp, mlp_params, ml_action_manager, custom_filename=None, force_compute_all=False, info=True, force_compute_more=False):
+    def from_pickle_or_compute(mdp, mlp_params, custom_filename=None, force_compute_all=False, info=True, force_compute_more=False):
 
         assert isinstance(mdp, OvercookedGridworld)
 
         filename = custom_filename if custom_filename is not None else mdp.layout_name + '_' + 'medium_mdp' + '.pkl'
 
         if force_compute_all:
-            mdp_planner = MediumLevelMdpPlanner(mdp, mlp_params, ml_action_manager)
+            mdp_planner = MediumLevelMdpPlanner(mdp, mlp_params)
             mdp_planner.compute_mdp_policy(filename)
             return mdp_planner
         
@@ -1763,7 +1762,7 @@ class MediumLevelMdpPlanner(object):
 
     def save_policy_to_file(self, filename):
         with open(filename, 'wb') as output:
-            mdp_plan = [self.mdp, self.params, self.ml_action_manager, self.state_idx_dict, self.state_dict, self.action_idx_dict, self.action_dict, self.transition_matrix, self.policy_matrix]
+            mdp_plan = [self.mdp, self.params, self.state_idx_dict, self.state_dict, self.action_idx_dict, self.action_dict, self.transition_matrix, self.policy_matrix]
             pickle.dump(mdp_plan, output, pickle.HIGHEST_PROTOCOL)
 
     def gen_state_dict_key(self, state, player, soup_finish, other_player=None):
@@ -2180,11 +2179,11 @@ class MediumLevelMdpPlanner(object):
 
 class HumanAwareMediumMDPPlanner(MediumLevelMdpPlanner):
     """docstring for HumanAwareMediumMDPPlanner"""
-    def __init__(self, mdp, mlp_params, hmlp, ml_action_manager, \
+    def __init__(self, mdp, mlp_params, hmlp, \
         state_dict = {}, state_idx_dict = {}, action_dict = {}, action_idx_dict = {}, transition_matrix = None, reward_matrix = None, policy_matrix = None, value_matrix = None, \
         num_states = 0, num_rounds = 0, epsilon = 0.01, discount = 0.8):
 
-        super().__init__(mdp, mlp_params, ml_action_manager, \
+        super().__init__(mdp, mlp_params, \
         state_dict = {}, state_idx_dict = {}, action_dict = {}, action_idx_dict = {}, transition_matrix = None, reward_matrix = None, policy_matrix = None, value_matrix = None, \
         num_states = 0, num_rounds = 0, epsilon = 0.01, discount = 0.8)
 
@@ -2212,14 +2211,14 @@ class HumanAwareMediumMDPPlanner(MediumLevelMdpPlanner):
             return HumanAwareMediumMDPPlanner(mdp, params, mlp_action_manager, state_dict, state_idx_dict, policy_matrix=policy_matrix)
 
     @staticmethod
-    def from_pickle_or_compute(mdp, mlp_params, hmlp, ml_action_manager, custom_filename=None, force_compute_all=False, info=True, force_compute_more=False):
+    def from_pickle_or_compute(mdp, mlp_params, hmlp, custom_filename=None, force_compute_all=False, info=True, force_compute_more=False):
 
         assert isinstance(mdp, OvercookedGridworld)
 
         filename = custom_filename if custom_filename is not None else mdp.layout_name + '_' + 'human_aware_medium_mdp' + '.pkl'
 
         if force_compute_all:
-            mdp_planner = HumanAwareMediumMDPPlanner(mdp, mlp_params, hmlp, ml_action_manager)
+            mdp_planner = HumanAwareMediumMDPPlanner(mdp, mlp_params, hmlp)
             mdp_planner.compute_mdp_policy(filename)
             return mdp_planner
         
@@ -2233,7 +2232,7 @@ class HumanAwareMediumMDPPlanner(MediumLevelMdpPlanner):
 
         except (FileNotFoundError, ModuleNotFoundError, EOFError, AttributeError) as e:
             print("Recomputing planner due to:", e)
-            mdp_planner = HumanAwareMediumMDPPlanner(mdp, mlp_params, hmlp, ml_action_manager)
+            mdp_planner = HumanAwareMediumMDPPlanner(mdp, mlp_params, hmlp)
             mdp_planner.compute_mdp_policy(filename)
             return mdp_planner
 
@@ -2409,26 +2408,27 @@ class HumanAwareMediumMDPPlanner(MediumLevelMdpPlanner):
 
 
 class HumanSubtaskQMDPPlanner(MediumLevelMdpPlanner):
-    def __init__(self, mdp, mlp_params, ml_action_manager, mlp=None, \
+    def __init__(self, mdp, mlp_params, \
         state_dict = {}, state_idx_dict = {}, action_dict = {}, action_idx_dict = {}, transition_matrix = None, reward_matrix = None, policy_matrix = None, value_matrix = None, \
         num_states = 0, num_rounds = 0, epsilon = 0.01, discount = 0.8):
 
-        super().__init__(mdp, mlp_params, ml_action_manager, \
+        super().__init__(mdp, mlp_params, \
         state_dict = {}, state_idx_dict = {}, action_dict = {}, action_idx_dict = {}, transition_matrix = None, reward_matrix = None, policy_matrix = None, value_matrix = None, \
         num_states = 0, num_rounds = 0, epsilon = 0.01, discount = 0.8)
 
-        self.mlp = MediumLevelPlanner(mdp, mlp_params, ml_action_manager = ml_action_manager) if mlp is None else mlp
         self.world_state_cost_dict = {}
+        self.jmp = JointMotionPlanner(mdp, mlp_params)
+        self.mp = self.jmp.motion_planner
 
     @staticmethod
-    def from_pickle_or_compute(mdp, mlp_params, ml_action_manager, mlp=None, custom_filename=None, force_compute_all=False, info=True, force_compute_more=False):
+    def from_pickle_or_compute(mdp, mlp_params, custom_filename=None, force_compute_all=False, info=True, force_compute_more=False):
 
         assert isinstance(mdp, OvercookedGridworld)
 
         filename = custom_filename if custom_filename is not None else mdp.layout_name + '_' + 'human_subtask_aware_qmdp' + '.pkl'
 
         if force_compute_all:
-            mdp_planner = HumanSubtaskQMDPPlanner(mdp, mlp_params, ml_action_manager, mlp=mlp)
+            mdp_planner = HumanSubtaskQMDPPlanner(mdp, mlp_params)
             mdp_planner.compute_mdp(filename)
             return mdp_planner
         
@@ -2442,7 +2442,7 @@ class HumanSubtaskQMDPPlanner(MediumLevelMdpPlanner):
 
         except (FileNotFoundError, ModuleNotFoundError, EOFError, AttributeError) as e:
             print("Recomputing planner due to:", e)
-            mdp_planner = HumanSubtaskQMDPPlanner(mdp, mlp_params, ml_action_manager, mlp=mlp)
+            mdp_planner = HumanSubtaskQMDPPlanner(mdp, mlp_params)
             mdp_planner.compute_mdp(filename)
             return mdp_planner
 
@@ -2494,6 +2494,8 @@ class HumanSubtaskQMDPPlanner(MediumLevelMdpPlanner):
                 # calculate next states for p0 (conditioned on p1 (a.k.a. human))
                 for p1_nxt_state in p1_nxt_states:
                     action, next_state_key = self.state_transition(p0_state, p1_nxt_world_info, human_state=p1_nxt_state)
+                    # for action, next_state_key in zip(actions, next_state_keys):
+                        # print(p0_state, p1_nxt_world_info, p1_nxt_state, action, next_state_keys)
                     if action_key == action:
                         next_state_idx= self.state_idx_dict[next_state_key]
                         self.transition_matrix[action_idx, state_idx, next_state_idx] += 1.0
@@ -2576,10 +2578,14 @@ class HumanSubtaskQMDPPlanner(MediumLevelMdpPlanner):
             #     next_subtasks = ['deliver_soup']
 
         else:
-            if player_obj == 'onion' and subtask == 'drop_onion':
+            if player_obj == 'onion' and subtask == 'drop_onion' and soup_finish < self.mdp.num_items_for_soup:
                 next_obj = 'None'
                 next_soup_finish += 1
                 next_subtasks = ['pickup_onion', 'pickup_dish'] # 'pickup_tomato'
+            
+            elif player_obj == 'onion' and subtask == 'drop_onion' and soup_finish == self.mdp.num_items_for_soup:
+                next_obj = 'onion'
+                next_subtasks = ['drop_onion']
 
             elif player_obj == 'tomato' and subtask == 'drop_tomato':
                 next_obj = 'None'
@@ -2658,12 +2664,12 @@ class HumanSubtaskQMDPPlanner(MediumLevelMdpPlanner):
                 next_obj = 'None'
                 next_soup_finish += 1
 
-            elif (player_obj == 'dish') and (soup_finish == self.mdp.num_items_for_soup):
+            elif (player_obj == 'dish') and (soup_finish >= self.mdp.num_items_for_soup-1):
                 actions = 'pickup_soup'
                 next_obj = 'soup'
                 next_soup_finish = 0
 
-            elif (player_obj == 'dish') and (soup_finish != self.mdp.num_items_for_soup):
+            elif (player_obj == 'dish') and (soup_finish < self.mdp.num_items_for_soup-1):
                 actions = 'drop_dish'
                 next_obj = 'None'
 
@@ -2688,6 +2694,99 @@ class HumanSubtaskQMDPPlanner(MediumLevelMdpPlanner):
             next_state_keys = next_state_keys + '_' + human_info
 
         return actions, next_state_keys
+
+    # def state_transition(self, player_obj, world_info, human_state=[None, None]):
+    #     # game logic
+    #     soup_finish = world_info[0]; orders = [] if len(world_info) < 2 else world_info[1:]
+    #     other_obj = human_state[0]; subtask = human_state[1]
+    #     actions = []; next_objs = []; next_soup_finish = soup_finish
+
+    #     if player_obj == 'None':
+    #         if (other_obj != 'dish' and subtask != 'pickup_dish'):
+    #             actions.append('pickup_dish')
+    #             next_objs.append('dish')
+
+    #         next_order = None
+    #         if len(orders) > 1:
+    #             next_order = orders[1]
+
+    #         if next_order == 'onion':
+    #             actions.append('pickup_onion')
+    #             next_objs.append('onion')
+
+    #         elif next_order == 'tomato':
+    #             actions.append('pickup_tomato') 
+    #             next_objs.append('tomato')
+
+    #         else:
+    #             actions.append('pickup_onion')
+    #             next_objs.append('onion')
+
+    #     else:
+    #         if player_obj == 'onion':
+    #             actions.append('drop_onion')
+    #             next_objs.append('None')
+
+    #         elif player_obj == 'tomato':
+    #             actions.append('drop_tomato')
+    #             next_objs.append('None')
+
+    #         elif (player_obj == 'dish'): # and (soup_finish == self.mdp.num_items_for_soup):
+    #             actions.append('pickup_soup')
+    #             next_objs.append('soup')
+
+    #         # elif (player_obj == 'dish') and (soup_finish < self.mdp.num_items_for_soup-1):
+    #         #     actions.append('drop_dish')
+    #         #     next_objs.append('None')
+    #         #     actions.append('pickup_soup')
+    #         #     next_objs.append('soup')
+
+    #         elif player_obj == 'soup':
+    #             actions.append('deliver_soup')
+    #             next_objs.append('None')
+    #             # if len(orders) >= 1:
+    #             #     orders.pop(0)
+    #         else:
+    #             print(player_obj)
+    #             raise ValueError()
+
+    #     next_state_keys = []
+    #     for action, next_obj in zip(actions, next_objs):
+    #         next_state_key = next_obj
+
+    #         if action == 'drop_onion' or action == 'drop_tomato':
+    #             if next_soup_finish > self.mdp.num_items_for_soup-1:
+    #                 next_state_key += '_' + str(self.mdp.num_items_for_soup)
+    #             else:
+    #                 next_state_key += '_' + str(next_soup_finish+1)
+
+    #             for order in orders:
+    #                 next_state_key += '_' + order
+
+    #         elif action == 'pickup_soup':
+    #             next_state_key += '_' + str(0)
+    #             for order in orders:
+    #                 next_state_key += '_' + order
+
+    #         elif action == 'deliver_soup':
+    #             next_state_key += '_' + str(0)
+    #             new_orders = []
+    #             if len(orders) >= 1:
+    #                 new_orders = orders[1:]
+
+    #             for order in new_orders:
+    #                 next_state_key += '_' + order
+    #         else:
+    #             next_state_key += '_' + str(next_soup_finish)
+    #             for order in orders:
+    #                 next_state_key += '_' + order
+
+    #         for human_info in human_state:
+    #             next_state_key += '_' + human_info
+
+    #         next_state_keys.append(next_state_key)
+
+    #     return actions, next_state_keys
 
     def world_state_to_mdp_state_key(self, state, player, other_player, subtask):
         # a0 pos, a0 dir, a0 hold, a1 pos, a1 dir, a1 hold, len(order_list)
@@ -2744,6 +2843,7 @@ class HumanSubtaskQMDPPlanner(MediumLevelMdpPlanner):
         """
 
         p0_obj = p0_obj if p0_obj is not None else self.state_dict[state_str][0]
+        other_obj = world_state.players[1-player_idx].held_object.name if world_state.players[1-player_idx].held_object is not None else 'None'
         pots_states_dict = self.mdp.get_pot_states(world_state)
         location = []
         WAIT = False # If wait becomes true, one player has to wait for the other player to finish its current task and its next task
@@ -2778,10 +2878,14 @@ class HumanSubtaskQMDPPlanner(MediumLevelMdpPlanner):
             if obj == 'onion' or obj == 'tomato':
                 location = self.mdp.get_partially_full_pots(pots_states_dict) + self.mdp.get_empty_pots(pots_states_dict)
                 if len(location) == 0:
-                    WAIT = True
-                    location = self.mdp.get_ready_pots(pots_states_dict) + self.mdp.get_cooking_pots(pots_states_dict) + self.mdp.get_full_pots(pots_states_dict)
-                    # location = world_state.players[player_idx].pos_and_or
-                    return location, WAIT
+                    if other_obj != 'onion' and other_obj != 'tomato':
+                        WAIT = True
+                        location = self.mdp.get_ready_pots(pots_states_dict) + self.mdp.get_cooking_pots(pots_states_dict) + self.mdp.get_full_pots(pots_states_dict)
+                        # location = world_state.players[player_idx].pos_and_or
+                        return location, WAIT
+                    else:
+                        location = self.drop_item(world_state)
+
             elif obj == 'dish':
                 location = self.drop_item(world_state)
             else:
@@ -2865,11 +2969,11 @@ class HumanSubtaskQMDPPlanner(MediumLevelMdpPlanner):
                     print(next_state_v[i, action_idx])
                     action_cost[i, action_idx] -= cost*self.transition_matrix[action_idx, mdp_state_idx, next_state_idx]
 
-            # print('next_state_v =', next_state_v[i])
-            # print('action_cost =', action_cost[i])
+            print('next_state_v =', next_state_v[i])
+            print('action_cost =', action_cost[i])
 
         q = self.compute_Q(belief, next_state_v, action_cost)
-        # print(q)
+        print(q)
         action_idx = self.get_best_action(q)
         # print('get_best_action =', action_idx, '=', self.get_key_from_value(self.action_idx_dict, action_idx))
         # print("It took {} seconds for this step".format(time.time() - start_time))
@@ -2938,7 +3042,7 @@ class HumanSubtaskQMDPPlanner(MediumLevelMdpPlanner):
 
             delivery_horizon=2
             debug=False
-            h_fn=Heuristic(self.mlp.mp).simple_heuristic
+            h_fn=Heuristic(self.mp).simple_heuristic
             start_world_state = next_world_state.deepcopy()
             if start_world_state.order_list is None:
                 start_world_state.order_list = ["any"] * delivery_horizon
