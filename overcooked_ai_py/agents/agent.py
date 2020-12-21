@@ -1133,11 +1133,11 @@ class MediumQMdpPlanningAgent(Agent):
         self.prev_state = None
         self.belief = np.full((len(self.mdp_planner.action_dict)), 1.0/len(self.mdp_planner.action_dict), dtype=float)
 
-    def mdp_action_to_low_level_action(self, state, state_str, action_object_pair):
+    def mdp_action_to_low_level_action(self, state, state_strs, action_object_pair):
         # map back the medium level action to low level action
         ai_agent_obj = state.players[0].held_object.name if state.players[0].held_object is not None else 'None'
-        print(ai_agent_obj)
-        possible_motion_goals, WAIT = self.mdp_planner.map_action_to_location(state, None, action_object_pair[0], action_object_pair[1], p0_obj=ai_agent_obj, player_idx=0)
+        # print(ai_agent_obj)
+        possible_motion_goals, WAIT = self.mdp_planner.map_action_to_location(state, state_strs[0], action_object_pair[0], action_object_pair[1], p0_obj=ai_agent_obj, player_idx=0)
 
         # initialize
         action = Action.STAY
@@ -1165,9 +1165,10 @@ class MediumQMdpPlanningAgent(Agent):
                     pot_pos = obj_pos
 
         self.belief = self.mdp_planner.belief_update(state, state.players[0], num_item_in_pot, state.players[1], self.belief)
-        action_idx, action_object_pair = self.mdp_planner.step(state, state.players[0], num_item_in_pot, state.players[1], self.belief)
+        mdp_state_keys = self.mdp_planner.world_to_state_keys(state, state.players[0], num_item_in_pot, state.players[1], self.belief)
+        action_idx, action_object_pair = self.mdp_planner.step(state, mdp_state_keys, self.belief)
 
-        action = self.mdp_action_to_low_level_action(state, None, action_object_pair)
+        action = self.mdp_action_to_low_level_action(state, mdp_state_keys, action_object_pair)
         print('action =', action, '; action_object_pair =', action_object_pair)
         action_probs = self.a_probs_from_action(action)
         if self.auto_unstuck:

@@ -149,7 +149,7 @@ if __name__ == "__main__" :
 
     # np.random.seed(0)
     start_time = time.time()
-    scenario_1_mdp = OvercookedGridworld.from_layout_name('10x15_test1', start_order_list=['onion','onion'], cook_time=10)
+    scenario_1_mdp = OvercookedGridworld.from_layout_name('gen2_basic_4-6', start_order_list=['onion','onion'], cook_time=5)
     # start_state = OvercookedState(
     #     [P((2, 1), s, Obj('onion', (2, 1))),
     #      P((3, 2), s)],
