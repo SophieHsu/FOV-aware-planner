@@ -1,5 +1,6 @@
 import gym, tqdm
 import numpy as np
+import time
 from overcooked_ai_py.utils import mean_and_std_err, append_dictionaries
 from overcooked_ai_py.mdp.actions import Action
 from overcooked_ai_py.mdp.overcooked_mdp import OvercookedGridworld, EVENT_TYPES
@@ -270,7 +271,7 @@ class OvercookedEnv(object):
         assert self.t == 0, "Did not reset environment before running agents"
         trajectory = []
         done = False
-
+        start_time = time.time()
         if display: print(self)
         while not done:
             s_t = self.state
@@ -289,7 +290,7 @@ class OvercookedEnv(object):
             
             if self.t > 3000:
                 break
-            
+            print("Time spent: {}".format(time.time()-start_time))
             # tmp = input()
             
         assert len(trajectory) == self.t, "{} vs {}".format(len(trajectory), self.t)

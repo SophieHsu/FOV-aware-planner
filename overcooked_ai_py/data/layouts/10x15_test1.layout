@@ -1,15 +1,15 @@
 {
     "grid":  """XXXXXXXXXXXXXXX
-                X2    XX1XSXOXX
-                XX           XX
+                O      X      X
+                X      X      X
+                X      X      X
+                XX  X         X
                 XX XXXXXXXX XXX
-                X    XXXXX    P
-                X   XXXXXXXX  X
-                X    XXXXXXXXXX
-                XX        XXXXX
-                X      XX XXXXX
-                XXDXOXXXXXXXXXX""",
-    "start_order_list": 'onion, any',
+                X      X  1   X
+                X      X   X  X
+                X 2    X      X
+                XXXXDXXXXXPOSXX""",
+    "start_order_list": 'onion, onion',
     "cook_time": 10,
     "num_items_for_soup": 3,
     "delivery_reward": 20,

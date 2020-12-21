@@ -1137,22 +1137,22 @@ class MediumQMdpPlanningAgent(Agent):
         # map back the medium level action to low level action
         ai_agent_obj = state.players[0].held_object.name if state.players[0].held_object is not None else 'None'
         print(ai_agent_obj)
-        possible_motion_goals = self.mdp_planner.map_action_to_location(state, None, action_object_pair[0], action_object_pair[1], p0_obj=ai_agent_obj)
+        possible_motion_goals, WAIT = self.mdp_planner.map_action_to_location(state, None, action_object_pair[0], action_object_pair[1], p0_obj=ai_agent_obj, player_idx=0)
 
         # initialize
         action = Action.STAY
         minimum_cost = 100000.0
         # print(state)
         # print('possible_motion_goals =', possible_motion_goals)
-
-        for possible_location in possible_motion_goals:
-            motion_goal_locations = self.mdp_planner.mp.motion_goals_for_pos[possible_location]
-            for motion_goal_location in motion_goal_locations:
-                if self.mdp_planner.mp.is_valid_motion_start_goal_pair((state.players[0].position, state.players[0].orientation), motion_goal_location):
-                    action_plan, _, cost = self.mdp_planner.mp._compute_plan((state.players[0].position, state.players[0].orientation), motion_goal_location)
-                    if cost < minimum_cost:
-                        minimum_cost = cost
-                        action = action_plan[0]
+        if not WAIT:
+            for possible_location in possible_motion_goals:
+                motion_goal_locations = self.mdp_planner.mp.motion_goals_for_pos[possible_location]
+                for motion_goal_location in motion_goal_locations:
+                    if self.mdp_planner.mp.is_valid_motion_start_goal_pair((state.players[0].position, state.players[0].orientation), motion_goal_location):
+                        action_plan, _, cost = self.mdp_planner.mp._compute_plan((state.players[0].position, state.players[0].orientation), motion_goal_location)
+                        if cost < minimum_cost:
+                            minimum_cost = cost
+                            action = action_plan[0]
         return action
 
     def action(self, state):
@@ -1182,6 +1182,7 @@ class MediumQMdpPlanningAgent(Agent):
         print('\nState =', state)
         print('Subtasks:', self.mdp_planner.action_dict.keys())
         print('Belief =', self.belief)
+        print('Max belief =', list(self.mdp_planner.action_dict.keys())[np.argmax(self.belief)])
         print('Action =', action, '\n')
 
         return action, {"action_probs": action_probs}
@@ -1209,3 +1210,26 @@ class MediumQMdpPlanningAgent(Agent):
             state.players[self.agent_index].stuck_log += [0]
         
         return chosen_action, action_probs
+
+class QMDPAgent(Agent):
+    def __init__(self, mlp, env, delivery_horizon=2, heuristic=None):
+        self.mlp = mlp
+        self.env = env
+        self.mlp.failures = 0
+        self.h_fn = Heuristic(mlp.mp).simple_heuristic
+        self.delivery_horizon = delivery_horizon
+    def action(self, state):
+        #joint_action_plan = self.mlp.get_low_level_action_plan(state, self.heuristic, delivery_horizon=self.delivery_horizon, goal_info=True)
+        start_state = state.deepcopy()
+        order_list = start_state.order_list if start_state.order_list is not None else ["any", "any"]
+        start_state.order_list = order_list[:self.delivery_horizon]
+        initial_env_state = self.env.state
+        expand_fn = lambda state: self.mlp.get_successor_states(state)
+        goal_fn = lambda state: len(state.order_list) == 0
+        heuristic_fn = lambda state: self.h_fn(state)
+        succ_states = self.mlp.get_successor_states(start_state)
+        succ_costs = [] # V value
+        plans_to_succs = []
+        imm_costs = [] # R value
+        search_problem = SearchTree(succ_states[4][1], goal_fn, expand_fn, heuristic_fn)
+        ml_plan, cost = search_problem.A_star_graph_search(info=True)

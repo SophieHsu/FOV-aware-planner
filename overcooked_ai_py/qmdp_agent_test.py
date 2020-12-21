@@ -149,7 +149,7 @@ if __name__ == "__main__" :
 
     # np.random.seed(0)
     start_time = time.time()
-    scenario_1_mdp = OvercookedGridworld.from_layout_name('gen1_basic_1-2', start_order_list=['onion','onion'], num_items_for_soup=3, cook_time=10)
+    scenario_1_mdp = OvercookedGridworld.from_layout_name('gen1_basic_1-3', start_order_list=['onion','onion'], num_items_for_soup=3, cook_time=5)
     # start_state = OvercookedState(
     #     [P((2, 1), s, Obj('onion', (2, 1))),
     #      P((3, 2), s)],
@@ -166,22 +166,24 @@ if __name__ == "__main__" :
 
     mdp_planner = planners.HumanSubtaskQMDPPlanner.from_pickle_or_compute(scenario_1_mdp, NO_COUNTERS_PARAMS, ml_action_manager, mlp=mlp, force_compute_all=True)
     ai_agent = agent.MediumQMdpPlanningAgent(mdp_planner, auto_unstuck=True)
+    # ai_agent = agent.QMDPAgent(mlp, env)
 
-    del ml_action_manager, mdp_planner
+    # del ml_action_manager, mdp_planner
     gc.collect()
     agent_pair = agent.AgentPair(ai_agent, human_agent) # if use QMDP, the first agent has to be the AI agent
     print("It took {} seconds for planning".format(time.time() - start_time))
 
-    start_time = time.time()
+    game_start_time = time.time()
     s_t, joint_a_t, r_t, done_t = env.run_agents(agent_pair, include_final_state=True, display=DISPLAY)
-    print("It took {} seconds for playing the entire level".format(time.time() - start_time))
+    print("It took {} seconds for playing the entire level".format(time.time() - game_start_time))
+    print("It took {} seconds to plan".format(time.time() - start_time))
 
     done = False
     t = 0
-    scenario_1_mdp = OvercookedGridworld.from_layout_name('gen1_basic_1-2', start_order_list=['onion','onion'], num_items_for_soup=3, cook_time=10)
+    scenario_1_mdp = OvercookedGridworld.from_layout_name('gen1_basic_1-3', start_order_list=['onion','onion'], num_items_for_soup=3, cook_time=5)
     env = OvercookedEnv.from_mdp(scenario_1_mdp, horizon = 1000)
     while not done:
-        if t >= 0 and t <= 300:
+        if t >= 0 and t <= len(s_t):
             # env.render("blur", time_left=t)
             env.render()
             time.sleep(0.1)
