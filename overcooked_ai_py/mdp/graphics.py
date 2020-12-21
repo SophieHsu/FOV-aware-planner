@@ -1,8 +1,8 @@
 import os
 import pygame
 import time
+import overcooked_ai_py
 from overcooked_ai_py import ASSETS_DIR, PCG_EXP_IMAGE_DIR
-from overcooked_ai_py.mdp.overcooked_mdp import PlayerState
 from overcooked_ai_py.mdp.actions import Action, Direction
 pygame.init()
 
@@ -215,7 +215,7 @@ def render_from_grid(lvl_grid, log_dir, filename):
 
             # render player
             if str.isdigit(terrain):
-                player = PlayerState((x, y), Direction.SOUTH)
+                player = overcooked_ai_py.mdp.overcooked_mdp.PlayerState((x, y), Direction.SOUTH)
                 player_idx = int(terrain)
                 player_pgobj, player_hat_pgobj = get_player_sprite(player, player_idx-1)
 

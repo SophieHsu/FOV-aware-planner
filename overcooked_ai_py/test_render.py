@@ -24,7 +24,7 @@ def setup_env(layout_name):
     return agent1, agent2, env
 
 
-agent1, agent2, env = setup_env("corridor")
+agent1, agent2, env = setup_env("train_gan_small/gen2_basic_6-6-4")
 done = False
 while not done:
     env.render()

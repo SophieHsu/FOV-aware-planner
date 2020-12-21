@@ -9,6 +9,9 @@ GAN_DATA_DIR = os.path.join(GAN_DIR, "data")
 GAN_TRAINING_DIR = os.path.join(GAN_DATA_DIR, "training")
 GAN_LOSS_DIR = os.path.join(GAN_DATA_DIR, "loss")
 
+if not os.path.exists(GAN_LOSS_DIR):
+    os.mkdir(GAN_LOSS_DIR)
+
 # plot pic path
 ERR_LOG_PIC = os.path.join(GAN_LOSS_DIR, "err.png")
 

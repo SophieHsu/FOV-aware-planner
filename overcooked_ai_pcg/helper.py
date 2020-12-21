@@ -92,7 +92,7 @@ def lvl_str2grid(lvl_str):
     return [layout_row.strip() for layout_row in lvl_str.split("\n")][:-1]
 
 
-def read_in_training_data(data_path):
+def read_in_training_data(data_path, sub_dir=None):
     """
     Read in .layouts file and return the data
 
@@ -106,7 +106,10 @@ def read_in_training_data(data_path):
     for layout_file in os.listdir(data_path):
         if layout_file.endswith(".layout") and layout_file.startswith("gen"):
             layout_name = layout_file.split('.')[0]
-            raw_layout = read_layout_dict(layout_name)
+            if sub_dir is None:
+                raw_layout = read_layout_dict(layout_name)
+            else:
+                raw_layout = read_layout_dict(sub_dir + "/" + layout_name)
             raw_layout = raw_layout['grid'].split('\n')
 
             np_lvl = lvl_str2number(raw_layout)

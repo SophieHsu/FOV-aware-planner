@@ -73,7 +73,10 @@ class OvercookedEnv(object):
         self.start_state_fn = start_state_fn
         self.info_level = info_level
         self.reset()
-        self.num_orders = len(self.mdp.start_order_list)
+        if self.mdp.start_order_list:
+            self.num_orders = len(self.mdp.start_order_list)
+        else:
+            self.num_orders = np.inf
         if self.horizon >= MAX_HORIZON and self.state.order_list is None and self.info_level > 0:
             print("Environment has (near-)infinite horizon and no terminal states. \
                 Reduce info level of OvercookedEnv to not see this message.")

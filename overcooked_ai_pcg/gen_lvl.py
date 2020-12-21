@@ -31,6 +31,7 @@ def generate_lvl(batch_size,
                  worker_id=0,
                  return_unrepaired=False,
                  lvl_int_unrepaired=None,
+                 lvl_size=(10, 15),
                  mode="GAN"):
     """
     Generate level string from random latent vector given the path to the train netG model, and use MILP solver to repair it
@@ -49,7 +50,7 @@ def generate_lvl(batch_size,
     if lvl_int_unrepaired is None:
         # generate the level randomly
         if mode == "random":
-            lvl_int_unrepaired = gen_int_rnd_lvl((10, 15))
+            lvl_int_unrepaired = gen_int_rnd_lvl(lvl_size)
 
         # generate level from the GAN
         elif mode == "GAN":
@@ -67,7 +68,7 @@ def generate_lvl(batch_size,
                     batch_size, nz, 1, 1)
             with torch.no_grad():
                 levels = generator(Variable(latent_vector))
-            levels.data = levels.data[:, :, :10, :15]
+            levels.data = levels.data[:, :, :lvl_size[0], :lvl_size[1]]
             im = levels.data.cpu().numpy()
             im = np.argmax(im, axis=1)
             lvl_int_unrepaired = im[0]
@@ -156,7 +157,7 @@ def generate_all_human_lvl():
             visualize_lvl(lvl_str, HUMAN_LVL_IMAGE_DIR, layout_name + ".png")
 
 
-def main(config):
+def main(config, lvl_size, gan_pth_path):
     for _ in range(10):
         # initialize saving directory
         time_str = time.strftime("%Y-%m-%d_%H-%M-%S")
@@ -166,19 +167,19 @@ def main(config):
 
         # generate using full pipeline
         G_params = read_gan_param()
-        gan_state_dict = torch.load(os.path.join(GAN_TRAINING_DIR,
-                                                "netG_epoch_49999_999.pth"),
+        gan_state_dict = torch.load(gan_pth_path,
                                     map_location=lambda storage, loc: storage)
         generator = dcgan.DCGAN_G(**G_params)
         generator.load_state_dict(gan_state_dict)
         lvl_unrepaired, lvl_str = generate_lvl(1,
                                             generator,
+                                            lvl_size=lvl_size,
                                             return_unrepaired=True)
         visualize_lvl(lvl_unrepaired, log_dir, "gan_only_unrepaired.png")
         visualize_lvl(lvl_str, log_dir, "gan_milp_repaired.png")
 
         # generate randomly then using milp to repair
-        lvl_str = generate_rnd_lvl((10, 15))
+        lvl_str = generate_rnd_lvl(lvl_size)
         visualize_lvl(lvl_str, log_dir, "milp_only.png")
 
     # lvl_str = """XXPXX
@@ -220,5 +221,22 @@ if __name__ == "__main__":
                         default=os.path.join(
                             LSI_CONFIG_EXP_DIR,
                             "MAPELITES_workloads_diff_fixed_plan.tml"))
+    parser.add_argument('--size_version',
+                        type=str,
+                        default="large",
+                        help='Size of the level. \
+                             "small" for (6, 9), \
+                             "large" for (10, 15)')
     opt = parser.parse_args()
-    main(opt.config)
+
+    lvl_size = None
+    gan_pth_path = None
+    if opt.size_version == "small":
+        lvl_size = (6, 9)
+        gan_pth_path = os.path.join(GAN_TRAINING_DIR,
+                                    "netG_epoch_9999_999_small.pth")
+    elif opt.size_version == "large":
+        lvl_size = (10, 15)
+        gan_pth_path = os.path.join(GAN_TRAINING_DIR,
+                                    "netG_epoch_49999_999_large.pth")
+    main(opt.config, lvl_size, gan_pth_path)

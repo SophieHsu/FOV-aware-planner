@@ -20,7 +20,8 @@ def print_mem_usage(info, worker_id):
 
 
 def run_overcooked_eval(ind, visualize, elite_map_config, agent_configs,
-                        algorithm_config, G_params, gan_state_dict, worker_id):
+                        algorithm_config, G_params, gan_state_dict, worker_id,
+                        lvl_size):
     """
     Evaluates overcooked game by running a game and calculating relevant BC's.
 
@@ -32,6 +33,8 @@ def run_overcooked_eval(ind, visualize, elite_map_config, agent_configs,
         G_params: parameters for the GAN
         gan_state_dict: weights of the GAN
         worker_id (int): Worker ID to use.
+        lvl_size (tuple): size of the level to generate. Currently only supports
+                          (6, 9) and (10, 15)
 
     Returns:
         The individual that was passed in (ind), but with populated data fields.
@@ -62,6 +65,7 @@ def run_overcooked_eval(ind, visualize, elite_map_config, agent_configs,
                 # wants with it
                 latent_vector=ind.param_vector[:32].copy(),
                 worker_id=worker_id,
+                lvl_size=lvl_size,
                 mode="GAN",
             )
             del generator
