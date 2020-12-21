@@ -11,10 +11,10 @@ import torch.utils.data
 from torch import nn
 from torch.autograd import Variable
 
-import dcgan
+from overcooked_ai_pcg.GAN_training import dcgan
 import os
 import json
-from helper import read_in_training_data, obj_types, plot_err, save_gan_param
+from overcooked_ai_pcg.helper import read_in_training_data, obj_types, plot_err, save_gan_param
 from overcooked_ai_py import LAYOUTS_DIR
 from overcooked_ai_pcg import GAN_TRAINING_DIR
 

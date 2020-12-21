@@ -4,6 +4,7 @@ import torch
 import toml
 import numpy as np
 from matplotlib import pyplot as plt
+from overcooked_ai_py.mdp.graphics import render_from_grid
 from overcooked_ai_py.mdp.overcooked_mdp import OvercookedGridworld
 from overcooked_ai_py.mdp.overcooked_env import OvercookedEnv
 from overcooked_ai_py.planning.planners import MediumLevelPlanner, MediumLevelMdpPlanner, HumanMediumLevelPlanner, HumanAwareMediumMDPPlanner, MediumLevelActionManager
@@ -133,9 +134,12 @@ def read_in_lsi_config(exp_config_file):
     elite_map_config = toml.load(
         os.path.join(LSI_CONFIG_MAP_DIR,
                      experiment_config["elite_map_config"]))
-    agent_config = toml.load(
-        os.path.join(LSI_CONFIG_AGENT_DIR, experiment_config["agent_config"]))
-    return experiment_config, algorithm_config, elite_map_config, agent_config
+    agent_configs = []
+    for agent_config_file in experiment_config["agent_config"]:
+        agent_config = toml.load(os.path.join(LSI_CONFIG_AGENT_DIR,
+                                 agent_config_file))
+        agent_configs.append(agent_config)
+    return experiment_config, algorithm_config, elite_map_config, agent_configs
 
 
 def plot_err(average_errG_log, average_errD_log, average_errD_fake_log,
@@ -167,6 +171,8 @@ def plot_err(average_errG_log, average_errD_log, average_errD_fake_log,
     plt.show()
 
 
+
+
 def setup_env_from_grid(layout_grid,
                         agent_config,
                         worker_id=0,
@@ -174,14 +180,12 @@ def setup_env_from_grid(layout_grid,
                         human_adaptiveness=0.5):
     """
     Set up random agents and overcooked env to run demo game.
-
     Args:
         layout_grid: list of string each representing a row of layout
     """
 
     mdp = OvercookedGridworld.from_grid(layout_grid, CONFIG)
     env = OvercookedEnv.from_mdp(mdp, info_level=0, horizon=100)
-
 
     start_time = time.time()
 
@@ -250,12 +254,14 @@ def setup_env_from_grid(layout_grid,
 
         print("worker(%d): Preprocess take %d seconds" %
               (worker_id, time.time() - start_time))
-        agent1.set_agent_index(0)
-        agent2.set_agent_index(1)
         agent1.set_mdp(mdp)
         agent2.set_mdp(mdp)
 
         del ml_action_manager, hmlp, mdp_planner
+
+    agent1.set_agent_index(0)
+    agent2.set_agent_index(1)
+
     gc.collect()
 
     return agent1, agent2, env
@@ -272,26 +278,30 @@ def read_gan_param():
     return G_params
 
 
-def run_overcooked_game(ind,
-                        agent_config,
-                        render=True,
-                        worker_id=0):
+def visualize_lvl(lvl_str, log_dir, filename):
+    """
+    Render and save the level without running game
+    """
+    grid = lvl_str2grid(lvl_str)
+    render_from_grid(grid, log_dir, filename)
+
+
+def run_overcooked_game(lvl_str, agent_config, human_preference, human_adaptiveness, rand_seed, render=False, worker_id=0):
     """
     Run one turn of overcooked game and return the sparse reward as fitness
     """
-    lvl_str = ind.level
     grid = lvl_str2grid(lvl_str)
     agent1, agent2, env = setup_env_from_grid(
         grid,
         agent_config,
         worker_id=worker_id,
-        human_preference=ind.human_preference,
-        human_adaptiveness=ind.human_adaptiveness)
+        human_preference=human_preference,
+        human_adaptiveness=human_adaptiveness)
     done = False
     total_sparse_reward = 0
     last_state = None
     timestep = 0
-    np.random.seed(ind.rand_seed)
+    np.random.seed(rand_seed)
 
     # Saves when each soup (order) was delivered
     checkpoints = [env.horizon - 1] * env.num_orders
@@ -319,7 +329,8 @@ def run_overcooked_game(ind,
         timestep += 1
 
     workloads = last_state.get_player_workload()
-
+    concurr_active = last_state.cal_concurrent_active_sum()
+    stuck_time = last_state.cal_total_stuck_time()
     # Smooth fitness is the total reward tie-broken by soup delivery times.
     # Later soup deliveries are higher priority.
     fitness = total_sparse_reward + 1
@@ -330,16 +341,28 @@ def run_overcooked_game(ind,
     # Free up some memory
     del agent1, agent2, env
 
-    # set necessary variables for ind
-    ind.fitness = fitness
-    ind.score = total_sparse_reward
-    ind.checkpoints = checkpoints
-    ind.player_workload = workloads
-    ind.joint_actions = joint_actions
+    # # set necessary variables for ind
+    # ind.fitnesses.append(fitness)
+    # ind.scores.append(total_sparse_reward)
+    # ind.checkpoints.append(checkpoints)
+    # ind.player_workloads.append(workloads)
+    # ind.joint_actions.append(joint_actions)
 
-    # return fitness, total_sparse_reward, checkpoints, workloads
-    return ind
+    return fitness, total_sparse_reward, checkpoints, workloads, joint_actions, concurr_active, stuck_time
+    # return ind
 
+
+def init_env_and_agent(ind, agent_config, worker_id=0):
+    lvl_str = ind.level
+    grid = lvl_str2grid(lvl_str)
+    agent1, agent2, env = setup_env_from_grid(
+        grid,
+        agent_config,
+        worker_id=worker_id,
+        human_preference=ind.human_preference,
+        human_adaptiveness=ind.human_adaptiveness)
+
+    return agent1, agent2, env
 
 def gen_int_rnd_lvl(size):
     """

@@ -65,15 +65,15 @@ def shortest_dist(terrain1, terrain2, lvl_str):
 
 
 def diff_num_ingre_held(ind):
-    workloads = ind.player_workload
+    workloads = ind.player_workloads[-1]
     return workloads[0]["num_ingre_held"] - workloads[1]["num_ingre_held"]
 
 def diff_num_plate_held(ind):
-    workloads = ind.player_workload
+    workloads = ind.player_workloads[-1]
     return workloads[0]["num_plate_held"] - workloads[1]["num_plate_held"]
 
 def diff_num_dish_served(ind):
-    workloads = ind.player_workload
+    workloads = ind.player_workloads[-1]
     return workloads[0]["num_served"] - workloads[1]["num_served"]
 
 # bc for human awared mdp agent
@@ -84,4 +84,10 @@ def human_adaptiveness(ind):
 def human_preference(ind):
     # print('bc human_preference =', ind.human_preference)
     return ind.human_preference
+
+def cc_active(ind):
+    return ind.concurr_actives[-1]
+
+def stuck_time(ind):
+    return ind.stuck_times[-1]
 

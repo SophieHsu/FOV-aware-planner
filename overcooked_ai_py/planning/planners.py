@@ -2501,7 +2501,6 @@ class HumanMediumLevelPlanner(object):
             num_item_in_pot = self.mdp.num_items_for_soup
 
         return next_obj, motion_goal, num_item_in_pot, order_list, WAIT
-
     
     def logic_ml_action(self, player_obj, num_item_in_pot, order_list):
         """

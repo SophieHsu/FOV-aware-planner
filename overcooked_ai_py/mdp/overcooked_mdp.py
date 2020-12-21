@@ -89,13 +89,15 @@ class PlayerState(object):
     num_served (int): Number of times the player has served food
     """
     def __init__(self, position, orientation, held_object=None,
-                 num_ingre_held=0, num_plate_held=0, num_served=0):
+                 num_ingre_held=0, num_plate_held=0, num_served=0, active_log=[], stuck_log=[]):
         self.position = tuple(position)
         self.orientation = tuple(orientation)
         self.held_object = held_object
         self.num_ingre_held = num_ingre_held
         self.num_plate_held = num_plate_held
         self.num_served = num_served
+        self.active_log = active_log.copy()
+        self.stuck_log = stuck_log.copy()
 
         assert self.orientation in Direction.ALL_DIRECTIONS
         if self.held_object is not None:
@@ -133,7 +135,7 @@ class PlayerState(object):
     def deepcopy(self):
         new_obj = None if self.held_object is None else self.held_object.deepcopy()
         return PlayerState(self.position, self.orientation, new_obj,
-                           self.num_ingre_held, self.num_plate_held, self.num_served)
+                           self.num_ingre_held, self.num_plate_held, self.num_served, self.active_log, self.stuck_log)
 
     def __eq__(self, other):
         return isinstance(other, PlayerState) and \
@@ -359,6 +361,33 @@ class OvercookedState(object):
         for idx, player in enumerate(self.players):
             workloads.append(player.get_workload())
         return workloads
+
+    def cal_concurrent_active_sum(self,):
+        concurrent_active_log = self.cal_concurrent_active_log()
+        return np.sum(concurrent_active_log)
+
+    def cal_concurrent_active_log(self,):
+        active_logs = self.get_player_active_log()
+        if len(active_logs[0]) == 0:
+            return []
+        return np.array(active_logs[0]) & np.array(active_logs[1])
+
+    def get_player_active_log(self,):
+        active_log = []
+        for idx, player in enumerate(self.players):
+            active_log.append(player.active_log)
+        return active_log
+
+    def cal_total_stuck_time(self,):
+        stuck_logs = self.get_player_stuck_log()
+        return sum(stuck_logs[0])
+
+    def get_player_stuck_log(self,):
+        stuck_log = []
+        for idx, player in enumerate(self.players):
+            stuck_log.append(player.stuck_log)
+        return stuck_log
+
 
 NO_REW_SHAPING_PARAMS = {
     "PLACEMENT_IN_POT_REW": 0,
@@ -787,7 +816,7 @@ class OvercookedGridworld(object):
                     # If last soup necessary was delivered, stop resolving interacts
                     if new_state.order_list is not None and len(new_state.order_list) == 0:
                         break
-
+                        
         return sparse_reward, shaped_reward
 
     def deliver_soup(self, state, player, soup_obj):

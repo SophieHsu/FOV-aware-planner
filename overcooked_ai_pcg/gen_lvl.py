@@ -13,9 +13,11 @@ from overcooked_ai_pcg.GAN_training import dcgan
 from overcooked_ai_pcg.helper import (gen_int_rnd_lvl, lvl_number2str,
                                       lvl_str2grid, obj_types, read_gan_param,
                                       read_in_lsi_config, run_overcooked_game,
-                                      setup_env_from_grid)
+                                      setup_env_from_grid, visualize_lvl,
+                                      read_layout_dict, lvl_str2number)
 from overcooked_ai_pcg.LSI.qd_algorithms import Individual
 from overcooked_ai_pcg.milp_repair import repair_lvl
+from overcooked_ai_py import PCG_EXP_IMAGE_DIR, LAYOUTS_DIR, HUMAN_LVL_IMAGE_DIR
 from overcooked_ai_py.mdp.overcooked_mdp import OvercookedGridworld
 
 
@@ -23,7 +25,11 @@ class DocplexFailedError(Exception):
     pass
 
 
-def generate_lvl(batch_size, generator, latent_vector=None, worker_id=0):
+def generate_lvl(batch_size,
+                 generator,
+                 latent_vector=None,
+                 worker_id=0,
+                 return_unrepaired=False):
     """
     Generate level string from random latent vector given the path to the train netG model, and use MILP solver to repair it
 
@@ -50,9 +56,8 @@ def generate_lvl(batch_size, generator, latent_vector=None, worker_id=0):
     im = levels.data.cpu().numpy()
     im = np.argmax(im, axis=1)
     lvl_int = im[0]
-
-    print("worker(%d): Before repair:\n" % (worker_id) +
-          lvl_number2str(lvl_int))
+    lvl_unrepaired = lvl_number2str(lvl_int)
+    print("worker(%d): Before repair:\n" % (worker_id) + lvl_unrepaired)
 
     # In order to avoid dealing with memory leaks that may arise with docplex,
     # we run `repair_lvl` in a separate process. We can't create a child process
@@ -98,6 +103,8 @@ print(repaired_lvl)
     lvl_str = lvl_number2str(lvl_repaired)
 
     print("worker(%d): After repair:\n" % (worker_id) + lvl_str)
+    if return_unrepaired:
+        return lvl_unrepaired, lvl_str
     return lvl_str
 
 
@@ -121,21 +128,47 @@ def generate_rnd_lvl(size, worker_id=0):
     return lvl_str
 
 
-def main(config):
-    _, _, _, agent_config = read_in_lsi_config(config)
-    # G_params = read_gan_param()
-    # gan_state_dict = torch.load(os.path.join(GAN_TRAINING_DIR,
-    #                                          "netG_epoch_49999_999.pth"),
-    #                             map_location=lambda storage, loc: storage)
-    # generator = dcgan.DCGAN_G(**G_params)
-    # generator.load_state_dict(gan_state_dict)
-    # lvl_str = generate_lvl(1, generator)
+def generate_all_human_lvl():
+    for layout_file in os.listdir(LAYOUTS_DIR):
+        if layout_file.endswith(".layout") and layout_file.startswith("gen"):
+            layout_name = layout_file.split('.')[0]
+            raw_layout = read_layout_dict(layout_name)
+            raw_layout = raw_layout['grid'].split('\n')
+            np_lvl = lvl_str2number(raw_layout)
+            lvl_str = lvl_number2str(np_lvl.astype(np.int))
+            visualize_lvl(lvl_str, HUMAN_LVL_IMAGE_DIR, layout_name + ".png")
 
-    lvl_str = """XXPXX
-                 T  2T
-                 X1  O
-                 XXDSX
-                 """
+
+def main(config):
+    for _ in range(10):
+        # initialize saving directory
+        time_str = time.strftime("%Y-%m-%d_%H-%M-%S")
+        base_log_dir = time_str
+        log_dir = os.path.join(PCG_EXP_IMAGE_DIR, base_log_dir)
+        os.mkdir(log_dir)
+
+        # generate using full pipeline
+        G_params = read_gan_param()
+        gan_state_dict = torch.load(os.path.join(GAN_TRAINING_DIR,
+                                                "netG_epoch_49999_999.pth"),
+                                    map_location=lambda storage, loc: storage)
+        generator = dcgan.DCGAN_G(**G_params)
+        generator.load_state_dict(gan_state_dict)
+        lvl_unrepaired, lvl_str = generate_lvl(1,
+                                            generator,
+                                            return_unrepaired=True)
+        visualize_lvl(lvl_unrepaired, log_dir, "gan_only_unrepaired.png")
+        visualize_lvl(lvl_str, log_dir, "gan_milp_repaired.png")
+
+        # generate randomly then using milp to repair
+        lvl_str = generate_rnd_lvl((10, 15))
+        visualize_lvl(lvl_str, log_dir, "milp_only.png")
+
+    # lvl_str = """XXPXX
+    #              T  2T
+    #              X1  O
+    #              XXDSX
+    #              """
     # lvl_str = """XXXPPXXX
     #              X  2   X
     #              D XXXX S
@@ -153,12 +186,12 @@ def main(config):
     #              X          X  X
     #              XXXXXXXXXXXXXXX
     #              """
-    # lvl_str = generate_rnd_lvl((5, 5))
 
-    ind = Individual()
-    ind.level = lvl_str
-    ind = run_overcooked_game(ind, agent_config, render=False)
-    print("fitness: %d" % ind.fitness)
+    # _, _, _, agent_configs = read_in_lsi_config(config)
+    # ind = Individual()
+    # ind.level = lvl_str
+    # fitness, _, _, _, _ = run_overcooked_game(ind, agent_configs[0], render=False)
+    # print("fitness: %d" % fitness)
 
 
 if __name__ == "__main__":
