@@ -16,7 +16,8 @@ from overcooked_ai_pcg.LSI.logger import (FrequentMapLog, MapSummaryLog,
                                           RunningIndividualLog)
 from overcooked_ai_pcg.LSI.qd_algorithms import (CMA_ME_Algorithm, FeatureMap,
                                                  MapElitesAlgorithm,
-                                                 RandomGenerator)
+                                                 RandomGenerator,
+                                                 MapElitesBaselineAlgorithm)
 
 
 def init_logging_dir(config_path, experiment_config, algorithm_config,
@@ -135,9 +136,8 @@ def search(dask_client, base_log_dir, num_simulations, algorithm_config,
 
     # create loggers
     running_individual_log = RunningIndividualLog(
-        os.path.join(base_log_dir, "individuals_log.csv"),
-        elite_map_config, agent_configs
-    )
+        os.path.join(base_log_dir, "individuals_log.csv"), elite_map_config,
+        agent_configs)
     frequent_map_log = FrequentMapLog(
         os.path.join(base_log_dir, "elite_map.csv"),
         len(elite_map_config["Map"]["Features"]),
@@ -160,8 +160,9 @@ def search(dask_client, base_log_dir, num_simulations, algorithm_config,
         # pylint: disable=no-member
         algorithm = MapElitesAlgorithm(mutation_power, initial_population,
                                        num_simulations, feature_map,
-                                       running_individual_log, frequent_map_log,
-                                       map_summary_log, num_params)
+                                       running_individual_log,
+                                       frequent_map_log, map_summary_log,
+                                       num_params)
     elif algorithm_name == "RANDOM":
         print("Start Running RANDOM")
         # pylint: disable=no-member
@@ -176,6 +177,17 @@ def search(dask_client, base_log_dir, num_simulations, algorithm_config,
                                      feature_map, running_individual_log,
                                      frequent_map_log, map_summary_log,
                                      num_params)
+    elif algorithm_name == "MAPELITES-BASE":
+        print("Start Running MAPELITES-BASE")
+        mutation_k = algorithm_config["mutation_k"]
+        mutation_power = algorithm_config["mutation_power"]
+        initial_population = algorithm_config["initial_population"]
+        algorithm = MapElitesBaselineAlgorithm(mutation_k, mutation_power,
+                                               initial_population,
+                                               num_simulations, feature_map,
+                                               running_individual_log,
+                                               frequent_map_log,
+                                               map_summary_log, num_params)
 
     # Super hacky! This is where we add bounded constraints for the human model.
     if num_params > 32:
@@ -201,6 +213,7 @@ def search(dask_client, base_log_dir, num_simulations, algorithm_config,
                 visualize,
                 elite_map_config,
                 agent_configs,
+                algorithm_config,
                 G_params,
                 gan_state_dict,
                 active_evals + 1,  # worker_id
@@ -222,8 +235,8 @@ def search(dask_client, base_log_dir, num_simulations, algorithm_config,
 
             if evaluated_ind is None:
                 print("Received a failed evaluation.")
-            elif (evaluated_ind is not None and
-                  algorithm.insert_if_still_running(evaluated_ind)):
+            elif (evaluated_ind is not None
+                  and algorithm.insert_if_still_running(evaluated_ind)):
                 cur_time = time.time()
                 print("Finished simulation.\n"
                       f"Total simulations done: "
@@ -252,6 +265,7 @@ def search(dask_client, base_log_dir, num_simulations, algorithm_config,
                     visualize,
                     elite_map_config,
                     agent_configs,
+                    algorithm_config,
                     G_params,
                     gan_state_dict,
                     # since there are no more "workers", we just pass in the
@@ -285,8 +299,8 @@ def run(
         read_in_lsi_config(config)
 
     log_dir, base_log_dir = init_logging_dir(config, experiment_config,
-                                             algorithm_config, elite_map_config,
-                                             agent_configs)
+                                             algorithm_config,
+                                             elite_map_config, agent_configs)
     print("LOGGING DIRECTORY:", log_dir)
 
     # start LSI search

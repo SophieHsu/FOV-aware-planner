@@ -17,6 +17,7 @@ import time
 import gc
 
 obj_types = "12XSPOD "
+num_obj_type = len(obj_types)
 
 CONFIG = {
     "start_order_list": ['onion'] * 2,

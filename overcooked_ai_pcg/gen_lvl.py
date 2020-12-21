@@ -26,10 +26,12 @@ class DocplexFailedError(Exception):
 
 
 def generate_lvl(batch_size,
-                 generator,
+                 generator=None,
                  latent_vector=None,
                  worker_id=0,
-                 return_unrepaired=False):
+                 return_unrepaired=False,
+                 lvl_int_unrepaired=None,
+                 mode="GAN"):
     """
     Generate level string from random latent vector given the path to the train netG model, and use MILP solver to repair it
 
@@ -37,26 +39,41 @@ def generate_lvl(batch_size,
         generator (DCGAN): netG model
         latent_vector: np.ndarray with the required dimension.
                        When it is None, a new vector will be randomly sampled
+        lvl_int_unrepaired: np.ndarray unrepaired level in int format. If
+                            passed in, just repaire the level passed in.
+        mode (string): "GAN" to generate level using GAN;
+                       "random" to generate level randomly
     """
-    # read in G constructor params from file
-    # G_params = read_gan_param()
-    nz = generator.nz
-    x = np.random.randn(batch_size, nz, 1, 1)
+    # if an unrepaired level is already passed in,
+    # just repaire it.
+    if lvl_int_unrepaired is None:
+        # generate the level randomly
+        if mode == "random":
+            lvl_int_unrepaired = gen_int_rnd_lvl((10, 15))
 
-    # generator = dcgan.DCGAN_G(**G_params)
-    # generator.load_state_dict(torch.load(model_path, map_location=lambda storage, loc: storage))
-    if latent_vector is None:
-        latent_vector = torch.FloatTensor(x).view(batch_size, nz, 1, 1)
-    else:
-        latent_vector = torch.FloatTensor(latent_vector).view(
-            batch_size, nz, 1, 1)
-    with torch.no_grad():
-        levels = generator(Variable(latent_vector))
-    levels.data = levels.data[:, :, :10, :15]
-    im = levels.data.cpu().numpy()
-    im = np.argmax(im, axis=1)
-    lvl_int = im[0]
-    lvl_unrepaired = lvl_number2str(lvl_int)
+        # generate level from the GAN
+        elif mode == "GAN":
+            # read in G constructor params from file
+            # G_params = read_gan_param()
+            nz = generator.nz
+            x = np.random.randn(batch_size, nz, 1, 1)
+
+            # generator = dcgan.DCGAN_G(**G_params)
+            # generator.load_state_dict(torch.load(model_path, map_location=lambda storage, loc: storage))
+            if latent_vector is None:
+                latent_vector = torch.FloatTensor(x).view(batch_size, nz, 1, 1)
+            else:
+                latent_vector = torch.FloatTensor(latent_vector).view(
+                    batch_size, nz, 1, 1)
+            with torch.no_grad():
+                levels = generator(Variable(latent_vector))
+            levels.data = levels.data[:, :, :10, :15]
+            im = levels.data.cpu().numpy()
+            im = np.argmax(im, axis=1)
+            lvl_int_unrepaired = im[0]
+
+    lvl_unrepaired = lvl_number2str(lvl_int_unrepaired)
+
     print("worker(%d): Before repair:\n" % (worker_id) + lvl_unrepaired)
 
     # In order to avoid dealing with memory leaks that may arise with docplex,
@@ -77,7 +94,7 @@ def generate_lvl(batch_size,
 import numpy as np
 from numpy import array
 from overcooked_ai_pcg.milp_repair import repair_lvl
-np_lvl = eval(\"\"\"{np.array_repr(lvl_int)}\"\"\")
+np_lvl = eval(\"\"\"{np.array_repr(lvl_int_unrepaired)}\"\"\")
 repaired_lvl = np.array_repr(repair_lvl(np_lvl))
 print("{delimiter}")
 print(repaired_lvl)

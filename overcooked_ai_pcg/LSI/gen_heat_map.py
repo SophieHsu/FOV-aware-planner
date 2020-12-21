@@ -1,5 +1,4 @@
 """Generates heat maps of the archives for the paper.
-
 Pass in the path LOGDIR to a logging directory created by the search. This
 script will read in data and configuration information from the logging
 directory, and for each pair of features in the map, it will generate the
@@ -7,8 +6,6 @@ following files in LOGDIR/images:
 
 - PDF called `map_final_{y_idx}_{x_idx}.pdf` showing the final heatmap. This is
   a PDF because PDF figures work better with Latex.
-- Video called `map_video_{y_idx}_{x_idx}.avi` showing the progress of the
-  heatmap.
 - GIF called `map_gif_{y_idx}_{x_idx}.gif` showing the progress of the heatmap.
 
 The {y_idx} and {x_idx} are the indices of the features used in the file in the
@@ -25,6 +22,7 @@ import os
 import shutil
 import sys
 
+import matplotlib
 import matplotlib.animation as animation
 import matplotlib.pyplot as plt
 import numpy as np
@@ -249,6 +247,10 @@ def main(opt):
     img_title = algorithm_config["name"]
 
     # Global plot settings.
+    matplotlib.rcParams.update({
+        # Pillow should be more cross-compatible.
+        "animation.writer": "pillow"
+    })
     sns.set_theme(
         context="paper",
         style="darkgrid",
@@ -304,7 +306,7 @@ def main(opt):
             fig, ax, cbar_ax = create_axes(is_workloads_diff, dataframe)
             plot_heatmap(dataframe, ax, cbar_ax, img_title, y_name, x_name,
                          is_workloads_diff)
-            ax[0].figure.suptitle(f"{img_title} | {enumerate_name}")
+            fig.suptitle(f"{img_title} | {enumerate_name}")
             fig.savefig(
                 os.path.join(img_dir,
                              f"map_final_{y_feature_idx}_{x_feature_idx}.pdf"))
@@ -314,7 +316,7 @@ def main(opt):
 
             print("## Generating video and gif ##")
             fig, ax, cbar_ax = create_axes(is_workloads_diff, dataframe)
-            ax[0].figure.suptitle(f"{img_title} | {enumerate_name}")
+            fig.suptitle(f"{img_title} | {enumerate_name}")
 
             def draw_frame(frame):
                 """Draws the heatmap for each frame of the animation."""
@@ -347,9 +349,6 @@ def main(opt):
                 interval=ANIMATION_INTERVAL,
             )
 
-            anim.save(
-                os.path.join(img_dir,
-                             f"map_video_{y_feature_idx}_{x_feature_idx}.avi"))
             anim.save(
                 os.path.join(img_dir,
                              f"map_gif_{y_feature_idx}_{x_feature_idx}.gif"))
