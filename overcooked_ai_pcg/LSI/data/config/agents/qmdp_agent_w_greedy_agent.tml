@@ -1,0 +1,12 @@
+[Search]
+num_param=32
+type="agent"
+
+[Agent1]
+name="qmdp_agent"
+auto_unstuck=true
+
+[Agent2]
+name="greedy_agent"
+auto_unstuck=true
+

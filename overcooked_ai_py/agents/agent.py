@@ -425,8 +425,18 @@ class GreedyHumanModel(Agent):
                     chosen_action = Action.STAY
                 action_probs = self.a_probs_from_action(chosen_action)
 
+                state.players[self.agent_index].stuck_log += [1]
+            else:
+                state.players[self.agent_index].stuck_log += [0]
+
             # NOTE: Assumes that calls to the action method are sequential
             self.prev_state = state
+
+        if chosen_action == Action.STAY:
+            state.players[self.agent_index].active_log += [0]
+        else:
+            state.players[self.agent_index].active_log += [1]
+
         return chosen_action, {"action_probs": action_probs}
 
     def choose_motion_goal(self, start_pos_and_or, motion_goals):
@@ -878,7 +888,7 @@ class biasHumanModel(oneGoalHumanModel):
 
         task = np.random.choice(len(self.sub_goals), p=curr_p)
         self.prev_goal_dstb = curr_p
-        print('Chosen task:', list(self.sub_goals.keys())[task], '\n')
+        # print('Chosen task:', list(self.sub_goals.keys())[task], '\n')
 
         one_goal_motion_goals = []; WAIT = False
         if task == self.sub_goals['Onion cooker']:
@@ -1159,7 +1169,7 @@ class MediumQMdpPlanningAgent(Agent):
         num_item_in_pot = 0; pot_pos = []
         if state.objects is not None and len(state.objects) > 0:
             for obj_pos, obj_state in state.objects.items():
-                print(obj_state)
+                # print(obj_state)
                 if obj_state.name == 'soup' and obj_state.state[1] > num_item_in_pot:
                     num_item_in_pot = obj_state.state[1]
                     pot_pos = obj_pos
@@ -1169,7 +1179,7 @@ class MediumQMdpPlanningAgent(Agent):
         action_idx, action_object_pair = self.mdp_planner.step(state, mdp_state_keys, self.belief)
 
         action = self.mdp_action_to_low_level_action(state, mdp_state_keys, action_object_pair)
-        print('action =', action, '; action_object_pair =', action_object_pair)
+        # print('action =', action, '; action_object_pair =', action_object_pair)
         action_probs = self.a_probs_from_action(action)
         if self.auto_unstuck:
             action, action_probs = self.resolve_stuck(state, action, action_probs)
@@ -1180,11 +1190,11 @@ class MediumQMdpPlanningAgent(Agent):
             state.players[self.agent_index].active_log += [0]
         else:
             state.players[self.agent_index].active_log += [1]
-        print('\nState =', state)
-        print('Subtasks:', self.mdp_planner.action_dict.keys())
-        print('Belief =', self.belief)
-        print('Max belief =', list(self.mdp_planner.action_dict.keys())[np.argmax(self.belief)])
-        print('Action =', action, '\n')
+        # print('\nState =', state)
+        # print('Subtasks:', self.mdp_planner.action_dict.keys())
+        # print('Belief =', self.belief)
+        # print('Max belief =', list(self.mdp_planner.action_dict.keys())[np.argmax(self.belief)])
+        # print('Action =', action, '\n')
 
         return action, {"action_probs": action_probs}
 

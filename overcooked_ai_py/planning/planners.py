@@ -2505,7 +2505,7 @@ class HumanSubtaskQMDPPlanner(MediumLevelMdpPlanner):
 
         self.transition_matrix[self.transition_matrix == 0.0] = 0.000001
 
-    def get_successor_states(self, start_world_state, start_state_key, debug=True):
+    def get_successor_states(self, start_world_state, start_state_key, debug=False):
         """
         Successor states for qmdp medium-level actions.
         """
