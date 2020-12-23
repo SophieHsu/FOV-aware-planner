@@ -45,6 +45,15 @@ FITNESS_MAX = 20000
 WORKLOAD_DIFFS_LOW = np.array([-6, -2, -2])
 WORKLOAD_DIFFS_HIGH = np.array([6, 2, 2])
 
+# Maps the raw feature names to a more human-readable name.
+FEATURE_NAME = {
+    "diff_num_ingre_held": "# ingredients held (human - robot)",
+    "diff_num_plate_held": "# plates held (human - robot)",
+    "diff_num_dish_served": "# soups served (human - robot)",
+    "cc_active": "# time steps concurrently active",
+    "stuck_time": "# time steps resolving stuck",
+}
+
 
 def read_in_lsi_config(exp_config_file):
     experiment_config = toml.load(exp_config_file)
@@ -183,8 +192,12 @@ def create_axes(is_workloads_diff, dataframe):
     return fig, ax, cbar_ax
 
 
-def plot_heatmap(dataframe, ax, cbar_ax, img_title, y_name, x_name,
-                 is_workloads_diff):
+def set_spines_visible(ax):
+    for pos in ["top", "right", "bottom", "left"]:
+        ax.spines[pos].set_visible(True)
+
+
+def plot_heatmap(dataframe, ax, cbar_ax, y_name, x_name, is_workloads_diff):
     """Plots a heatmap of the given dataframe onto the given ax.
 
     A colorbar is created on cbar_ax.
@@ -218,6 +231,8 @@ def plot_heatmap(dataframe, ax, cbar_ax, img_title, y_name, x_name,
                 ax[idx].set_ylabel(y_name, labelpad=12)
             if idx == len(dataframe) // 2:  # x-label on center plot.
                 ax[idx].set_xlabel(x_name, labelpad=10)
+        for a in ax.ravel():
+            set_spines_visible(a)
         ax[0].figure.tight_layout()
     else:
         sns.heatmap(dataframe,
@@ -231,20 +246,19 @@ def plot_heatmap(dataframe, ax, cbar_ax, img_title, y_name, x_name,
                     square=True,
                     ax=ax,
                     cbar_ax=cbar_ax)
-        ax.set_title(img_title, pad=12)
         ax.set_ylabel(y_name, labelpad=12)
         ax.set_xlabel(x_name, labelpad=10)
+        set_spines_visible(ax)
         ax.figure.tight_layout()
 
 
 def main(opt):
     # Read in configurations.
-    experiment_config, algorithm_config, elite_map_config = read_in_lsi_config(
+    experiment_config, _, elite_map_config = read_in_lsi_config(
         os.path.join(opt.logdir, "config.tml"))
     features = elite_map_config['Map']['Features']
     is_workloads_diff = (experiment_config["experiment_config"]
                          ["elite_map_config"] == "workloads_diff.tml")
-    img_title = algorithm_config["name"]
 
     # Global plot settings.
     matplotlib.rcParams.update({
@@ -253,12 +267,12 @@ def main(opt):
     })
     sns.set_theme(
         context="paper",
-        style="darkgrid",
-        font="sans-serif",
-        font_scale=1.5,
+        style="ticks",
+        font="Palatino Linotype",
+        font_scale=1.75,
         rc={
             # Refer to https://matplotlib.org/3.2.1/tutorials/introductory/customizing.html
-            "axes.facecolor": ".9",
+            "axes.facecolor": "1",
             "xtick.bottom": True,
             "xtick.major.width": 0.8,
             "xtick.major.size": 3.0,
@@ -286,12 +300,15 @@ def main(opt):
             if y_feature_idx == x_feature_idx:
                 continue
 
-            y_name, x_name = y_feature["name"], x_feature["name"]
+            y_name = FEATURE_NAME.get(y_feature["name"], y_feature["name"])
+            x_name = FEATURE_NAME.get(x_feature["name"], x_feature["name"])
             if is_workloads_diff:
                 # The index of the feature along which to enumerate BCs.
                 enumerate_idx = list(
                     set(range(3)) - {y_feature_idx, x_feature_idx})[0]
                 enumerate_name = features[enumerate_idx]["name"]
+                enumerate_name = FEATURE_NAME.get(enumerate_name,
+                                                  enumerate_name)
             else:
                 enumerate_name = None
 
@@ -304,9 +321,10 @@ def main(opt):
                                            y_feature_idx, x_feature_idx,
                                            len(features), is_workloads_diff)
             fig, ax, cbar_ax = create_axes(is_workloads_diff, dataframe)
-            plot_heatmap(dataframe, ax, cbar_ax, img_title, y_name, x_name,
+            plot_heatmap(dataframe, ax, cbar_ax, y_name, x_name,
                          is_workloads_diff)
-            fig.suptitle(f"{img_title} | {enumerate_name}")
+            if is_workloads_diff:
+                fig.suptitle(f"{enumerate_name}")
             fig.savefig(
                 os.path.join(img_dir,
                              f"map_final_{y_feature_idx}_{x_feature_idx}.pdf"))
@@ -316,7 +334,8 @@ def main(opt):
 
             print("## Generating video and gif ##")
             fig, ax, cbar_ax = create_axes(is_workloads_diff, dataframe)
-            fig.suptitle(f"{img_title} | {enumerate_name}")
+            if is_workloads_diff:
+                fig.suptitle(f"{enumerate_name}")
 
             def draw_frame(frame):
                 """Draws the heatmap for each frame of the animation."""
@@ -335,7 +354,7 @@ def main(opt):
                 dataframe = csv_data_to_pandas(elite_map_data[frame - 1],
                                                y_feature_idx, x_feature_idx,
                                                len(features), is_workloads_diff)
-                plot_heatmap(dataframe, ax, cbar_ax, img_title, y_name, x_name,
+                plot_heatmap(dataframe, ax, cbar_ax, y_name, x_name,
                              is_workloads_diff)
 
             anim = animation.FuncAnimation(
@@ -371,7 +390,6 @@ if __name__ == "__main__":
         type=int,
         default=100,
     )
-
     parser.add_argument(
         "--video",
         dest="video",
