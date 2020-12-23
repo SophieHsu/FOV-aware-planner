@@ -34,9 +34,9 @@ from overcooked_ai_pcg import LSI_CONFIG_ALGO_DIR, LSI_CONFIG_MAP_DIR
 
 # Visualization settings.
 REGULAR_FIGSIZE = (7.5, 6)
-FPS = 30  # FPS for video and gif.
+FPS = 30  # FPS for gif.
 NUM_TICKS = 5  # Number of ticks on plots.
-ANIMATION_INTERVAL = 200  # ms between each frame of the video and gif.
+ANIMATION_INTERVAL = 200  # ms between each frame of the gif.
 COLORMAP = "viridis"  # Colormap for everything.
 
 # Map settings.
@@ -329,10 +329,10 @@ def main(opt):
                 os.path.join(img_dir,
                              f"map_final_{y_feature_idx}_{x_feature_idx}.pdf"))
 
-            if not opt.video:
+            if not opt.gif:
                 continue
 
-            print("## Generating video and gif ##")
+            print("## Generating gif ##")
             fig, ax, cbar_ax = create_axes(is_workloads_diff, dataframe)
             if is_workloads_diff:
                 fig.suptitle(f"{enumerate_name}")
@@ -391,14 +391,13 @@ if __name__ == "__main__":
         default=100,
     )
     parser.add_argument(
-        "--video",
-        dest="video",
+        "--gif",
+        dest="gif",
         action="store_true",
         default=True,
-        help=("Whether to create the video (it may be useful to turn this off "
-              "for debugging. Pass --no-video to disable."),
+        help=("Whether to create the gif (it may be useful to turn this off "
+              "for debugging. Pass --no-gif to disable."),
     )
-    parser.add_argument("--no-video", dest="video", action="store_false")
-    parser.set_defaults(video=True)
+    parser.add_argument("--no-gif", dest="gif", action="store_false")
 
     main(parser.parse_args())
