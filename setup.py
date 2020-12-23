@@ -18,7 +18,7 @@ setup(
         'pygame',
         'torch',
         'matplotlib>=3.3.0',
-        'Pillow>=8.0',
+        'opencv-python',
         'pandas',
         'dask==2.30.0',
         'dask-jobqueue==0.7.1',

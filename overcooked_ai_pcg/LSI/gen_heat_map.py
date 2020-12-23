@@ -6,7 +6,7 @@ following files in LOGDIR/images:
 
 - PDF called `map_final_{y_idx}_{x_idx}.pdf` showing the final heatmap. This is
   a PDF because PDF figures work better with Latex.
-- GIF called `map_gif_{y_idx}_{x_idx}.gif` showing the progress of the heatmap.
+- AVI called `map_video_{y_idx}_{x_idx}.avi` showing the progress of the heatmap.
 
 The {y_idx} and {x_idx} are the indices of the features used in the file in the
 list `elite_map_config.Map.Features` in `config.toml`. {y_idx} is the index of
@@ -20,23 +20,22 @@ import argparse
 import csv
 import os
 import shutil
-import sys
 
-import matplotlib
-import matplotlib.animation as animation
+import cv2
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 import seaborn as sns
 import toml
 from mpl_toolkits.axes_grid1.axes_divider import make_axes_locatable
+from tqdm import tqdm
+
 from overcooked_ai_pcg import LSI_CONFIG_ALGO_DIR, LSI_CONFIG_MAP_DIR
 
 # Visualization settings.
 REGULAR_FIGSIZE = (7.5, 6)
-FPS = 30  # FPS for gif.
+FPS = 10  # FPS for video.
 NUM_TICKS = 5  # Number of ticks on plots.
-ANIMATION_INTERVAL = 200  # ms between each frame of the gif.
 COLORMAP = "viridis"  # Colormap for everything.
 
 # Map settings.
@@ -50,8 +49,8 @@ FEATURE_NAME = {
     "diff_num_ingre_held": "# ingredients held (human - robot)",
     "diff_num_plate_held": "# plates held (human - robot)",
     "diff_num_dish_served": "# soups served (human - robot)",
-    "cc_active": "# time steps concurrently active",
-    "stuck_time": "# time steps resolving stuck",
+    "cc_active": "# time steps concurrent motion",
+    "stuck_time": "# time steps stuck",
 }
 
 
@@ -138,6 +137,10 @@ def csv_data_to_pandas(data, y_feature_idx, x_feature_idx, num_features,
         elif fitness >= 400_000:
             fitness -= 390_000
 
+        assert FITNESS_MIN == 0, \
+            "Fitness min should be 0 to have proper normalization"
+        fitness /= FITNESS_MAX  # Normalization - assumes min is 0.
+
         if is_workloads_diff:
             # Insert into the correct dict. We keep all vals (none should be
             # intersecting).
@@ -151,11 +154,13 @@ def csv_data_to_pandas(data, y_feature_idx, x_feature_idx, num_features,
     return dataframes if is_workloads_diff else dataframe
 
 
-def create_axes(is_workloads_diff, dataframe):
+def create_axes(is_workloads_diff, dataframe, enumerate_name):
     """Creates a figure, axis/axes, and colorbar axis.
 
     If is_workloads_diff is True, the ax returned will be an array of axes rather
     than a single axis.
+
+    enumerate_name only applies if is_workloads_diff is True.
     """
     if is_workloads_diff:
         y_len = len(dataframe[list(dataframe)[0]].index)
@@ -167,22 +172,30 @@ def create_axes(is_workloads_diff, dataframe):
         if y_len == x_len:
             figsize = (18, 3)
 
-        # Colorbar needs a bit more proportion in horizontal plots to get same
-        # height.
-        height_ratios = [0.95, 0.05] if is_vertical else [0.9, 0.1]
+        # third row is padding.
+        height_ratios = ([0.03, 0.82, 0.08, 0.05]
+                         if is_vertical else [0.05, 0.83, 0.01, 0.1])
 
         fig = plt.figure(figsize=figsize)
         num_plots = len(dataframe)  # dataframe is a dict in this case.
         spec = fig.add_gridspec(ncols=num_plots,
-                                nrows=2,
+                                nrows=4,
+                                hspace=0.0,
                                 height_ratios=height_ratios)
-        ax = np.array([fig.add_subplot(spec[0, i]) for i in range(num_plots)],
+
+        ax = np.array([fig.add_subplot(spec[1, i]) for i in range(num_plots)],
                       dtype=object)
+
+        # Place title.
+        title_ax = fig.add_subplot(spec[0,
+                                        num_plots // 2 - 1:num_plots // 2 + 2])
+        title_ax.set_axis_off()
+        title_ax.text(0.5, 0, enumerate_name, ha="center", fontsize="medium")
 
         # Make the colorbar span the entire figure in vertical plots and only
         # the middle three plots in horizontal figures.
-        cbar_ax = fig.add_subplot(spec[1, :] if is_vertical else spec[
-            1, num_plots // 2 - 1:num_plots // 2 + 2])
+        cbar_ax = fig.add_subplot(spec[-1, :] if is_vertical else spec[
+            -1, num_plots // 2 - 1:num_plots // 2 + 2])
 
     else:
         fig, ax = plt.subplots(1, 1, figsize=REGULAR_FIGSIZE)
@@ -219,37 +232,57 @@ def plot_heatmap(dataframe, ax, cbar_ax, y_name, x_name, is_workloads_diff):
                 xticklabels=len(ind_dataframe.columns) // NUM_TICKS + 1,
                 yticklabels=(len(ind_dataframe.index) // NUM_TICKS +
                              1 if idx == 0 else False),
-                vmin=FITNESS_MIN,
-                vmax=FITNESS_MAX,
+                vmin=0,
+                vmax=1,
                 square=True,
                 ax=ax[idx],
                 cbar=idx == 0,  # Only plot cbar for first plot.
                 cbar_ax=cbar_ax,
                 cbar_kws={"orientation": "horizontal"})
-            ax[idx].set_title(f"{enum_bc}", pad=12)
+            ax[idx].set_title(f"{enum_bc}", pad=8)
             if idx == 0:  # y-label on first plot.
-                ax[idx].set_ylabel(y_name, labelpad=12)
+                ax[idx].set_ylabel(y_name, labelpad=8)
             if idx == len(dataframe) // 2:  # x-label on center plot.
-                ax[idx].set_xlabel(x_name, labelpad=10)
+                ax[idx].set_xlabel(x_name, labelpad=6)
         for a in ax.ravel():
             set_spines_visible(a)
         ax[0].figure.tight_layout()
     else:
+        # Mainly specialized for the 2D plots in the paper.
         sns.heatmap(dataframe,
                     annot=False,
                     cmap=COLORMAP,
                     fmt=".0f",
-                    xticklabels=len(dataframe.columns) // NUM_TICKS + 1,
-                    yticklabels=len(dataframe.index) // NUM_TICKS + 1,
-                    vmin=FITNESS_MIN,
-                    vmax=FITNESS_MAX,
+                    vmin=0,
+                    vmax=1,
                     square=True,
                     ax=ax,
                     cbar_ax=cbar_ax)
+        ax.set_xticks([0.5, 20.5, 40.5, 60.5, 80.5, 100.5])
+        ax.set_yticks([0.5, 20.5, 40.5, 60.5, 80.5, 100.5])
+        ax.set_xticklabels([0, 20, 40, 60, 80, 100], rotation=0)
+        ax.set_yticklabels([0, 20, 40, 60, 80, 100][::-1])
         ax.set_ylabel(y_name, labelpad=12)
         ax.set_xlabel(x_name, labelpad=10)
         set_spines_visible(ax)
         ax.figure.tight_layout()
+
+
+def save_video(img_paths, video_path):
+    """Creates a video from the given images."""
+    # Grab the dimensions of the image.
+    img = cv2.imread(img_paths[0])
+    img_dims = img.shape[:2][::-1]
+
+    # Create a video.
+    fourcc = cv2.VideoWriter_fourcc(*'XVID')
+    video = cv2.VideoWriter(video_path, fourcc, FPS, img_dims)
+
+    for img_path in img_paths:
+        img = cv2.imread(img_path)
+        video.write(img)
+
+    video.release()
 
 
 def main(opt):
@@ -261,10 +294,6 @@ def main(opt):
                          ["elite_map_config"] == "workloads_diff.tml")
 
     # Global plot settings.
-    matplotlib.rcParams.update({
-        # Pillow should be more cross-compatible.
-        "animation.writer": "pillow"
-    })
     sns.set_theme(
         context="paper",
         style="ticks",
@@ -320,57 +349,51 @@ def main(opt):
             dataframe = csv_data_to_pandas(elite_map_data[-1],
                                            y_feature_idx, x_feature_idx,
                                            len(features), is_workloads_diff)
-            fig, ax, cbar_ax = create_axes(is_workloads_diff, dataframe)
+            fig, ax, cbar_ax = create_axes(is_workloads_diff, dataframe,
+                                           enumerate_name)
             plot_heatmap(dataframe, ax, cbar_ax, y_name, x_name,
                          is_workloads_diff)
-            if is_workloads_diff:
-                fig.suptitle(f"{enumerate_name}")
             fig.savefig(
                 os.path.join(img_dir,
                              f"map_final_{y_feature_idx}_{x_feature_idx}.pdf"))
 
-            if not opt.gif:
-                continue
-
-            print("## Generating gif ##")
-            fig, ax, cbar_ax = create_axes(is_workloads_diff, dataframe)
-            if is_workloads_diff:
-                fig.suptitle(f"{enumerate_name}")
-
-            def draw_frame(frame):
-                """Draws the heatmap for each frame of the animation."""
-                # pylint: disable = cell-var-from-loop
-                print(".", end="")
-                sys.stdout.flush()
-
-                # Clear axes to make room for new plots.
-                if isinstance(ax, np.ndarray):
-                    for a in ax.ravel():
-                        a.clear()
-                else:
-                    ax.clear()
-                cbar_ax.clear()
-
-                dataframe = csv_data_to_pandas(elite_map_data[frame - 1],
-                                               y_feature_idx, x_feature_idx,
-                                               len(features), is_workloads_diff)
-                plot_heatmap(dataframe, ax, cbar_ax, y_name, x_name,
-                             is_workloads_diff)
-
-            anim = animation.FuncAnimation(
-                fig,
-                draw_frame,
-                frames=np.append(
+            if opt.video:
+                print("## Generating video ##")
+                video_img_paths = []
+                frames = np.append(
                     np.arange(opt.step_size,
                               len(elite_map_data) + 1, opt.step_size),
-                    np.full(5, len(elite_map_data))),
-                repeat=True,
-                interval=ANIMATION_INTERVAL,
-            )
+                    np.full(5, len(elite_map_data)))
+                for i, frame in tqdm(tuple(enumerate(frames))):
+                    fig, ax, cbar_ax = create_axes(is_workloads_diff, dataframe,
+                                                   enumerate_name)
+                    dataframe = csv_data_to_pandas(elite_map_data[frame - 1],
+                                                   y_feature_idx, x_feature_idx,
+                                                   len(features),
+                                                   is_workloads_diff)
+                    plot_heatmap(dataframe, ax, cbar_ax, y_name, x_name,
+                                 is_workloads_diff)
+                    video_img_paths.append(
+                        os.path.join(img_dir, f"tmp_frame_{i}.png"))
+                    fig.savefig(video_img_paths[-1])
+                    plt.close(fig)
 
-            anim.save(
-                os.path.join(img_dir,
-                             f"map_gif_{y_feature_idx}_{x_feature_idx}.gif"))
+                save_video(
+                    video_img_paths,
+                    os.path.join(
+                        img_dir,
+                        f"map_video_{y_feature_idx}_{x_feature_idx}.avi"))
+
+                for path in video_img_paths:
+                    os.remove(path)
+
+            # Break early because we only want the plot for features 0 and 1 for
+            # workload_diff
+            if is_workloads_diff:
+                print("Breaking early for workload diff")
+                break
+        if is_workloads_diff:
+            break
 
 
 if __name__ == "__main__":
@@ -391,13 +414,13 @@ if __name__ == "__main__":
         default=100,
     )
     parser.add_argument(
-        "--gif",
-        dest="gif",
+        "--video",
+        dest="video",
         action="store_true",
         default=True,
-        help=("Whether to create the gif (it may be useful to turn this off "
-              "for debugging. Pass --no-gif to disable."),
+        help=("Whether to create the video (it may be useful to turn this off "
+              "for debugging. Pass --no-video to disable."),
     )
-    parser.add_argument("--no-gif", dest="gif", action="store_false")
+    parser.add_argument("--no-video", dest="video", action="store_false")
 
     main(parser.parse_args())
