@@ -1141,7 +1141,8 @@ class MediumQMdpPlanningAgent(Agent):
     def reset(self):
         super().reset()
         self.prev_state = None
-        self.belief = np.full((len(self.mdp_planner.action_dict)), 1.0/len(self.mdp_planner.action_dict), dtype=float)
+        self.prev_dist_to_feature = {}
+        self.belief = np.full((len(self.mdp_planner.subtask_dict)), 1.0/len(self.mdp_planner.subtask_dict), dtype=float)
 
     def mdp_action_to_low_level_action(self, state, state_strs, action_object_pair):
         # map back the medium level action to low level action
@@ -1174,12 +1175,14 @@ class MediumQMdpPlanningAgent(Agent):
                     num_item_in_pot = obj_state.state[1]
                     pot_pos = obj_pos
 
-        self.belief = self.mdp_planner.belief_update(state, state.players[0], num_item_in_pot, state.players[1], self.belief)
+        self.belief, self.prev_dist_to_feature = self.mdp_planner.belief_update(state, state.players[0], num_item_in_pot, state.players[1], self.belief, self.prev_dist_to_feature)
         mdp_state_keys = self.mdp_planner.world_to_state_keys(state, state.players[0], num_item_in_pot, state.players[1], self.belief)
-        action_idx, action_object_pair = self.mdp_planner.step(state, mdp_state_keys, self.belief)
+        action, action_object_pair, LOW_LEVEL_ACTION = self.mdp_planner.step(state, mdp_state_keys, self.belief, self.agent_index, low_level_action=True)
 
-        action = self.mdp_action_to_low_level_action(state, mdp_state_keys, action_object_pair)
-        # print('action =', action, '; action_object_pair =', action_object_pair)
+        if not LOW_LEVEL_ACTION:
+            action = self.mdp_action_to_low_level_action(state, mdp_state_keys, action_object_pair)
+
+        print('action =', action, '; action_object_pair =', action_object_pair)
         action_probs = self.a_probs_from_action(action)
         if self.auto_unstuck:
             action, action_probs = self.resolve_stuck(state, action, action_probs)
@@ -1190,11 +1193,11 @@ class MediumQMdpPlanningAgent(Agent):
             state.players[self.agent_index].active_log += [0]
         else:
             state.players[self.agent_index].active_log += [1]
-        # print('\nState =', state)
-        # print('Subtasks:', self.mdp_planner.action_dict.keys())
-        # print('Belief =', self.belief)
-        # print('Max belief =', list(self.mdp_planner.action_dict.keys())[np.argmax(self.belief)])
-        # print('Action =', action, '\n')
+        print('\nState =', state)
+        print('Subtasks:', self.mdp_planner.subtask_dict.keys())
+        print('Belief =', self.belief)
+        print('Max belief =', list(self.mdp_planner.subtask_dict.keys())[np.argmax(self.belief)])
+        print('Action =', action, '\n')
 
         return action, {"action_probs": action_probs}
 

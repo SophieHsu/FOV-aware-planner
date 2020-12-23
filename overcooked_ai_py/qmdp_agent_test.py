@@ -168,6 +168,9 @@ if __name__ == "__main__" :
     mdp_planner = planners.HumanSubtaskQMDPPlanner.from_pickle_or_compute(scenario_1_mdp, NO_COUNTERS_PARAMS, force_compute_all=True)
     ai_agent = agent.MediumQMdpPlanningAgent(mdp_planner, auto_unstuck=True)
     # ai_agent = agent.QMDPAgent(mlp, env)
+    
+    ai_agent.set_agent_index(0)
+    human_agent.set_agent_index(1)
 
     del mlp, mdp_planner
     gc.collect()

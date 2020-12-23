@@ -175,7 +175,8 @@ class MotionPlanner(object):
         # Fix agent orientation if necessary
         if curr_or != goal_orientation:
             new_pos, _ = self.mdp._move_if_direction(curr_pos, curr_or, goal_orientation)
-            assert new_pos == goal_position
+            # print(curr_pos, curr_or, goal_position, goal_orientation)
+            # assert new_pos == goal_position
             action_plan.append(goal_orientation)
             pos_and_or_path.append((goal_position, goal_orientation))
 
@@ -2419,6 +2420,8 @@ class HumanSubtaskQMDPPlanner(MediumLevelMdpPlanner):
         self.world_state_cost_dict = {}
         self.jmp = JointMotionPlanner(mdp, mlp_params)
         self.mp = self.jmp.motion_planner
+        self.subtask_dict = {}
+        self.subtask_idx_dict = {}
 
     @staticmethod
     def from_pickle_or_compute(mdp, mlp_params, custom_filename=None, force_compute_all=False, info=True, force_compute_more=False):
@@ -2461,18 +2464,22 @@ class HumanSubtaskQMDPPlanner(MediumLevelMdpPlanner):
 
         # add [p1_obj, subtask] to [p0_obj, num_item_in_pot, order_list]
         objects = ['onion', 'soup', 'dish', 'None'] # 'tomato'
-        subtasks = copy.deepcopy(self.action_dict)
+        self.subtask_dict = copy.deepcopy(self.action_dict)
+        del self.subtask_dict['drop_dish']
         original_state_dict = copy.deepcopy(self.state_dict)
         self.state_dict.clear()
         self.state_idx_dict.clear()
         for i, obj in enumerate(objects):
-            for j, subtask in enumerate(subtasks.items()):
+            for j, subtask in enumerate(self.subtask_dict.items()):
+                self.subtask_idx_dict[subtask[0]] = j
                 if self._is_valid_object_subtask_pair(obj, subtask[0]):
                     for ori_key, ori_value in original_state_dict.items():
                         new_key = ori_key+'_'+obj + '_' + subtask[0]
                         new_obj = original_state_dict[ori_key]+[obj] + [subtask[0]]
                         self.state_dict[new_key] = new_obj # update value
                         self.state_idx_dict[new_key] = len(self.state_idx_dict)
+        print('subtask_dict =', self.subtask_dict)
+        print('subtask_idx_dict =', self.subtask_idx_dict)
 
     def init_transition(self, transition_matrix=None):
         """
@@ -2546,8 +2553,8 @@ class HumanSubtaskQMDPPlanner(MediumLevelMdpPlanner):
                 return True
             elif (obj == 'dish') and subtask == 'pickup_soup':
                 return True
-            elif (obj == 'dish') and subtask == 'drop_dish':
-                return True
+            # elif (obj == 'dish') and subtask == 'drop_dish':
+            #     return True
             elif obj == 'soup' and subtask == 'deliver_soup':
                 return True
             else:
@@ -2563,7 +2570,7 @@ class HumanSubtaskQMDPPlanner(MediumLevelMdpPlanner):
         if player_obj == 'None':
             if subtask == 'pickup_dish':
                 next_obj = 'dish'
-                next_subtasks = ['pickup_soup', 'drop_dish']
+                next_subtasks = ['pickup_soup']#, 'drop_dish']
 
             elif subtask == 'pickup_onion':
                 next_obj = 'onion'
@@ -2597,9 +2604,9 @@ class HumanSubtaskQMDPPlanner(MediumLevelMdpPlanner):
                 next_soup_finish = 0
                 next_subtasks = ['deliver_soup']
 
-            elif (player_obj == 'dish') and subtask == 'drop_dish':
-                next_obj = 'None'
-                next_subtasks = ['pickup_onion', 'pickup_dish'] # 'pickup_tomato'
+            # elif (player_obj == 'dish') and subtask == 'drop_dish':
+            #     next_obj = 'None'
+            #     next_subtasks = ['pickup_onion', 'pickup_dish'] # 'pickup_tomato'
 
             elif player_obj == 'soup' and subtask == 'deliver_soup':
                 next_obj = 'None'
@@ -2818,7 +2825,7 @@ class HumanSubtaskQMDPPlanner(MediumLevelMdpPlanner):
                     else:
                         location = self.drop_item(world_state)
 
-            elif obj == 'dish':
+            elif obj == 'dish' and player_idx==0: # agent_index = 0
                 location = self.drop_item(world_state)
             else:
                 print(p0_obj, action, obj)
@@ -2836,7 +2843,28 @@ class HumanSubtaskQMDPPlanner(MediumLevelMdpPlanner):
 
         return location, WAIT
 
-    def mdp_action_state_to_world_state(self, action_idx, ori_state_idx, ori_world_state, multi_states=False):
+    def _shift_same_goal_pos(self, new_positions, change_idx):
+        
+        pos = new_positions[change_idx][0]
+        ori = new_positions[change_idx][1]
+        new_pos = pos; new_ori = ori
+        if self.mdp._move_if_direction(pos, ori, Action.ALL_ACTIONS[0])[0] != pos:
+            new_pos, new_ori = self.mdp._move_if_direction(pos, ori, Action.ALL_ACTIONS[0])
+        elif self.mdp._move_if_direction(pos, ori, Action.ALL_ACTIONS[1])[0] != pos:
+            new_pos, new_ori = self.mdp._move_if_direction(pos, ori, Action.ALL_ACTIONS[1])
+        elif self.mdp._move_if_direction(pos, ori, Action.ALL_ACTIONS[2])[0] != pos:
+            new_pos, new_ori = self.mdp._move_if_direction(pos, ori, Action.ALL_ACTIONS[2])
+        elif self.mdp._move_if_direction(pos, ori, Action.ALL_ACTIONS[3])[0] != pos:
+            new_pos, new_ori = self.mdp._move_if_direction(pos, ori, Action.ALL_ACTIONS[3])
+        else:
+            print('pos = ', pos)
+            ValueError()
+        
+        new_positions[change_idx] = (new_pos, new_ori)
+
+        return new_positions[0], new_positions[1]
+
+    def mdp_action_state_to_world_state(self, action_idx, ori_state_idx, ori_world_state, with_argmin=False):
         new_world_state = ori_world_state.deepcopy()
         ori_mdp_state_key = self.get_key_from_value(self.state_idx_dict, ori_state_idx)
         mdp_state_obj = self.state_dict[ori_mdp_state_key]
@@ -2850,6 +2878,12 @@ class HumanSubtaskQMDPPlanner(MediumLevelMdpPlanner):
         new_agent_pos = self.mp.motion_goals_for_pos[agent_feature_pos][0] if agent_feature_pos is not None else new_world_state.players[0].get_pos_and_or()
         human_cost, human_feature_pos = self.mp.min_cost_to_feature(ori_world_state.players[1].pos_and_or, possible_human_motion_goals, with_argmin=True)
         new_human_pos = self.mp.motion_goals_for_pos[human_feature_pos][0] if human_feature_pos is not None else new_world_state.players[1].get_pos_and_or()
+        print(new_agent_pos, new_human_pos)
+
+        if new_agent_pos == new_human_pos:
+            new_agent_pos, new_human_pos = self._shift_same_goal_pos([new_agent_pos, new_human_pos], np.argmax(np.array([agent_cost, human_cost])))
+            
+            print('after shift =', new_agent_pos, new_human_pos)
 
         # update next position for AI agent
         if new_world_state.players[0].has_object():
@@ -2865,20 +2899,28 @@ class HumanSubtaskQMDPPlanner(MediumLevelMdpPlanner):
             new_world_state.players[1].held_object = ObjectState(mdp_state_obj[-2], new_human_pos)
         new_world_state.players[1].update_pos_and_or(new_human_pos[0], new_human_pos[1])
 
+        total_cost = max([agent_cost, human_cost])
         if AI_WAIT or HUMAN_WAIT: # if wait, then cost is sum of current tasks cost and one player's next task cost (est. as half map area length)
-            return new_world_state, agent_cost + human_cost + ((self.mdp.width-1)+(self.mdp.height-1))/2
+            total_cost = agent_cost + human_cost + ((self.mdp.width-1)+(self.mdp.height-1))/2
 
-        return new_world_state, max([agent_cost, human_cost])
+        if with_argmin:
+            return new_world_state, total_cost, [new_agent_pos, new_human_pos]
+
+        return new_world_state, total_cost
 
     def world_to_state_keys(self, world_state, player, soup_finish, other_player, belief):
         mdp_state_keys = []
         for i, b in enumerate(belief):
-            mdp_state_key = self.world_state_to_mdp_state_key(world_state, player, other_player, self.get_key_from_value(self.action_idx_dict, i))
+            mdp_state_key = self.world_state_to_mdp_state_key(world_state, player, other_player, self.get_key_from_value(self.subtask_idx_dict, i))
             if self.get_mdp_state_idx(mdp_state_key) is not None:
-                mdp_state_keys.append(self.world_state_to_mdp_state_key(world_state, player, other_player, self.get_key_from_value(self.action_idx_dict, i)))
+                mdp_state_keys.append(self.world_state_to_mdp_state_key(world_state, player, other_player, self.get_key_from_value(self.subtask_idx_dict, i)))
         return mdp_state_keys
 
-    def step(self, world_state, mdp_state_keys, belief):
+    def joint_action_cost(self, start_pos_and_or, goal_pos_and_or):
+        joint_action_plan, end_motion_state, plan_costs = self.jmp.get_low_level_action_plan(start_pos_and_or, goal_pos_and_or)
+        return joint_action_plan[0], plan_costs
+
+    def step(self, world_state, mdp_state_keys, belief, agent_idx, low_level_action=False):
         """
         Compute plan cost that starts from the next qmdp state defined as next_state_v().
         Compute the action cost of excuting a step towards the next qmdp state based on the
@@ -2888,10 +2930,12 @@ class HumanSubtaskQMDPPlanner(MediumLevelMdpPlanner):
         next_state_v = np.zeros((len(belief), len(self.action_dict)), dtype=float)
         action_cost = np.zeros((len(belief), len(self.action_dict)), dtype=float)
         qmdp_q = np.zeros((len(self.action_dict), len(belief)), dtype=float)
+        # ml_action_to_low_action = np.zeros()
 
         # for each subtask, obtain next mdp state but with low level location based on finishing excuting current action and subtask
         nxt_possible_mdp_state = []
         nxt_possible_world_state = []
+        ml_action_to_low_action = []
         for i, mdp_state_key in enumerate(mdp_state_keys):
             mdp_state_idx = self.get_mdp_state_idx(mdp_state_key)
             if mdp_state_idx is not None:
@@ -2899,25 +2943,38 @@ class HumanSubtaskQMDPPlanner(MediumLevelMdpPlanner):
                 nxt_possible_mdp_state.append([agent_action_idx_arr, next_mdp_state_idx_arr])
                 for j, action_idx in enumerate(agent_action_idx_arr):
                     next_state_idx = next_mdp_state_idx_arr[j]
-                    after_action_world_state, cost = self.mdp_action_state_to_world_state(action_idx, mdp_state_idx, world_state)
+                    after_action_world_state, cost, goals_pos = self.mdp_action_state_to_world_state(action_idx, mdp_state_idx, world_state, with_argmin=True)
                     value_cost = self.compute_V(after_action_world_state, self.get_key_from_value(self.state_idx_dict, next_state_idx), search_depth=100)
                     # print(next_state_v[i, action_idx], value_cost, self.transition_matrix[action_idx, mdp_state_idx, next_state_idx])
-                    next_state_v[i, action_idx] += (value_cost * self.transition_matrix[action_idx, mdp_state_idx, next_state_idx])
-                    # print(next_state_v[i, action_idx])
-                    action_cost[i, action_idx] -= cost*self.transition_matrix[action_idx, mdp_state_idx, next_state_idx]
+                    print(world_state.players_pos_and_or, after_action_world_state.players_pos_and_or)
+                    joint_action, one_step_cost = self.joint_action_cost(world_state.players_pos_and_or, after_action_world_state.players_pos_and_or)
 
-            # print('next_state_v =', next_state_v[i])
-            # print('action_cost =', action_cost[i])
+                    if not low_level_action:
+                        next_state_v[i, action_idx] += (value_cost * self.transition_matrix[action_idx, mdp_state_idx, next_state_idx])
+                        # print(next_state_v[i, action_idx])
+
+                        ## compute one step cost with joint motion considered
+                        action_cost[i, action_idx] -= max(one_step_cost)*self.transition_matrix[action_idx, mdp_state_idx, next_state_idx]
+                    else:
+                        next_state_v[i, Action.ACTION_TO_INDEX[joint_action[agent_idx]]] += (value_cost * self.transition_matrix[action_idx, mdp_state_idx, next_state_idx])
+                        # print(next_state_v[i, action_idx])
+
+                        ## compute one step cost with joint motion considered
+                        action_cost[i, Action.ACTION_TO_INDEX[joint_action[agent_idx]]] -= max(one_step_cost)*self.transition_matrix[action_idx, mdp_state_idx, next_state_idx]
+
+            print('next_state_v =', next_state_v[i])
+            print('action_cost =', action_cost[i])
 
         q = self.compute_Q(belief, next_state_v, action_cost)
-        # print(q)
+        print(q)
         action_idx = self.get_best_action(q)
         # print('get_best_action =', action_idx, '=', self.get_key_from_value(self.action_idx_dict, action_idx))
         # print("It took {} seconds for this step".format(time.time() - start_time))
-
+        if low_level_action:
+            return Action.INDEX_TO_ACTION[action_idx], None, low_level_action
         return action_idx, self.action_dict[self.get_key_from_value(self.action_idx_dict, action_idx)]
 
-    def belief_update(self, world_state, agent_player, soup_finish, human_player, belief_vector):
+    def belief_update(self, world_state, agent_player, soup_finish, human_player, belief_vector, prev_dist_to_feature):
         """
         Update belief based on both human player's game logic and also it's current position and action.
         """
@@ -2927,7 +2984,7 @@ class HumanSubtaskQMDPPlanner(MediumLevelMdpPlanner):
         human_pos_and_or = world_state.players[1].pos_and_or
         agent_pos_and_or = world_state.players[0].pos_and_or
 
-        subtask_key = np.array([self.get_key_from_value(self.action_idx_dict, i) for i in range(len(belief_vector))])
+        subtask_key = np.array([self.get_key_from_value(self.subtask_idx_dict, i) for i in range(len(belief_vector))])
 
         # get next position for human
         human_obj = human_player.held_object.name if human_player.held_object is not None else 'None'
@@ -2938,42 +2995,30 @@ class HumanSubtaskQMDPPlanner(MediumLevelMdpPlanner):
             game_logic_prob[i] = self._is_valid_object_subtask_pair(human_obj, subtask_key[i])*1.0
     
             ## tune subtask estimation based on current human's position and action (use minimum distance between features)
-            possible_motion_goals, _ = self.map_action_to_location(world_state, None, self.action_dict[subtask_key[i]][0], self.action_dict[subtask_key[i]][1], p0_obj=human_obj, player_idx=1)
+            possible_motion_goals, _ = self.map_action_to_location(world_state, None, self.subtask_dict[subtask_key[i]][0], self.subtask_dict[subtask_key[i]][1], p0_obj=human_obj, player_idx=1)
             # get next world state from human subtask info (aka. mdp action translate into medium level goal position)
-            human_dist_cost = self.mp.min_cost_to_feature(human_pos_and_or, possible_motion_goals) # select the feature position that is closest to current player's position in world state
-            dist_belief_prob[i] = (self.mdp.height+self.mdp.width) - human_dist_cost if human_dist_cost < np.inf else (self.mdp.height + self.mdp.width)
+            human_dist_cost, feature_pos = self.mp.min_cost_to_feature(human_pos_and_or, possible_motion_goals, with_argmin=True) # select the feature position that is closest to current player's position in world state
+            if str(feature_pos) not in prev_dist_to_feature:
+                prev_dist_to_feature[str(feature_pos)] = human_dist_cost
+
+            dist_belief_prob[i] = (self.mdp.height+self.mdp.width) + (prev_dist_to_feature[str(feature_pos)] - human_dist_cost)
+            # dist_belief_prob[i] = (self.mdp.height+self.mdp.width) - human_dist_cost if human_dist_cost < np.inf else (self.mdp.height + self.mdp.width)
+
+            # update distance to feature
+            prev_dist_to_feature[str(feature_pos)] = human_dist_cost
 
         game_logic_prob /= game_logic_prob.sum()
         dist_belief_prob /= dist_belief_prob.sum()
-        update_prob = game_logic_prob#*0.8 + dist_belief_prob*0.2
+        update_prob = game_logic_prob*0.8 + dist_belief_prob*0.2
         update_prob[update_prob == 0.0] = 0.000001
         new_belief = belief*update_prob
 
         new_belief /= new_belief.sum()
         # print("It took {} seconds for belief update".format(time.time() - start_time))
 
-        return new_belief
+        return new_belief, prev_dist_to_feature
 
     def compute_V(self, next_world_state, mdp_state_key, search_depth=100):
-        if next_world_state.players[0].position == next_world_state.players[1].position:
-            p0_pos = next_world_state.players[0].position
-            p0_ori = next_world_state.players[0].orientation
-            if self.mdp._move_if_direction(p0_pos, p0_ori, Action.ALL_ACTIONS[0])[0] != p0_pos:
-                new_pos, new_ori = self.mdp._move_if_direction(p0_pos, p0_ori, Action.ALL_ACTIONS[0])
-                next_world_state.players[0].update_pos_and_or(new_pos, new_ori)
-            elif self.mdp._move_if_direction(p0_pos, p0_ori, Action.ALL_ACTIONS[1])[0] != p0_pos:
-                new_pos, new_ori = self.mdp._move_if_direction(p0_pos, p0_ori, Action.ALL_ACTIONS[1])
-                next_world_state.players[0].update_pos_and_or(new_pos, new_ori)
-            elif self.mdp._move_if_direction(p0_pos, p0_ori, Action.ALL_ACTIONS[2])[0] != p0_pos:
-                new_pos, new_ori = self.mdp._move_if_direction(p0_pos, p0_ori, Action.ALL_ACTIONS[2])
-                next_world_state.players[0].update_pos_and_or(new_pos, new_ori)
-            elif self.mdp._move_if_direction(p0_pos, p0_ori, Action.ALL_ACTIONS[3])[0] != p0_pos:
-                new_pos, new_ori = self.mdp._move_if_direction(p0_pos, p0_ori, Action.ALL_ACTIONS[3])
-                next_world_state.players[0].update_pos_and_or(new_pos, new_ori)
-            else:
-                print('p0_pos = ', p0_pos)
-                ValueError()
-
         next_world_state_str = self.mdp.state_string(next_world_state)
         if next_world_state_str not in self.world_state_cost_dict:
 

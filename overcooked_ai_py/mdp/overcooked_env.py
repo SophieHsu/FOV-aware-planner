@@ -291,7 +291,7 @@ class OvercookedEnv(object):
             if self.t > 3000:
                 break
             print("Time spent: {}".format(time.time()-start_time))
-            # tmp = input()
+            tmp = input()
             
         assert len(trajectory) == self.t, "{} vs {}".format(len(trajectory), self.t)
 
