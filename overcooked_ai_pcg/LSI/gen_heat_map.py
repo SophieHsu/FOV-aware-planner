@@ -33,7 +33,7 @@ from tqdm import tqdm
 from overcooked_ai_pcg import LSI_CONFIG_ALGO_DIR, LSI_CONFIG_MAP_DIR
 
 # Visualization settings.
-REGULAR_FIGSIZE = (7.5, 6)
+REGULAR_FIGSIZE = (7, 6)
 FPS = 10  # FPS for video.
 NUM_TICKS = 5  # Number of ticks on plots.
 COLORMAP = "viridis"  # Colormap for everything.
@@ -200,7 +200,7 @@ def create_axes(is_workloads_diff, dataframe, enumerate_name):
     else:
         fig, ax = plt.subplots(1, 1, figsize=REGULAR_FIGSIZE)
         ax_divider = make_axes_locatable(ax)
-        cbar_ax = ax_divider.append_axes("right", size="7%", pad="2%")
+        cbar_ax = ax_divider.append_axes("right", size="7%", pad="10%")
 
     return fig, ax, cbar_ax
 
@@ -298,7 +298,7 @@ def main(opt):
         context="paper",
         style="ticks",
         font="Palatino Linotype",
-        font_scale=1.75,
+        font_scale=2.0 if is_workloads_diff else 3.5,
         rc={
             # Refer to https://matplotlib.org/3.2.1/tutorials/introductory/customizing.html
             "axes.facecolor": "1",
