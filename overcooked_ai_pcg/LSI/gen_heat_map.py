@@ -298,7 +298,7 @@ def main(opt):
         context="paper",
         style="ticks",
         font="Palatino Linotype",
-        font_scale=2.0 if is_workloads_diff else 3.5,
+        font_scale=2.4 if is_workloads_diff else 3.5,
         rc={
             # Refer to https://matplotlib.org/3.2.1/tutorials/introductory/customizing.html
             "axes.facecolor": "1",
@@ -310,7 +310,7 @@ def main(opt):
             "ytick.major.size": 3.0,
         })
 
-    # Create image directory or clear out previous images.
+    # Create image directory and clear out previous images.
     img_dir = os.path.join(opt.logdir, "images/")
     if os.path.exists(img_dir):
         shutil.rmtree(img_dir)
