@@ -239,7 +239,7 @@ class MotionPlanner(object):
         min_cost = min_dist + 1
         return min_cost
 
-    def min_cost_to_feature(self, start_pos_and_or, feature_pos_list, with_argmin=False, debug=False):
+    def min_cost_to_feature(self, start_pos_and_or, feature_pos_list, with_argmin=False, with_motion_goal=False, debug=False):
         """
         Determines the minimum number of timesteps necessary for a player to go from the starting
         position and orientation to any feature in feature_pos_list and perform an interact action
@@ -248,6 +248,7 @@ class MotionPlanner(object):
         assert self.mdp.get_terrain_type_at_pos(start_pos) != 'X'
         min_dist = np.Inf
         best_feature = None
+        best_motion_goal = None
         for feature_pos in feature_pos_list:
             for feature_goal in self.motion_goals_for_pos[feature_pos]:
                 if not self.is_valid_motion_start_goal_pair(start_pos_and_or, feature_goal, debug=debug):
@@ -256,9 +257,12 @@ class MotionPlanner(object):
                 curr_dist = self.get_gridworld_distance(start_pos_and_or, feature_goal)
                 if curr_dist < min_dist:
                     best_feature = feature_pos
+                    best_motion_goal = feature_goal
                     min_dist = curr_dist
         # +1 to account for interaction action
         min_cost = min_dist + 1
+        if with_motion_goal:
+            return min_cost, best_motion_goal
         if with_argmin:
             # assert best_feature is not None, "{} vs {}".format(start_pos_and_or, feature_pos_list)
             return min_cost, best_feature
@@ -316,7 +320,7 @@ class JointMotionPlanner(object):
         # accounting for orientations)
         self.joint_graph_problem = self._joint_graph_from_grid()
 
-    def get_low_level_action_plan(self, start_jm_state, goal_jm_state):
+    def get_low_level_action_plan(self, start_jm_state, goal_jm_state, merge_one=False):
         """
         Returns pre-computed plan from initial joint motion state
         to a goal joint motion state.
@@ -361,7 +365,7 @@ class JointMotionPlanner(object):
             dummy_start_jm_state = tuple((pos, dummy_orientation) for pos in starting_positions)
             plan_key = (dummy_start_jm_state, goal_jm_state)
 
-        joint_action_plan, end_jm_state, plan_lengths = self._obtain_plan(plan_key[0], plan_key[1])
+        joint_action_plan, end_jm_state, plan_lengths = self._obtain_plan(plan_key[0], plan_key[1], merge_one=merge_one)
         return joint_action_plan, end_jm_state, plan_lengths
 
     def is_valid_jm_start_goal_pair(self, joint_start_state, joint_goal_state):
@@ -371,14 +375,12 @@ class JointMotionPlanner(object):
         check_valid_fn = self.motion_planner.is_valid_motion_start_goal_pair
         return all([check_valid_fn(joint_start_state[i], joint_goal_state[i]) for i in range(2)])
 
-    def _obtain_plan(self, joint_start_state, joint_goal_state):
+    def _obtain_plan(self, joint_start_state, joint_goal_state, merge_one=False):
         """Either use motion planner or actually compute a joint plan"""
         # Try using MotionPlanner plans and join them together
         action_plans, pos_and_or_paths, plan_lengths = self._get_plans_from_single_planner(joint_start_state, joint_goal_state)
-        
         # Check if individual plans conflict
         have_conflict = self.plans_have_conflict(joint_start_state, joint_goal_state, pos_and_or_paths, plan_lengths)
-
         # If there is no conflict, the joint plan computed by joining single agent MotionPlanner plans is optimal
         if not have_conflict:
             joint_action_plan, end_pos_and_orientations = self._join_single_agent_action_plans(
@@ -400,13 +402,12 @@ class JointMotionPlanner(object):
 
         try:
             return self._get_joint_plan_from_merging_ind_paths(
-                pos_and_or_paths, joint_start_state, joint_goal_state
+                pos_and_or_paths, joint_start_state, joint_goal_state, merge_one=merge_one
             )
         except ValueError:
             return self._compute_plan_from_joint_graph(
                 joint_start_state, joint_goal_state
             )
-
 
     def merge_paths_dp(self, pos_and_or_paths, joint_start_state):
         """
@@ -475,6 +476,73 @@ class JointMotionPlanner(object):
 
         return ans1[1:], ans2[1:]
 
+    def merge_one_path_into_other_dp(self, pos_and_or_paths, joint_start_state):
+        """
+        DP solver that merges one path to another by only changing one 
+        path's pos and or such that they do not have conflicts.
+        Note that this solver can only deal with paths that does not share
+        the same start point and end point.
+
+        Args:
+            pos_and_or_paths (list): list of tuple(position, orientation)
+
+        Returns:
+            position_list1 (list), position_list2 (list)
+        """
+
+        s1, s2 = self.extract_ind_pos_list(pos_and_or_paths, joint_start_state)
+
+        if s1[-1] == s2[-1] or s1[0] == s2[0]:
+            return None, None
+        oo = np.inf
+        table = np.full((len(s1)+1, len(s2)+1), oo)
+        table[0, 0] = 0
+        choice = np.full((len(s1)+1, len(s2)+1), -1)
+        for i in range(len(s1)):
+            for j in range(len(s2)):
+                if s1[i] == s2[j]:
+                    table[i][j] = oo
+                    continue
+                ncost = table[i, j]+(1 if j >= i else 0)
+                if ncost < table[i, j+1]:
+                    table[i,j+1] = ncost
+                    choice[i,j+1] = 0
+                ncost = table[i, j]+(1 if i >= j else 0)
+                if ncost < table[i+1,j]:
+                    table[i+1,j] = ncost
+                    choice[i+1,j] = 1
+                ncost = table[i,j]
+                if ncost < table[i+1,j+1]:
+                    table[i+1,j+1] = ncost
+                    choice[i+1,j+1] = 2
+        # Use the choice matrix to build back the path
+        i = len(s1)-1
+        j = len(s2)-1
+        ans1 = []
+        ans2 = []
+        while 0 < i or 0 < j:
+            ans1.append(s1[i])
+            ans2.append(s2[j])
+            if choice[i,j] == 0:
+                j -= 1
+            elif choice[i,j] == 1:
+                i -= 1
+            elif choice[i,j] == 2:
+                i -= 1
+                j -= 1
+            else:
+                raise ValueError("Static agent blocking the way: No solution!")
+        ans1.append(s1[0])
+        ans2.append(s2[0])
+        ans1.reverse()
+        ans2.reverse()
+
+        # paths are invalid if they crash into each other
+        for idx in range(min(len(ans1), len(ans2)) - 1):
+            if ans1[idx] == ans2[idx+1] and ans1[idx+1] == ans2[idx]:
+                raise ValueError("Two paths crached: Solution not valid!")
+
+        return ans1[1:], ans2[1:]
 
     def extract_ind_pos_list(self, pos_and_or_paths, joint_start_state):
         pos_and_or_path1, pos_and_or_path2 = pos_and_or_paths
@@ -485,8 +553,7 @@ class JointMotionPlanner(object):
         pos_list2.insert(0, start2[0])
         return pos_list1, pos_list2
 
-
-    def _get_joint_plan_from_merging_ind_paths(self, pos_and_or_paths, joint_start_state, joint_goal_state):
+    def _get_joint_plan_from_merging_ind_paths(self, pos_and_or_paths, joint_start_state, joint_goal_state, merge_one=False):
         """
         Get joint motion plan by using the DP solver to resolve conflicts
         in the individual motion paths
@@ -501,8 +568,9 @@ class JointMotionPlanner(object):
                                             orientation
         """
         # resolve conflict in the individual paths
-        path_lists = self.merge_paths_dp(pos_and_or_paths, joint_start_state)
-        
+        if merge_one: path_lists = self.merge_one_path_into_other_dp(pos_and_or_paths, joint_start_state)
+        else: path_lists = self.merge_paths_dp(pos_and_or_paths, joint_start_state)
+
         # obtain action_plans from paths
         action_plans, pos_and_or_paths, plan_lengths = [], [], []
         for path_list, start, goal in zip(path_lists, joint_start_state, joint_goal_state):
@@ -522,9 +590,8 @@ class JointMotionPlanner(object):
                 pos_and_or_paths,
                  min(plan_lengths)
             )
-
+        print('after merge =', joint_action_plan)
         return joint_action_plan, end_pos_and_orientations, plan_lengths
-
 
     def _get_plans_from_single_planner(self, joint_start_state, joint_goal_state):
         """
@@ -2424,7 +2491,7 @@ class HumanSubtaskQMDPPlanner(MediumLevelMdpPlanner):
         self.subtask_idx_dict = {}
 
     @staticmethod
-    def from_pickle_or_compute(mdp, mlp_params, custom_filename=None, force_compute_all=False, info=True, force_compute_more=False):
+    def from_pickle_or_compute(mdp, mlp_params, greedy=False, custom_filename=None, force_compute_all=False, info=True, force_compute_more=False):
 
         assert isinstance(mdp, OvercookedGridworld)
 
@@ -2432,7 +2499,7 @@ class HumanSubtaskQMDPPlanner(MediumLevelMdpPlanner):
 
         if force_compute_all:
             mdp_planner = HumanSubtaskQMDPPlanner(mdp, mlp_params)
-            mdp_planner.compute_mdp(filename)
+            mdp_planner.compute_mdp(filename, greedy=greedy)
             return mdp_planner
         
         try:
@@ -2440,13 +2507,13 @@ class HumanSubtaskQMDPPlanner(MediumLevelMdpPlanner):
             
             if force_compute_more:
                 print("Stored mdp_planner computed ", str(mdp_planner.num_rounds), " rounds. Compute another " + str(TRAINNINGUNIT) + " more...")
-                mdp_planner.compute_mdp(filename)
+                mdp_planner.compute_mdp(filename, greedy=greedy)
                 return mdp_planner
 
         except (FileNotFoundError, ModuleNotFoundError, EOFError, AttributeError) as e:
             print("Recomputing planner due to:", e)
             mdp_planner = HumanSubtaskQMDPPlanner(mdp, mlp_params)
-            mdp_planner.compute_mdp(filename)
+            mdp_planner.compute_mdp(filename, greedy=greedy)
             return mdp_planner
 
         if info:
@@ -2478,10 +2545,8 @@ class HumanSubtaskQMDPPlanner(MediumLevelMdpPlanner):
                         new_obj = original_state_dict[ori_key]+[obj] + [subtask[0]]
                         self.state_dict[new_key] = new_obj # update value
                         self.state_idx_dict[new_key] = len(self.state_idx_dict)
-        print('subtask_dict =', self.subtask_dict)
-        print('subtask_idx_dict =', self.subtask_idx_dict)
 
-    def init_transition(self, transition_matrix=None):
+    def init_transition(self, transition_matrix=None, greedy=False):
         """
         This transition matrix needs to include subtask tranistion for both robot and human. Humans' state transition is conditioned on the subtask.
         """
@@ -2496,7 +2561,7 @@ class HumanSubtaskQMDPPlanner(MediumLevelMdpPlanner):
                 # decode state information
                 p0_state, p1_state, world_info = self.decode_state_info(state_obj) # p0_obj; p1_obj, p1_subtask; num_item_in_pot, order_list;
                 # calculate next states for p1 (a.k.a. human)
-                p1_nxt_states, p1_nxt_world_info = self.human_state_subtask_transition(p1_state, world_info)
+                p1_nxt_states, p1_nxt_world_info = self.human_state_subtask_transition(p1_state, world_info, greedy=greedy)
 
                 # calculate next states for p0 (conditioned on p1 (a.k.a. human))
                 for p1_nxt_state in p1_nxt_states:
@@ -2561,7 +2626,7 @@ class HumanSubtaskQMDPPlanner(MediumLevelMdpPlanner):
                 return False
         return True
 
-    def human_state_subtask_transition(self, human_state, world_info):
+    def human_state_subtask_transition(self, human_state, world_info, greedy=False):
         player_obj = human_state[0]; subtask = human_state[1]
         soup_finish = world_info[0]; orders = [] if len(world_info) < 2 else world_info[1:]
         next_obj = player_obj; next_subtasks = []; 
@@ -2585,10 +2650,20 @@ class HumanSubtaskQMDPPlanner(MediumLevelMdpPlanner):
             #     next_subtasks = ['deliver_soup']
 
         else:
-            if player_obj == 'onion' and subtask == 'drop_onion' and soup_finish < self.mdp.num_items_for_soup:
+            if greedy != True and player_obj == 'onion' and subtask == 'drop_onion' and soup_finish < self.mdp.num_items_for_soup:
                 next_obj = 'None'
                 next_soup_finish += 1
                 next_subtasks = ['pickup_onion', 'pickup_dish'] # 'pickup_tomato'
+
+            elif greedy == True and player_obj == 'onion' and subtask == 'drop_onion' and soup_finish == self.mdp.num_items_for_soup:
+                next_obj = 'None'
+                next_soup_finish += 1
+                next_subtasks = ['pickup_dish']
+
+            elif greedy == True and player_obj == 'onion' and subtask == 'drop_onion' and soup_finish < self.mdp.num_items_for_soup:
+                next_obj = 'None'
+                next_soup_finish += 1
+                next_subtasks = ['pickup_onion']
             
             elif player_obj == 'onion' and subtask == 'drop_onion' and soup_finish == self.mdp.num_items_for_soup:
                 next_obj = 'onion'
@@ -2749,7 +2824,12 @@ class HumanSubtaskQMDPPlanner(MediumLevelMdpPlanner):
         return state_strs
 
     def get_key_from_value(self, dictionary, state_value):
-        return list(dictionary.keys())[list(dictionary.values()).index(state_value)]
+        try: 
+            idx = list(dictionary.values()).index(state_value)
+        except ValueError:
+            return None
+        else:
+            return list(dictionary.keys())[idx]
 
     def map_action_to_location(self, world_state, state_str, action, obj, p0_obj=None, player_idx=None):
         """
@@ -2872,18 +2952,16 @@ class HumanSubtaskQMDPPlanner(MediumLevelMdpPlanner):
 
         possible_agent_motion_goals, AI_WAIT = self.map_action_to_location(ori_world_state, ori_mdp_state_key, self.action_dict[action][0], self.action_dict[action][1], player_idx=0) 
         possible_human_motion_goals, HUMAN_WAIT = self.map_action_to_location(ori_world_state, ori_mdp_state_key, self.action_dict[mdp_state_obj[-1]][0], self.action_dict[mdp_state_obj[-1]][1], p0_obj=mdp_state_obj[-2], player_idx=1) # get next world state from human subtask info (aka. mdp action translate into medium level goal position)
-
         # get next position for AI agent
-        agent_cost, agent_feature_pos = self.mp.min_cost_to_feature(ori_world_state.players[0].pos_and_or, possible_agent_motion_goals, with_argmin=True) # select the feature position that is closest to current player's position in world state
-        new_agent_pos = self.mp.motion_goals_for_pos[agent_feature_pos][0] if agent_feature_pos is not None else new_world_state.players[0].get_pos_and_or()
-        human_cost, human_feature_pos = self.mp.min_cost_to_feature(ori_world_state.players[1].pos_and_or, possible_human_motion_goals, with_argmin=True)
-        new_human_pos = self.mp.motion_goals_for_pos[human_feature_pos][0] if human_feature_pos is not None else new_world_state.players[1].get_pos_and_or()
-        print(new_agent_pos, new_human_pos)
+        agent_cost, agent_feature_pos = self.mp.min_cost_to_feature(ori_world_state.players[0].pos_and_or, possible_agent_motion_goals, with_motion_goal=True) # select the feature position that is closest to current player's position in world state
+        new_agent_pos = agent_feature_pos if agent_feature_pos is not None else new_world_state.players[0].get_pos_and_or()
+        human_cost, human_feature_pos = self.mp.min_cost_to_feature(ori_world_state.players[1].pos_and_or, possible_human_motion_goals, with_motion_goal=True)
+        new_human_pos = human_feature_pos if human_feature_pos is not None else new_world_state.players[1].get_pos_and_or()
+        # print(new_agent_pos, new_human_pos)
 
         if new_agent_pos == new_human_pos:
             new_agent_pos, new_human_pos = self._shift_same_goal_pos([new_agent_pos, new_human_pos], np.argmax(np.array([agent_cost, human_cost])))
-            
-            print('after shift =', new_agent_pos, new_human_pos)
+            # print('after shift =', new_agent_pos, new_human_pos)
 
         # update next position for AI agent
         if new_world_state.players[0].has_object():
@@ -2916,9 +2994,13 @@ class HumanSubtaskQMDPPlanner(MediumLevelMdpPlanner):
                 mdp_state_keys.append(self.world_state_to_mdp_state_key(world_state, player, other_player, self.get_key_from_value(self.subtask_idx_dict, i)))
         return mdp_state_keys
 
-    def joint_action_cost(self, start_pos_and_or, goal_pos_and_or):
-        joint_action_plan, end_motion_state, plan_costs = self.jmp.get_low_level_action_plan(start_pos_and_or, goal_pos_and_or)
-        return joint_action_plan[0], plan_costs
+    def joint_action_cost(self, world_state, goal_pos_and_or):
+        joint_action_plan, end_motion_state, plan_costs = self.jmp.get_low_level_action_plan(world_state.players_pos_and_or, goal_pos_and_or, merge_one=True)
+        # joint_action_plan, end_state, plan_costs = self.mlp.get_embedded_low_level_action_plan(world_state, goal_pos_and_or, other_agent, other_agent_idx)
+        # print('joint_action_plan =', joint_action_plan, '; plan_costs =', plan_costs)
+        if len(joint_action_plan) == 0:
+            return (Action.INTERACT, None), 0
+        return joint_action_plan[0], max(plan_costs)
 
     def step(self, world_state, mdp_state_keys, belief, agent_idx, low_level_action=False):
         """
@@ -2945,9 +3027,7 @@ class HumanSubtaskQMDPPlanner(MediumLevelMdpPlanner):
                     next_state_idx = next_mdp_state_idx_arr[j]
                     after_action_world_state, cost, goals_pos = self.mdp_action_state_to_world_state(action_idx, mdp_state_idx, world_state, with_argmin=True)
                     value_cost = self.compute_V(after_action_world_state, self.get_key_from_value(self.state_idx_dict, next_state_idx), search_depth=100)
-                    # print(next_state_v[i, action_idx], value_cost, self.transition_matrix[action_idx, mdp_state_idx, next_state_idx])
-                    print(world_state.players_pos_and_or, after_action_world_state.players_pos_and_or)
-                    joint_action, one_step_cost = self.joint_action_cost(world_state.players_pos_and_or, after_action_world_state.players_pos_and_or)
+                    joint_action, one_step_cost = self.joint_action_cost(world_state, after_action_world_state.players_pos_and_or)
 
                     if not low_level_action:
                         next_state_v[i, action_idx] += (value_cost * self.transition_matrix[action_idx, mdp_state_idx, next_state_idx])
@@ -2960,13 +3040,13 @@ class HumanSubtaskQMDPPlanner(MediumLevelMdpPlanner):
                         # print(next_state_v[i, action_idx])
 
                         ## compute one step cost with joint motion considered
-                        action_cost[i, Action.ACTION_TO_INDEX[joint_action[agent_idx]]] -= max(one_step_cost)*self.transition_matrix[action_idx, mdp_state_idx, next_state_idx]
+                        action_cost[i, Action.ACTION_TO_INDEX[joint_action[agent_idx]]] -= (one_step_cost)*self.transition_matrix[action_idx, mdp_state_idx, next_state_idx]
 
-            print('next_state_v =', next_state_v[i])
-            print('action_cost =', action_cost[i])
+                    # print('next_state_v =', next_state_v[i])
+                    # print('action_cost =', action_cost[i])
 
         q = self.compute_Q(belief, next_state_v, action_cost)
-        print(q)
+        # print(q)
         action_idx = self.get_best_action(q)
         # print('get_best_action =', action_idx, '=', self.get_key_from_value(self.action_idx_dict, action_idx))
         # print("It took {} seconds for this step".format(time.time() - start_time))
@@ -3058,16 +3138,16 @@ class HumanSubtaskQMDPPlanner(MediumLevelMdpPlanner):
     def get_best_action(self, q):
         return np.argmax(q)
 
-    def init_mdp(self):
+    def init_mdp(self, greedy=False):
         self.init_actions()
         self.init_human_aware_states(order_list=self.mdp.start_order_list)
-        self.init_transition()
+        self.init_transition(greedy=greedy)
 
-    def compute_mdp(self, filename):
+    def compute_mdp(self, filename, greedy=False):
         start_time = time.time()
 
         final_filepath = os.path.join(PLANNERS_DIR, filename)
-        self.init_mdp()
+        self.init_mdp(greedy=greedy)
         self.num_states = len(self.state_dict)
         self.num_actions = len(self.action_dict)
         # print('Total states =', self.num_states, '; Total actions =', self.num_actions)

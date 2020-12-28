@@ -23,16 +23,6 @@ NO_COUNTERS_PARAMS = {
     'same_motion_goals': True
 }
 
-# valid_counters = [(5, 3)]
-# one_counter_params = {
-#     'start_orientations': False,
-#     'wait_allowed': False,
-#     'counter_goals': valid_counters,
-#     'counter_drop': valid_counters,
-#     'counter_pickup': [],
-#     'same_motion_goals': True
-# }
-
 n, s = Direction.NORTH, Direction.SOUTH
 e, w = Direction.EAST, Direction.WEST
 stay, interact = Action.STAY, Action.INTERACT
@@ -149,7 +139,7 @@ if __name__ == "__main__" :
 
     # np.random.seed(0)
     start_time = time.time()
-    scenario_1_mdp = OvercookedGridworld.from_layout_name('gen2_basic_4-6', start_order_list=['onion','onion'], num_items_for_soup=3, cook_time=5)
+    scenario_1_mdp = OvercookedGridworld.from_layout_name('gen1_basic_1-3', start_order_list=['onion','onion'], num_items_for_soup=3, cook_time=5)
     # start_state = OvercookedState(
     #     [P((2, 1), s, Obj('onion', (2, 1))),
     #      P((3, 2), s)],
@@ -163,12 +153,13 @@ if __name__ == "__main__" :
 
     mlp = planners.MediumLevelPlanner.from_pickle_or_compute(scenario_1_mdp, NO_COUNTERS_PARAMS, force_compute=True)  
     human_agent = agent.GreedyHumanModel(mlp)
+    # human_agent = agent.CoupledPlanningAgent(mlp)
 
     qmdp_start_time = time.time()
-    mdp_planner = planners.HumanSubtaskQMDPPlanner.from_pickle_or_compute(scenario_1_mdp, NO_COUNTERS_PARAMS, force_compute_all=True)
-    ai_agent = agent.MediumQMdpPlanningAgent(mdp_planner, auto_unstuck=True)
+    mdp_planner = planners.HumanSubtaskQMDPPlanner.from_pickle_or_compute(scenario_1_mdp, NO_COUNTERS_PARAMS, greedy=False, force_compute_all=True)
+    ai_agent = agent.MediumQMdpPlanningAgent(mdp_planner, other_agent=human_agent, auto_unstuck=True)
     # ai_agent = agent.QMDPAgent(mlp, env)
-    
+
     ai_agent.set_agent_index(0)
     human_agent.set_agent_index(1)
 
@@ -186,7 +177,7 @@ if __name__ == "__main__" :
 
     done = False
     t = 0
-    scenario_1_mdp = OvercookedGridworld.from_layout_name('gen2_basic_4-6', start_order_list=['onion','onion'], num_items_for_soup=3, cook_time=5)
+    scenario_1_mdp = OvercookedGridworld.from_layout_name('gen1_basic_1-3', start_order_list=['onion','onion'], num_items_for_soup=3, cook_time=5)
     env = OvercookedEnv.from_mdp(scenario_1_mdp, horizon = 1000)
     while not done:
         if t >= 0 and t <= len(s_t):

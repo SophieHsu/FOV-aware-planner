@@ -154,15 +154,18 @@ class SearchNode(object):
         # Action that led to this state
         self.action = action
         self.debug = debug
+        self.discount_cost = 0.3
 
         # Parent SearchNode
         self.parent = parent
         if parent != None:
             self.depth = self.parent.depth + 1
             self.backwards_cost = self.parent.backwards_cost + action_cost
+            self.discount_cost = self.parent.discount_cost*(1.0-self.discount_cost) + action_cost*self.discount_cost
         else:
             self.depth = 0
             self.backwards_cost = 0
+            self.discount_cost = 0.0
 
     def __lt__(self, other):
         return self.backwards_cost < other.backwards_cost

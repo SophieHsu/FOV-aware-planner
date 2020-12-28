@@ -990,7 +990,6 @@ class biasHumanModel(oneGoalHumanModel):
 
         return env_pref
 
-
 class MdpPlanningAgent(Agent):
 
     def __init__(self, other_agent, mdp_planner, env, delivery_horizon=1, logging_level=0):
@@ -1011,7 +1010,6 @@ class MdpPlanningAgent(Agent):
             action = Action.INDEX_TO_ACTION[action_idx]
 
         return action, {}
-
 
 class MediumMdpPlanningAgent(Agent):
 
@@ -1130,12 +1128,13 @@ class MediumMdpPlanningAgent(Agent):
         return chosen_action, action_probs
 
 class MediumQMdpPlanningAgent(Agent):
-    def __init__(self, mdp_planner, delivery_horizon=1, logging_level=0, auto_unstuck=False):
+    def __init__(self, mdp_planner, other_agent=None, delivery_horizon=1, logging_level=0, auto_unstuck=False):
         # self.other_agent = other_agent
         self.delivery_horizon = delivery_horizon
         self.mdp_planner = mdp_planner
         self.logging_level = logging_level
         self.auto_unstuck = auto_unstuck
+        self.other_agent = other_agent
         self.reset()
 
     def reset(self):
@@ -1167,6 +1166,7 @@ class MediumQMdpPlanningAgent(Agent):
         return action
 
     def action(self, state):
+        LOW_LEVEL_ACTION = False
         num_item_in_pot = 0; pot_pos = []
         if state.objects is not None and len(state.objects) > 0:
             for obj_pos, obj_state in state.objects.items():
@@ -1182,7 +1182,7 @@ class MediumQMdpPlanningAgent(Agent):
         if not LOW_LEVEL_ACTION:
             action = self.mdp_action_to_low_level_action(state, mdp_state_keys, action_object_pair)
 
-        print('action =', action, '; action_object_pair =', action_object_pair)
+        # print('action =', action, '; action_object_pair =', action_object_pair)
         action_probs = self.a_probs_from_action(action)
         if self.auto_unstuck:
             action, action_probs = self.resolve_stuck(state, action, action_probs)
@@ -1193,11 +1193,11 @@ class MediumQMdpPlanningAgent(Agent):
             state.players[self.agent_index].active_log += [0]
         else:
             state.players[self.agent_index].active_log += [1]
-        print('\nState =', state)
-        print('Subtasks:', self.mdp_planner.subtask_dict.keys())
-        print('Belief =', self.belief)
-        print('Max belief =', list(self.mdp_planner.subtask_dict.keys())[np.argmax(self.belief)])
-        print('Action =', action, '\n')
+        # print('\nState =', state)
+        # print('Subtasks:', self.mdp_planner.subtask_dict.keys())
+        # print('Belief =', self.belief)
+        # print('Max belief =', list(self.mdp_planner.subtask_dict.keys())[np.argmax(self.belief)])
+        # print('Action =', action, '\n')
 
         return action, {"action_probs": action_probs}
 
