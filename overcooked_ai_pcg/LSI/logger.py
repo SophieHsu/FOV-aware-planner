@@ -71,16 +71,16 @@ class RunningIndividualLog(LoggerBase):
                                              agent_config["Agent2"]["name"])
             for agent_config in self._agent_configs
         ]
-        data_labels += [
-            'joint_action{}_w_{}'.format(agent_config["Agent1"]["name"],
-                                         agent_config["Agent2"]["name"])
-            for agent_config in self._agent_configs
-        ]
 
         for bc in self._elite_map_config["Map"]["Features"]:
             data_labels.append(bc["name"])
         data_labels += [
             "human_preference", "human_adaptiveness", "rand_seed", "lvl_str"
+        ]
+        data_labels += [
+            'joint_action{}_w_{}'.format(agent_config["Agent1"]["name"],
+                                         agent_config["Agent2"]["name"])
+            for agent_config in self._agent_configs
         ]
         self._write_row(data_labels)
 
@@ -92,12 +92,12 @@ class RunningIndividualLog(LoggerBase):
             *ind.scores,
             *ind.checkpoints,
             *ind.player_workloads,
-            *ind.joint_actions,
             *ind.features,
             ind.human_preference,
             ind.human_adaptiveness,
             ind.rand_seed,
             ind.level,
+            *ind.joint_actions,
         ]
         self._write_row(to_add)
 
@@ -116,7 +116,6 @@ class RunningIndividualLog(LoggerBase):
             *ind.scores[:,-1],
             *ind.checkpoints[:,-1],
             *ind.player_workloads[:,-1],
-            '',
             *ind.features[:,-1],
             '',
             '',
@@ -133,12 +132,12 @@ class RunningIndividualLog(LoggerBase):
                 *ind.scores[:,i],
                 *ind.checkpoints[:,i],
                 *ind.player_workloads[:,i],
-                *ind.joint_actions[:,i-1],
                 *ind.features[:,i],
                 ind.human_preference,
                 ind.human_adaptiveness,
                 '',
                 '',
+                *ind.joint_actions[:,i-1],
             ]
             self._write_row(to_add)
 
