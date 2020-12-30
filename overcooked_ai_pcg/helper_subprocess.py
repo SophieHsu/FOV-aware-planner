@@ -2,11 +2,13 @@ import os
 import json
 import torch
 import toml
+import pickle
 import numpy as np
 from matplotlib import pyplot as plt
+from overcooked_ai_py.mdp.graphics import render_from_grid
 from overcooked_ai_py.mdp.overcooked_mdp import OvercookedGridworld
 from overcooked_ai_py.mdp.overcooked_env import OvercookedEnv
-from overcooked_ai_py.planning.planners import MediumLevelPlanner, MediumLevelMdpPlanner, HumanMediumLevelPlanner, HumanAwareMediumMDPPlanner, MediumLevelActionManager
+from overcooked_ai_py.planning.planners import MediumLevelPlanner, MediumLevelMdpPlanner, HumanMediumLevelPlanner, HumanAwareMediumMDPPlanner, MediumLevelActionManager, HumanSubtaskQMDPPlanner
 from overcooked_ai_py.agents.agent import *
 from overcooked_ai_py.planning.planners import Heuristic
 from overcooked_ai_py import read_layout_dict
@@ -16,6 +18,7 @@ import time
 import gc
 
 obj_types = "12XSPOD "
+num_obj_type = len(obj_types)
 
 CONFIG = {
     "start_order_list": ['onion'] * 2,
@@ -90,7 +93,7 @@ def lvl_str2grid(lvl_str):
     return [layout_row.strip() for layout_row in lvl_str.split("\n")][:-1]
 
 
-def read_in_training_data(data_path):
+def read_in_training_data(data_path, sub_dir=None):
     """
     Read in .layouts file and return the data
 
@@ -104,7 +107,10 @@ def read_in_training_data(data_path):
     for layout_file in os.listdir(data_path):
         if layout_file.endswith(".layout") and layout_file.startswith("gen"):
             layout_name = layout_file.split('.')[0]
-            raw_layout = read_layout_dict(layout_name)
+            if sub_dir is None:
+                raw_layout = read_layout_dict(layout_name)
+            else:
+                raw_layout = read_layout_dict(sub_dir + "/" + layout_name)
             raw_layout = raw_layout['grid'].split('\n')
 
             np_lvl = lvl_str2number(raw_layout)
@@ -170,7 +176,9 @@ def plot_err(average_errG_log, average_errD_log, average_errD_fake_log,
     plt.show()
 
 
-
+def reset_env_from_mdp(mdp):
+    env = OvercookedEnv.from_mdp(mdp, info_level=0, horizon=100)
+    return env
 
 def setup_env_from_grid(layout_grid,
                         agent_config,
@@ -225,12 +233,14 @@ def setup_env_from_grid(layout_grid,
 
         agent1 = FixedPlanAgent(plan1)
         agent2 = FixedPlanAgent(plan2)
+
         del mlp_planner
 
     # Set up 4: Preferenced human + human-aware agent
     elif agent1_config["name"] == "preferenced_human" and agent2_config[
             "name"] == "human_aware_agent":
         print("worker(%d): Pre-constructing graph..." % (worker_id))
+        # print(human_preference, human_adaptiveness)
         ml_action_manager = MediumLevelActionManager(mdp, BASE_PARAMS)
         hmlp = HumanMediumLevelPlanner(
             mdp, ml_action_manager, [human_preference, 1.0 - human_preference],
@@ -245,23 +255,52 @@ def setup_env_from_grid(layout_grid,
         print("worker(%d): Pre-constructing mdp plan..." % (worker_id))
 
         mdp_planner = HumanAwareMediumMDPPlanner.from_pickle_or_compute(
-            mdp, BASE_PARAMS, hmlp, ml_action_manager, force_compute_all=True)
+            mdp, BASE_PARAMS, hmlp, force_compute_all=True)
         print("worker(%d): MDP agent planning..." % (worker_id))
 
         agent2 = MediumMdpPlanningAgent(
-            mdp_planner, env, auto_unstuck=agent2_config["auto_unstuck"])
+            mdp_planner, auto_unstuck=agent2_config["auto_unstuck"])
 
         print("worker(%d): Preprocess take %d seconds" %
               (worker_id, time.time() - start_time))
-        agent1.set_agent_index(0)
-        agent2.set_agent_index(1)
+        
         agent1.set_mdp(mdp)
         agent2.set_mdp(mdp)
 
         del ml_action_manager, hmlp, mdp_planner
+
+    # Set up 5: qmdp agent + greedy agent
+    elif (agent1_config["name"] == "qmdp_agent" or agent1_config["name"] == "mdp_agent") and agent2_config[
+            "name"] == "greedy_agent":
+        print("worker(%d): Pre-constructing graph..." % (worker_id))
+        # print(human_preference, human_adaptiveness)
+        mlp_planner = MediumLevelPlanner(mdp, BASE_PARAMS)
+        print("worker(%d): Planning..." % (worker_id))
+
+        agent2 = GreedyHumanModel(mlp_planner, auto_unstuck=agent2_config["auto_unstuck"])
+
+        print("worker(%d): Pre-constructing qmdp plan..." % (worker_id))
+
+        qmdp_planner = HumanSubtaskQMDPPlanner.from_pickle_or_compute(mdp, BASE_PARAMS, force_compute_all=True)
+
+        print("worker(%d): QMDP agent planning..." % (worker_id))
+
+        agent1 = MediumQMdpPlanningAgent(qmdp_planner, greedy=agent1_config["known"], auto_unstuck=agent1_config["auto_unstuck"])
+
+        print("worker(%d): Preprocess take %d seconds" %
+              (worker_id, time.time() - start_time))
+        
+        agent1.set_mdp(mdp)
+        agent2.set_mdp(mdp)
+
+        del mlp_planner, qmdp_planner
+    
+    agent1.set_agent_index(0)
+    agent2.set_agent_index(1)
+    
     gc.collect()
 
-    return agent1, agent2, env
+    return agent1, agent2, env, mdp
 
 
 def save_gan_param(G_params):
@@ -274,62 +313,87 @@ def read_gan_param():
         G_params = json.load(f)
     return G_params
 
+def visualize_lvl(lvl_str, log_dir, filename):
+    """
+    Render and save the level without running game
+    """
+    grid = lvl_str2grid(lvl_str)
+    render_from_grid(grid, log_dir, filename)
 
-
-def run_overcooked_game(lvl_str, agent_config, human_preference, human_adaptiveness, rand_seed, render=False, worker_id=0):
+def run_overcooked_game(ind, agent_config, render=True, worker_id=0, num_iters=10):
     """
     Run one turn of overcooked game and return the sparse reward as fitness
     """
-    grid = lvl_str2grid(lvl_str)
-    agent1, agent2, env = setup_env_from_grid(
-        grid,
-        agent_config,
-        worker_id=worker_id,
-        human_preference=human_preference,
-        human_adaptiveness=human_adaptiveness)
-    done = False
-    total_sparse_reward = 0
-    last_state = None
-    timestep = 0
-    np.random.seed(rand_seed)
+    print(ind)
+    agent1, agent2, env, mdp = init_env_and_agent(ind, agent_config, worker_id=worker_id)
+    
+    fitnesses = []; total_sparse_rewards = []; checkpointses = []; workloadses = []; 
+    joint_actionses = []; concurr_actives = []; stuck_times = []
+    np.random.seed(ind.rand_seed)
+    
+    for num_iter in range(num_iters):
+        done = False
+        total_sparse_reward = 0
+        last_state = None
+        timestep = 0
 
-    # Saves when each soup (order) was delivered
-    checkpoints = [env.horizon - 1] * env.num_orders
-    cur_order = 0
+        # Saves when each soup (order) was delivered
+        checkpoints = [env.horizon - 1] * env.num_orders
+        cur_order = 0
 
-    # store all actions
-    joint_actions = []
+        # store all actions
+        joint_actions = []
 
-    while not done:
-        if render:
-            env.render()
-            time.sleep(0.5)
-        joint_action = (agent1.action(env.state)[0],
-                        agent2.action(env.state)[0])
-        # print(joint_action)
-        joint_actions.append(joint_action)
-        next_state, timestep_sparse_reward, done, info = env.step(joint_action)
-        total_sparse_reward += timestep_sparse_reward
+        while not done:
+            if render:
+                env.render()
+                time.sleep(0.5)
+            joint_action = (agent1.action(env.state)[0],
+                            agent2.action(env.state)[0])
+            # print(joint_action)
+            joint_actions.append(joint_action)
+            next_state, timestep_sparse_reward, done, info = env.step(joint_action)
+            total_sparse_reward += timestep_sparse_reward
 
-        if timestep_sparse_reward > 0:
-            checkpoints[cur_order] = timestep
-            cur_order += 1
+            if timestep_sparse_reward > 0:
+                checkpoints[cur_order] = timestep
+                cur_order += 1
 
-        last_state = next_state
-        timestep += 1
+            last_state  = next_state
+            timestep += 1
 
-    workloads = last_state.get_player_workload()
-    concurr_active = last_state.cal_concurrent_active_sum()
-    stuck_time = last_state.cal_total_stuck_time()
-    # Smooth fitness is the total reward tie-broken by soup delivery times.
-    # Later soup deliveries are higher priority.
-    fitness = total_sparse_reward + 1
-    for timestep in reversed(checkpoints):
-        fitness *= env.horizon
-        fitness -= timestep
+        workloads = last_state.get_player_workload()
+        concurr_active = last_state.cal_concurrent_active_sum()
+        stuck_time = last_state.cal_total_stuck_time()
+
+        # Smooth fitness is the total reward tie-broken by soup delivery times.
+        # Later soup deliveries are higher priority.
+        fitness = total_sparse_reward + 1
+        for timestep in reversed(checkpoints):
+            fitness *= env.horizon
+            fitness -= timestep
+
+        fitnesses.append(fitness)
+        total_sparse_rewards.append(total_sparse_reward)
+        checkpointses.append(checkpoints)
+        workloadses.append(workloads)
+        joint_actionses.append(joint_actions)
+        concurr_actives.append(concurr_active)
+        stuck_times.append(stuck_time)
+
+        env = reset_env_from_mdp(mdp)
+
+    if num_iters > 1:
+        checkpointses = np.array(checkpointses)
+        fitnesses.append(sum(fitnesses)/len(fitnesses))
+        total_sparse_rewards.append(sum(total_sparse_rewards)/len(total_sparse_rewards))
+        checkpointses = np.append(checkpointses, [[sum(checkpointses[:,0])/len(checkpointses[:,0]), sum(checkpointses[:,1])/len(checkpointses[:,1])]], axis=0)
+        workloadses.append(get_workload_avg(workloadses))
+        concurr_actives.append(sum(concurr_actives)/len(concurr_actives))
+        stuck_times.append(sum(stuck_times)/len(stuck_times))
 
     # Free up some memory
-    del agent1, agent2, env
+    del agent1, agent2, env, mdp
 
     # # set necessary variables for ind
     # ind.fitnesses.append(fitness)
@@ -338,21 +402,39 @@ def run_overcooked_game(lvl_str, agent_config, human_preference, human_adaptiven
     # ind.player_workloads.append(workloads)
     # ind.joint_actions.append(joint_actions)
 
-    return fitness, total_sparse_reward, checkpoints, workloads, joint_actions, concurr_active, stuck_time
+    return fitnesses, total_sparse_rewards, checkpointses, workloadses, joint_actionses, concurr_actives, stuck_times
+    # return fitness, total_sparse_reward, checkpoints, workloads, joint_actions, concurr_active, stuck_time
     # return ind
 
+def get_workload_avg(workloadses):
+    avg_workloads = []
+    for agent in range(2):
+        a = 0; b = 0; c = 0;
+        for workloads in workloadses:
+            a += workloads[agent]['num_ingre_held']
+            b += workloads[agent]['num_plate_held']
+            c += workloads[agent]['num_served']
+        a /= len(workloadses)
+        b /= len(workloadses)
+        c /= len(workloadses)
+        avg_workloads.append({
+            "num_ingre_held": a,
+            "num_plate_held": b,
+            "num_served": c,
+        })
+    return avg_workloads
 
 def init_env_and_agent(ind, agent_config, worker_id=0):
     lvl_str = ind.level
     grid = lvl_str2grid(lvl_str)
-    agent1, agent2, env = setup_env_from_grid(
+    agent1, agent2, env, mdp = setup_env_from_grid(
         grid,
         agent_config,
         worker_id=worker_id,
         human_preference=ind.human_preference,
         human_adaptiveness=ind.human_adaptiveness)
 
-    return agent1, agent2, env
+    return agent1, agent2, env, mdp
 
 def gen_int_rnd_lvl(size):
     """

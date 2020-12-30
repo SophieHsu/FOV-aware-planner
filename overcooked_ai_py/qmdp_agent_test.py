@@ -139,7 +139,7 @@ if __name__ == "__main__" :
 
     # np.random.seed(0)
     start_time = time.time()
-    scenario_1_mdp = OvercookedGridworld.from_layout_name('gen2_basic_2-3', start_order_list=['onion','onion'], num_items_for_soup=3, cook_time=5)
+    scenario_1_mdp = OvercookedGridworld.from_layout_name('train_gan_large/gen2_basic_2-3', start_order_list=['onion','onion'], num_items_for_soup=3, cook_time=5)
     # start_state = OvercookedState(
     #     [P((2, 1), s, Obj('onion', (2, 1))),
     #      P((3, 2), s)],
@@ -180,7 +180,7 @@ if __name__ == "__main__" :
         total_t += len(s_t)
     print('Average timesteps =', total_t/10.0)
     t = 0
-    scenario_1_mdp = OvercookedGridworld.from_layout_name('gen2_basic_2-3', start_order_list=['onion','onion'], num_items_for_soup=3, cook_time=5)
+    scenario_1_mdp = OvercookedGridworld.from_layout_name('train_gan_large/gen2_basic_2-3', start_order_list=['onion','onion'], num_items_for_soup=3, cook_time=5)
     env = OvercookedEnv.from_mdp(scenario_1_mdp, horizon = 1000)
     while not done:
         if t >= 0 and t <= len(s_t):

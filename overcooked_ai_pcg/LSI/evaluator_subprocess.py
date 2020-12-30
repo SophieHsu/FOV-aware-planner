@@ -104,7 +104,7 @@ def run_overcooked_eval(ind, visualize, elite_map_config, agent_configs,
 import numpy as np
 from overcooked_ai_pcg.helper import run_overcooked_game
 print("starting overcooked!!")
-fitness,score,checkpoints,player_workload,joint_action,concurr_active,stuck_time= run_overcooked_game(\"\"\"{ind.level}\"\"\",{agent_config},worker_id = {worker_id}, human_preference = {ind.human_preference}, human_adaptiveness = {ind.human_adaptiveness}, rand_seed = {ind.rand_seed})
+fitness,score,checkpoints,player_workload,joint_action,concurr_active,stuck_time= run_overcooked_game({ind},{agent_config})
 print("{delimiter1}")
 print(fitness)
 print("{delimiter1}")
