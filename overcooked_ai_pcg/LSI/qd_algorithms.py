@@ -3,8 +3,11 @@ import dataclasses
 from abc import ABC, abstractmethod
 
 import math
+import random
+import copy
 import numpy as np
 from numpy.linalg import eig
+from overcooked_ai_pcg.helper import gen_int_rnd_lvl, obj_types, num_obj_type
 
 
 @dataclasses.dataclass
@@ -13,6 +16,7 @@ class Individual:
     features = None  # BC's
     param_vector = None  # genotype
     level = None  # an Overcooked game level (string version)
+    unrepaired_lvl = None # an Overcooked unrepaired game level (int version)
     ID = None  # ID of the individual after being inserted to the map
     fitness = None  # fitness in the level = score - timestep
     fitnesses: tuple = None # fitness score of two runs the level
@@ -242,6 +246,75 @@ class MapElitesAlgorithm(QDAlgorithmBase):
                 if self.bound_constraints[i] != None:
                     min_val, max_val = self.bound_constraints[i]
                     ind.param_vector[i] = np.clip(ind.param_vector[i], min_val, max_val)
+
+        self.individuals_disbatched += 1
+        return ind
+
+    def return_evaluated_individual(self, ind):
+        ind.ID = self.individuals_evaluated
+        self.individuals_evaluated += 1
+        self.feature_map.add(ind)
+
+
+class MapElitesBaselineAlgorithm(QDAlgorithmBase):
+
+    def __init__(self,
+                 mutation_k,
+                 mutation_power,
+                 initial_population,
+                 num_to_evaluate,
+                 feature_map,
+                 running_individual_log,
+                 frequent_map_log,
+                 map_summary_log,
+                 num_params=32,
+                 lvl_size=(10, 15)):
+        super().__init__(feature_map, running_individual_log, frequent_map_log,
+                         map_summary_log)
+        self.num_to_evaluate = num_to_evaluate
+        self.initial_population = initial_population
+        self.mutation_k = mutation_k
+        self.mutation_power = mutation_power
+        self.num_params = num_params
+        self.lvl_size = lvl_size
+        assert np.product(self.lvl_size) >= self.mutation_k
+
+    def is_running(self):
+        return self.individuals_evaluated < self.num_to_evaluate
+
+    def is_blocking(self):
+        return (self.individuals_disbatched == self.initial_population and
+                self.individuals_evaluated < self.initial_population / 2)
+
+    def generate_individual(self):
+        ind = Individual()
+        if self.individuals_disbatched < self.initial_population:
+            ind.unrepaired_lvl = gen_int_rnd_lvl(self.lvl_size)
+
+            # genrate human params directly
+            ind.human_preference, ind.human_adaptiveness = \
+                np.random.normal(0.0, 1.0, 2)
+        else:
+            parent = self.feature_map.get_random_elite()
+            ind.unrepaired_lvl = copy.deepcopy(parent.unrepaired_lvl)
+            # select k spots randomly without replacement
+            # and replace them with random objects types
+            to_mutate = random.sample(
+                [(x, y) for x in range(self.lvl_size[0])
+                        for y in range(self.lvl_size[1])],
+                self.mutation_k
+            )
+            for x, y in to_mutate:
+                ind.unrepaired_lvl[x][y] = np.random.randint(num_obj_type)
+
+            # mutate human params directly
+            ind.human_preference += parent.human_preference + \
+                np.random.normal(0.0, self.mutation_power)
+            ind.human_adaptiveness += parent.human_adaptiveness + \
+                np.random.normal(0.0, self.mutation_power)
+
+        ind.human_preference = np.clip(ind.human_preference, 0.0, 1.0)
+        ind.human_adaptiveness = np.clip(ind.human_adaptiveness, 0.0, 1.0)
 
         self.individuals_disbatched += 1
         return ind

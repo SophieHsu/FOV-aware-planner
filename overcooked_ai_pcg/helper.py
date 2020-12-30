@@ -5,6 +5,7 @@ import toml
 import pickle
 import numpy as np
 from matplotlib import pyplot as plt
+from overcooked_ai_py.mdp.graphics import render_from_grid
 from overcooked_ai_py.mdp.overcooked_mdp import OvercookedGridworld
 from overcooked_ai_py.mdp.overcooked_env import OvercookedEnv
 from overcooked_ai_py.planning.planners import MediumLevelPlanner, MediumLevelMdpPlanner, HumanMediumLevelPlanner, HumanAwareMediumMDPPlanner, MediumLevelActionManager, HumanSubtaskQMDPPlanner
@@ -17,6 +18,7 @@ import time
 import gc
 
 obj_types = "12XSPOD "
+num_obj_type = len(obj_types)
 
 CONFIG = {
     "start_order_list": ['onion'] * 2,
@@ -91,7 +93,7 @@ def lvl_str2grid(lvl_str):
     return [layout_row.strip() for layout_row in lvl_str.split("\n")][:-1]
 
 
-def read_in_training_data(data_path):
+def read_in_training_data(data_path, sub_dir=None):
     """
     Read in .layouts file and return the data
 
@@ -105,7 +107,10 @@ def read_in_training_data(data_path):
     for layout_file in os.listdir(data_path):
         if layout_file.endswith(".layout") and layout_file.startswith("gen"):
             layout_name = layout_file.split('.')[0]
-            raw_layout = read_layout_dict(layout_name)
+            if sub_dir is None:
+                raw_layout = read_layout_dict(layout_name)
+            else:
+                raw_layout = read_layout_dict(sub_dir + "/" + layout_name)
             raw_layout = raw_layout['grid'].split('\n')
 
             np_lvl = lvl_str2number(raw_layout)
@@ -182,7 +187,6 @@ def setup_env_from_grid(layout_grid,
                         human_adaptiveness=0.5):
     """
     Set up random agents and overcooked env to run demo game.
-
     Args:
         layout_grid: list of string each representing a row of layout
     """
@@ -309,6 +313,12 @@ def read_gan_param():
         G_params = json.load(f)
     return G_params
 
+def visualize_lvl(lvl_str, log_dir, filename):
+    """
+    Render and save the level without running game
+    """
+    grid = lvl_str2grid(lvl_str)
+    render_from_grid(grid, log_dir, filename)
 
 def run_overcooked_game(ind, agent_config, render=True, worker_id=0, num_iters=10):
     """

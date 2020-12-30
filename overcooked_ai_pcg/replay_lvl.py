@@ -68,12 +68,6 @@ def play(elite_map, agent_configs, individuals, f1, f2, row_idx, col_idx,
         f1, f2 (int, int): index of the features to use
         row_idx, col_idx (int, int): index of the cell in the elite map
     """
-    # for elite in elite_map:
-    #     splited = elite.split(":")
-    #     curr_row_idx = int(splited[f1])
-    #     curr_col_idx = int(splited[f2])
-    #     if curr_row_idx == row_idx and curr_col_idx == col_idx:
-    #         ind_id = int(splited[num_features])
     ind_id = int(ind_id)
     lvl_str = individuals["lvl_str"][ind_id]
     print("Playing in individual %d" % ind_id)

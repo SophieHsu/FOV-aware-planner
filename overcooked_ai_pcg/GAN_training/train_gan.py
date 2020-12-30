@@ -11,10 +11,10 @@ import torch.utils.data
 from torch import nn
 from torch.autograd import Variable
 
-import dcgan
+from overcooked_ai_pcg.GAN_training import dcgan
 import os
 import json
-from helper import read_in_training_data, obj_types, plot_err, save_gan_param
+from overcooked_ai_pcg.helper import read_in_training_data, obj_types, plot_err, save_gan_param
 from overcooked_ai_py import LAYOUTS_DIR
 from overcooked_ai_pcg import GAN_TRAINING_DIR
 
@@ -40,7 +40,20 @@ def run(nz,
         seed,
         lvl_data,
         save_length,
-        map_size):
+        map_size,
+        size_version,):
+
+    lvl_size = None
+    sub_dir = None
+    if size_version == "small":
+        lvl_size = (6, 9)
+        sub_dir = "train_gan_small"
+    elif size_version == "large":
+        lvl_size = (10, 15)
+        sub_dir = "train_gan_large"
+
+    lvl_data = os.path.join(LAYOUTS_DIR, sub_dir)
+
     os.makedirs(gan_experiment, exist_ok=True)
 
     random.seed(seed)
@@ -51,7 +64,7 @@ def run(nz,
     if torch.cuda.is_available() and not cuda:
         print("WARNING: You have a CUDA device, so you should probably run with --cuda")
 
-    X = read_in_training_data(lvl_data)
+    X = read_in_training_data(lvl_data, sub_dir)
     z_dims = len(obj_types)
     print('x_shape', X.shape) # shape must be num_lvls x lvl_height x lvl_width
 
@@ -220,7 +233,7 @@ def run(nz,
             netG.eval()
             with torch.no_grad():
                 fake = netG(fixed_noise)
-                im = fake.cpu().numpy()[:, :, :10, :15]
+                im = fake.cpu().numpy()[:, :, :lvl_size[0], :lvl_size[1]]
                 im = np.argmax(im, axis=1)
             with open('{0}/fake_level_epoch_{1}_{2}.json'.format(gan_experiment, epoch, seed), 'w') as f:
                 f.write(json.dumps(im[0].tolist()))
@@ -271,7 +284,9 @@ if __name__ == '__main__':
     parser.add_argument('--lvl_data', help='Path to the human designed levels.', default=LAYOUTS_DIR)
     parser.add_argument('--save_length', type=int, default=100, help='Length of save point')
     parser.add_argument('--map_size', type=int, default=16, help='Size of the initial layer of feature map of D')
+    parser.add_argument('--size_version', type=str, default="small", help='Size of the level. Small for (6, 9), large for (10, 15)')
     opt = parser.parse_args()
+
 
     run(opt.nz,
         opt.ngf,
@@ -294,5 +309,5 @@ if __name__ == '__main__':
         opt.seed,
         opt.lvl_data,
         opt.save_length,
-        opt.map_size)
-
+        opt.map_size,
+        opt.size_version)

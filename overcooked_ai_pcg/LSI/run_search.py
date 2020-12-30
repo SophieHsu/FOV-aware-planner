@@ -16,7 +16,8 @@ from overcooked_ai_pcg.LSI.logger import (FrequentMapLog, MapSummaryLog,
                                           RunningIndividualLog)
 from overcooked_ai_pcg.LSI.qd_algorithms import (CMA_ME_Algorithm, FeatureMap,
                                                  MapElitesAlgorithm,
-                                                 RandomGenerator)
+                                                 RandomGenerator,
+                                                 MapElitesBaselineAlgorithm)
 
 
 def init_logging_dir(config_path, experiment_config, algorithm_config,
@@ -107,7 +108,8 @@ def init_dask(experiment_config, log_dir):
 
 
 def search(dask_client, base_log_dir, num_simulations, algorithm_config,
-           elite_map_config, agent_configs, model_path, visualize, num_cores):
+           elite_map_config, agent_configs, model_path, visualize, num_cores,
+           lvl_size):
     """
     Run search with the specified algorithm and elite map
 
@@ -123,6 +125,8 @@ def search(dask_client, base_log_dir, num_simulations, algorithm_config,
         model_path (string): file path to the GAN model
         visualize (bool): render the game or not
         num_cores (int): number of processes to run
+        lvl_size (tuple): size of the level to generate. Currently only supports
+                          (6, 9) and (10, 15)
     """
 
     # config feature map
@@ -135,9 +139,8 @@ def search(dask_client, base_log_dir, num_simulations, algorithm_config,
 
     # create loggers
     running_individual_log = RunningIndividualLog(
-        os.path.join(base_log_dir, "individuals_log.csv"),
-        elite_map_config, agent_configs
-    )
+        os.path.join(base_log_dir, "individuals_log.csv"), elite_map_config,
+        agent_configs)
     frequent_map_log = FrequentMapLog(
         os.path.join(base_log_dir, "elite_map.csv"),
         len(elite_map_config["Map"]["Features"]),
@@ -160,8 +163,9 @@ def search(dask_client, base_log_dir, num_simulations, algorithm_config,
         # pylint: disable=no-member
         algorithm = MapElitesAlgorithm(mutation_power, initial_population,
                                        num_simulations, feature_map,
-                                       running_individual_log, frequent_map_log,
-                                       map_summary_log, num_params)
+                                       running_individual_log,
+                                       frequent_map_log, map_summary_log,
+                                       num_params)
     elif algorithm_name == "RANDOM":
         print("Start Running RANDOM")
         # pylint: disable=no-member
@@ -176,6 +180,17 @@ def search(dask_client, base_log_dir, num_simulations, algorithm_config,
                                      feature_map, running_individual_log,
                                      frequent_map_log, map_summary_log,
                                      num_params)
+    elif algorithm_name == "MAPELITES-BASE":
+        print("Start Running MAPELITES-BASE")
+        mutation_k = algorithm_config["mutation_k"]
+        mutation_power = algorithm_config["mutation_power"]
+        initial_population = algorithm_config["initial_population"]
+        algorithm = MapElitesBaselineAlgorithm(mutation_k, mutation_power,
+                                               initial_population,
+                                               num_simulations, feature_map,
+                                               running_individual_log,
+                                               frequent_map_log,
+                                               map_summary_log, num_params)
 
     # Super hacky! This is where we add bounded constraints for the human model.
     if num_params > 32:
@@ -201,9 +216,11 @@ def search(dask_client, base_log_dir, num_simulations, algorithm_config,
                 visualize,
                 elite_map_config,
                 agent_configs,
+                algorithm_config,
                 G_params,
                 gan_state_dict,
                 active_evals + 1,  # worker_id
+                lvl_size,
             ))
         active_evals += 1
     evaluations = dask.distributed.as_completed(evaluations)
@@ -222,8 +239,8 @@ def search(dask_client, base_log_dir, num_simulations, algorithm_config,
 
             if evaluated_ind is None:
                 print("Received a failed evaluation.")
-            elif (evaluated_ind is not None and
-                  algorithm.insert_if_still_running(evaluated_ind)):
+            elif (evaluated_ind is not None
+                  and algorithm.insert_if_still_running(evaluated_ind)):
                 cur_time = time.time()
                 print("Finished simulation.\n"
                       f"Total simulations done: "
@@ -252,11 +269,13 @@ def search(dask_client, base_log_dir, num_simulations, algorithm_config,
                     visualize,
                     elite_map_config,
                     agent_configs,
+                    algorithm_config,
                     G_params,
                     gan_state_dict,
                     # since there are no more "workers", we just pass in the
                     # id of the individual as the worker id
                     algorithm.individuals_disbatched,
+                    lvl_size,
                 )
                 evaluations.add(future)
                 active_evals += 1
@@ -273,6 +292,7 @@ def search(dask_client, base_log_dir, num_simulations, algorithm_config,
 def run(
     config,
     model_path,
+    lvl_size,
 ):
     """
     Read in toml config files and run the search
@@ -285,8 +305,8 @@ def run(
         read_in_lsi_config(config)
 
     log_dir, base_log_dir = init_logging_dir(config, experiment_config,
-                                             algorithm_config, elite_map_config,
-                                             agent_configs)
+                                             algorithm_config,
+                                             elite_map_config, agent_configs)
     print("LOGGING DIRECTORY:", log_dir)
 
     # start LSI search
@@ -300,6 +320,7 @@ def run(
         model_path,
         experiment_config["visualize"],
         experiment_config["num_cores"],
+        lvl_size,
     )
 
 
@@ -311,11 +332,29 @@ if __name__ == "__main__":
                         required=False,
                         default=os.path.join(LSI_CONFIG_EXP_DIR,
                                              "MAPELITES_demo.tml"))
-    parser.add_argument('-m',
-                        '--model_path',
-                        help='path of the GAN trained',
-                        required=False,
-                        default=os.path.join(GAN_TRAINING_DIR,
-                                             "netG_epoch_49999_999.pth"))
+    parser.add_argument('-s',
+                        '--size_version',
+                        type=str,
+                        default="small",
+                        help='Size of the level. \
+                             "small" for (6, 9), \
+                             "large" for (10, 15)')
+    # parser.add_argument('-m',
+    #                     '--model_path',
+    #                     help='path of the GAN trained',
+    #                     required=False,
+    #                     default=os.path.join(GAN_TRAINING_DIR,
+    #                                          "netG_epoch_49999_999.pth"))
     opt = parser.parse_args()
-    run(opt.config, opt.model_path)
+
+    lvl_size = None
+    gan_pth_path = None
+    if opt.size_version == "small":
+        lvl_size = (6, 9)
+        gan_pth_path = os.path.join(GAN_TRAINING_DIR,
+                                    "netG_epoch_9999_999_small.pth")
+    elif opt.size_version == "large":
+        lvl_size = (10, 15)
+        gan_pth_path = os.path.join(GAN_TRAINING_DIR,
+                                    "netG_epoch_49999_999_large.pth")
+    run(opt.config, gan_pth_path, lvl_size)

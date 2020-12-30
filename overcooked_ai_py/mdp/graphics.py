@@ -2,7 +2,8 @@ import os
 import pygame
 import time
 import numpy as np
-from overcooked_ai_py import ASSETS_DIR
+import overcooked_ai_py
+from overcooked_ai_py import ASSETS_DIR, PCG_EXP_IMAGE_DIR
 from overcooked_ai_py.mdp.actions import Action, Direction
 pygame.init()
 
@@ -233,3 +234,45 @@ def get_orientation_str(player):
 
     orientation_str = Direction.DIRECTION_TO_STRING[orientation]
     return orientation_str
+
+
+def render_from_grid(lvl_grid, log_dir, filename):
+    """
+    Render a single frame of game from grid level.
+    This function is used for visualization the levels generated which
+    are possibily broken or invalid. It also does not take the orientation
+    of the players into account. So this method should not be used for
+    actual game rendering.
+    """
+    width = len(lvl_grid[0])
+    height = len(lvl_grid)
+    window_size = width*SPRITE_LENGTH, height*SPRITE_LENGTH
+    viewer = pygame.display.set_mode(window_size)
+    viewer.fill((255,255,255))
+    for y, terrain_row in enumerate(lvl_grid):
+        for x, terrain in enumerate(terrain_row):
+            curr_pos = get_curr_pos(x, y)
+
+            # render player
+            if str.isdigit(terrain):
+                player = overcooked_ai_py.mdp.overcooked_mdp.PlayerState((x, y), Direction.SOUTH)
+                player_idx = int(terrain)
+                player_pgobj, player_hat_pgobj = get_player_sprite(player, player_idx-1)
+
+                # render floor as background
+                terrain_pgobj = load_image(TERRAIN_TO_IMG[" "])
+                viewer.blit(terrain_pgobj, curr_pos)
+
+                # then render the player
+                viewer.blit(player_pgobj, curr_pos)
+                viewer.blit(player_hat_pgobj, curr_pos)
+
+            # render terrain
+            else:
+                terrain_pgobj = load_image(TERRAIN_TO_IMG[terrain])
+                viewer.blit(terrain_pgobj, curr_pos)
+
+    pygame.display.update()
+
+    # save image
+    pygame.image.save(viewer, os.path.join(log_dir, filename))
