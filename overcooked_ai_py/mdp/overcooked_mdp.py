@@ -1261,7 +1261,7 @@ class OvercookedGridworld(object):
                     assert orientation in Direction.ALL_DIRECTIONS
 
                     player_idx_lst = [i for i, p in enumerate(state.players) if p.position == player.position]
-                    assert len(player_idx_lst) == 1
+                    assert len(player_idx_lst) == 1, players_dict
 
                     grid_string += Action.ACTION_TO_CHAR[orientation]
                     player_object = player.held_object

@@ -1128,13 +1128,14 @@ class MediumMdpPlanningAgent(Agent):
         return chosen_action, action_probs
 
 class MediumQMdpPlanningAgent(Agent):
-    def __init__(self, mdp_planner, other_agent=None, delivery_horizon=1, logging_level=0, auto_unstuck=False):
+    def __init__(self, mdp_planner, greedy=False, other_agent=None, delivery_horizon=1, logging_level=0, auto_unstuck=False):
         # self.other_agent = other_agent
         self.delivery_horizon = delivery_horizon
         self.mdp_planner = mdp_planner
         self.logging_level = logging_level
         self.auto_unstuck = auto_unstuck
         self.other_agent = other_agent
+        self.greedy_known = greedy
         self.reset()
 
     def reset(self):
@@ -1175,7 +1176,7 @@ class MediumQMdpPlanningAgent(Agent):
                     num_item_in_pot = obj_state.state[1]
                     pot_pos = obj_pos
 
-        self.belief, self.prev_dist_to_feature = self.mdp_planner.belief_update(state, state.players[0], num_item_in_pot, state.players[1], self.belief, self.prev_dist_to_feature)
+        self.belief, self.prev_dist_to_feature = self.mdp_planner.belief_update(state, state.players[0], num_item_in_pot, state.players[1], self.belief, self.prev_dist_to_feature, greedy=self.greedy_known)
         mdp_state_keys = self.mdp_planner.world_to_state_keys(state, state.players[0], num_item_in_pot, state.players[1], self.belief)
         action, action_object_pair, LOW_LEVEL_ACTION = self.mdp_planner.step(state, mdp_state_keys, self.belief, self.agent_index, low_level_action=True)
 

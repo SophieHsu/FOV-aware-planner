@@ -1,6 +1,7 @@
 """Defines a Ray remote function for running evaluations."""
 import gc
 import resource
+import numpy as np
 
 from overcooked_ai_pcg.GAN_training import dcgan
 from overcooked_ai_pcg.gen_lvl import DocplexFailedError, generate_lvl
@@ -111,7 +112,11 @@ def run_overcooked_eval(ind, visualize, elite_map_config, agent_configs,
         ind.fitness = ind.fitnesses[0]
     # for normalized version, fitness is the difference between two runs
     elif len(agent_configs) == 2:
-        ind.fitness = ind.fitnesses[0] - ind.fitnesses[1]
+        if len(ind.fitnesses[0]) > 1:
+            ind.fitnesses = np.array(ind.fitnesses)
+            ind.fitness = ind.fitnesses[0,:] - ind.fitnesses[1,:]
+        else:    
+            ind.fitness = ind.fitnesses[0] - ind.fitnesses[1]
 
     print_mem_usage("after running overcooked game", worker_id)
 
@@ -132,6 +137,6 @@ def calculate_bc(worker_id, ind, elite_map_config):
         bc_val = bc_fn(ind)
         ind.features.append(bc_val)
     ind.features = tuple(ind.features)
-    print("worker(%d): Game end; fitness = %d" % (worker_id, ind.fitness))
+    print("worker(%d): Game end; fitness = %s" % (worker_id, ind.fitness))
 
     return worker_id, ind

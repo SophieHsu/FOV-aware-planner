@@ -101,6 +101,47 @@ class RunningIndividualLog(LoggerBase):
         ]
         self._write_row(to_add)
 
+    def log_individual_multi_row(self, ind):
+        ind.fitnesses = np.array(ind.fitnesses)
+        ind.scores = np.array(ind.scores)
+        ind.checkpoints = np.array(ind.checkpoints)
+        ind.player_workloads = np.array(ind.player_workloads)
+        ind.features = np.array(ind.features)
+        ind.joint_actions = np.array(ind.joint_actions, dtype=object)
+
+        to_add = [
+            ind.ID,
+            ind.fitness[-1], #avgerage fitness
+            *ind.fitnesses[:,-1],
+            *ind.scores[:,-1],
+            *ind.checkpoints[:,-1],
+            *ind.player_workloads[:,-1],
+            '',
+            *ind.features[:,-1],
+            '',
+            '',
+            ind.rand_seed,
+            ind.level,
+        ]
+        self._write_row(to_add)
+
+        for i in range(10):
+            to_add = [
+                '',
+                ind.fitness[i],
+                *ind.fitnesses[:,i],
+                *ind.scores[:,i],
+                *ind.checkpoints[:,i],
+                *ind.player_workloads[:,i],
+                *ind.joint_actions[:,i-1],
+                *ind.features[:,i],
+                ind.human_preference,
+                ind.human_adaptiveness,
+                '',
+                '',
+            ]
+            self._write_row(to_add)
+
 
 class FrequentMapLog(LoggerBase):
     """
@@ -136,12 +177,20 @@ class FrequentMapLog(LoggerBase):
         to_add.append("x".join(str(num) for num in feature_map.resolutions), )
         for index in feature_map.elite_indices:
             ind = feature_map.elite_map[index]
-            curr = [
-                *index,
-                ind.ID,
-                ind.fitness,
-                *ind.features,
-            ]
+            if len(ind.fitness) > 1:
+                curr = [
+                    *index,
+                    ind.ID,
+                    ind.fitness[-1],
+                    *ind.features[:,-1],
+                ]
+            else:
+                curr = [
+                    *index,
+                    ind.ID,
+                    ind.fitness,
+                    *ind.features,
+                ]
             to_add.append(":".join(str(ele) for ele in curr))
         self._write_row(to_add)
 

@@ -171,6 +171,10 @@ def plot_err(average_errG_log, average_errD_log, average_errD_fake_log,
     plt.show()
 
 
+def reset_env_from_mdp(mdp):
+    env = OvercookedEnv.from_mdp(mdp, info_level=0, horizon=100)
+    return env
+
 def setup_env_from_grid(layout_grid,
                         agent_config,
                         worker_id=0,
@@ -262,7 +266,7 @@ def setup_env_from_grid(layout_grid,
         del ml_action_manager, hmlp, mdp_planner
 
     # Set up 5: qmdp agent + greedy agent
-    elif agent1_config["name"] == "qmdp_agent" and agent2_config[
+    elif (agent1_config["name"] == "qmdp_agent" or agent1_config["name"] == "mdp_agent") and agent2_config[
             "name"] == "greedy_agent":
         print("worker(%d): Pre-constructing graph..." % (worker_id))
         # print(human_preference, human_adaptiveness)
@@ -277,7 +281,7 @@ def setup_env_from_grid(layout_grid,
 
         print("worker(%d): QMDP agent planning..." % (worker_id))
 
-        agent1 = MediumQMdpPlanningAgent(qmdp_planner, auto_unstuck=agent1_config["auto_unstuck"])
+        agent1 = MediumQMdpPlanningAgent(qmdp_planner, greedy=agent1_config["known"], auto_unstuck=agent1_config["auto_unstuck"])
 
         print("worker(%d): Preprocess take %d seconds" %
               (worker_id, time.time() - start_time))
@@ -306,55 +310,79 @@ def read_gan_param():
     return G_params
 
 
-def run_overcooked_game(ind, agent_config, render=True, worker_id=0):
+def run_overcooked_game(ind, agent_config, render=True, worker_id=0, num_iters=10):
     """
     Run one turn of overcooked game and return the sparse reward as fitness
     """
-    agent1, agent2, env, _ = init_env_and_agent(ind, agent_config, worker_id=worker_id)
-    done = False
-    total_sparse_reward = 0
-    last_state = None
-    timestep = 0
+    agent1, agent2, env, mdp = init_env_and_agent(ind, agent_config, worker_id=worker_id)
+    
+    fitnesses = []; total_sparse_rewards = []; checkpointses = []; workloadses = []; 
+    joint_actionses = []; concurr_actives = []; stuck_times = []
     np.random.seed(ind.rand_seed)
+    
+    for num_iter in range(num_iters):
+        done = False
+        total_sparse_reward = 0
+        last_state = None
+        timestep = 0
 
-    # Saves when each soup (order) was delivered
-    checkpoints = [env.horizon - 1] * env.num_orders
-    cur_order = 0
+        # Saves when each soup (order) was delivered
+        checkpoints = [env.horizon - 1] * env.num_orders
+        cur_order = 0
 
-    # store all actions
-    joint_actions = []
+        # store all actions
+        joint_actions = []
 
-    while not done:
-        if render:
-            env.render()
-            time.sleep(0.5)
-        joint_action = (agent1.action(env.state)[0],
-                        agent2.action(env.state)[0])
-        # print(joint_action)
-        joint_actions.append(joint_action)
-        next_state, timestep_sparse_reward, done, info = env.step(joint_action)
-        total_sparse_reward += timestep_sparse_reward
+        while not done:
+            if render:
+                env.render()
+                time.sleep(0.5)
+            joint_action = (agent1.action(env.state)[0],
+                            agent2.action(env.state)[0])
+            # print(joint_action)
+            joint_actions.append(joint_action)
+            next_state, timestep_sparse_reward, done, info = env.step(joint_action)
+            total_sparse_reward += timestep_sparse_reward
 
-        if timestep_sparse_reward > 0:
-            checkpoints[cur_order] = timestep
-            cur_order += 1
+            if timestep_sparse_reward > 0:
+                checkpoints[cur_order] = timestep
+                cur_order += 1
 
-        last_state = next_state
-        timestep += 1
+            last_state  = next_state
+            timestep += 1
 
-    workloads = last_state.get_player_workload()
-    concurr_active = last_state.cal_concurrent_active_sum()
-    stuck_time = last_state.cal_total_stuck_time()
+        workloads = last_state.get_player_workload()
+        concurr_active = last_state.cal_concurrent_active_sum()
+        stuck_time = last_state.cal_total_stuck_time()
 
-    # Smooth fitness is the total reward tie-broken by soup delivery times.
-    # Later soup deliveries are higher priority.
-    fitness = total_sparse_reward + 1
-    for timestep in reversed(checkpoints):
-        fitness *= env.horizon
-        fitness -= timestep
+        # Smooth fitness is the total reward tie-broken by soup delivery times.
+        # Later soup deliveries are higher priority.
+        fitness = total_sparse_reward + 1
+        for timestep in reversed(checkpoints):
+            fitness *= env.horizon
+            fitness -= timestep
+
+        fitnesses.append(fitness)
+        total_sparse_rewards.append(total_sparse_reward)
+        checkpointses.append(checkpoints)
+        workloadses.append(workloads)
+        joint_actionses.append(joint_actions)
+        concurr_actives.append(concurr_active)
+        stuck_times.append(stuck_time)
+
+        env = reset_env_from_mdp(mdp)
+
+    if num_iters > 1:
+        checkpointses = np.array(checkpointses)
+        fitnesses.append(sum(fitnesses)/len(fitnesses))
+        total_sparse_rewards.append(sum(total_sparse_rewards)/len(total_sparse_rewards))
+        checkpointses = np.append(checkpointses, [[sum(checkpointses[:,0])/len(checkpointses[:,0]), sum(checkpointses[:,1])/len(checkpointses[:,1])]], axis=0)
+        workloadses.append(get_workload_avg(workloadses))
+        concurr_actives.append(sum(concurr_actives)/len(concurr_actives))
+        stuck_times.append(sum(stuck_times)/len(stuck_times))
 
     # Free up some memory
-    del agent1, agent2, env
+    del agent1, agent2, env, mdp
 
     # # set necessary variables for ind
     # ind.fitnesses.append(fitness)
@@ -363,8 +391,27 @@ def run_overcooked_game(ind, agent_config, render=True, worker_id=0):
     # ind.player_workloads.append(workloads)
     # ind.joint_actions.append(joint_actions)
 
-    return fitness, total_sparse_reward, checkpoints, workloads, joint_actions, concurr_active, stuck_time
+    return fitnesses, total_sparse_rewards, checkpointses, workloadses, joint_actionses, concurr_actives, stuck_times
+    # return fitness, total_sparse_reward, checkpoints, workloads, joint_actions, concurr_active, stuck_time
     # return ind
+
+def get_workload_avg(workloadses):
+    avg_workloads = []
+    for agent in range(2):
+        a = 0; b = 0; c = 0;
+        for workloads in workloadses:
+            a += workloads[agent]['num_ingre_held']
+            b += workloads[agent]['num_plate_held']
+            c += workloads[agent]['num_served']
+        a /= len(workloadses)
+        b /= len(workloadses)
+        c /= len(workloadses)
+        avg_workloads.append({
+            "num_ingre_held": a,
+            "num_plate_held": b,
+            "num_served": c,
+        })
+    return avg_workloads
 
 def init_env_and_agent(ind, agent_config, worker_id=0):
     lvl_str = ind.level

@@ -82,22 +82,38 @@ class FeatureMap:
         return index
 
     def get_index(self, cur):
-        return tuple(
-            self.get_feature_index(i, f) for i, f in enumerate(cur.features))
+        if len(cur.features[0]) > 1:
+            tmp = np.array(cur.features)
+            return tuple(
+                self.get_feature_index(i, f) for i, f in enumerate(tmp[:,-1]))
+        else:
+            return tuple(
+                self.get_feature_index(i, f) for i, f in enumerate(cur.features))
 
     def add_to_map(self, to_add):
         index = self.get_index(to_add)
-
-        replaced_elite = False
-        if index not in self.elite_map:
-            self.elite_indices.append(index)
-            self.elite_map[index] = to_add
-            replaced_elite = True
-            to_add.delta = (1, to_add.fitness)
-        elif self.elite_map[index].fitness < to_add.fitness:
-            to_add.delta = (0, to_add.fitness - self.elite_map[index].fitness)
-            self.elite_map[index] = to_add
-            replaced_elite = True
+        if len(to_add.fitness) > 1:
+            replaced_elite = False
+            if index not in self.elite_map:
+                self.elite_indices.append(index)
+                self.elite_map[index] = to_add
+                replaced_elite = True
+                to_add.delta = (1, to_add.fitness[-1])
+            elif self.elite_map[index].fitness[-1] < to_add.fitness[-1]:
+                to_add.delta = (0, to_add.fitness[-1] - self.elite_map[index].fitness[-1])
+                self.elite_map[index] = to_add
+                replaced_elite = True
+        else:
+            replaced_elite = False
+            if index not in self.elite_map:
+                self.elite_indices.append(index)
+                self.elite_map[index] = to_add
+                replaced_elite = True
+                to_add.delta = (1, to_add.fitness)
+            elif self.elite_map[index].fitness < to_add.fitness:
+                to_add.delta = (0, to_add.fitness - self.elite_map[index].fitness)
+                self.elite_map[index] = to_add
+                replaced_elite = True
 
         return replaced_elite
 
@@ -173,7 +189,8 @@ class QDAlgorithmBase(ABC):
         """
         if self.is_running():
             self.return_evaluated_individual(ind)
-            self.running_individual_log.log_individual(ind)
+            # self.running_individual_log.log_individual(ind)
+            self.running_individual_log.log_individual_multi_row(ind)
             self.frequent_map_log.log_map(self.feature_map)
             self.map_summary_log.log_summary(self.feature_map,
                                              self.individuals_evaluated)
@@ -313,10 +330,15 @@ class ImprovementEmitter:
             return True
 
         area = self.mutation_power * math.sqrt(max(self.C.eigenvalues))
+
         if area < 1e-11:
             return True
-        if abs(parents[0].fitness-parents[-1].fitness) < 1e-12:
-            return True
+        if len(parents[0].fitness) > 1:
+            if abs(parents[0].fitness[-1]-parents[-1].fitness[-1]) < 1e-12:
+                return True
+        else:
+            if abs(parents[0].fitness-parents[-1].fitness) < 1e-12:
+                return True
 
         return False
 

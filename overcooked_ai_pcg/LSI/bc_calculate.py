@@ -66,15 +66,36 @@ def shortest_dist(terrain1, terrain2, lvl_str):
 
 def diff_num_ingre_held(ind):
     workloads = ind.player_workloads[-1]
-    return workloads[0]["num_ingre_held"] - workloads[1]["num_ingre_held"]
+    if len(workloads) > 2:
+        workloads = np.array(workloads)
+        workload_diff = []
+        for w0, w1 in zip(workloads[:,0], workloads[:,1]):
+            workload_diff.append(w0["num_ingre_held"] - w1["num_ingre_held"])
+        return workload_diff
+    else:
+        return workloads[0]["num_ingre_held"] - workloads[1]["num_ingre_held"]
 
 def diff_num_plate_held(ind):
     workloads = ind.player_workloads[-1]
-    return workloads[0]["num_plate_held"] - workloads[1]["num_plate_held"]
+    if len(workloads) > 2:
+        workloads = np.array(workloads)
+        workload_diff = []
+        for w0, w1 in zip(workloads[:,0], workloads[:,1]):
+            workload_diff.append(w0["num_plate_held"] - w1["num_plate_held"])
+        return workload_diff
+    else:
+        return workloads[0]["num_plate_held"] - workloads[1]["num_plate_held"]
 
 def diff_num_dish_served(ind):
     workloads = ind.player_workloads[-1]
-    return workloads[0]["num_served"] - workloads[1]["num_served"]
+    if len(workloads) > 2:
+        workloads = np.array(workloads)
+        workload_diff = []
+        for w0, w1 in zip(workloads[:,0], workloads[:,1]):
+            workload_diff.append(w0["num_served"] - w1["num_served"])
+        return workload_diff
+    else:
+        return workloads[0]["num_served"] - workloads[1]["num_served"]
 
 # bc for human awared mdp agent
 def human_adaptiveness(ind):

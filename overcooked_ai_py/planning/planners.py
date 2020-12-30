@@ -590,7 +590,6 @@ class JointMotionPlanner(object):
                 pos_and_or_paths,
                  min(plan_lengths)
             )
-        print('after merge =', joint_action_plan)
         return joint_action_plan, end_pos_and_orientations, plan_lengths
 
     def _get_plans_from_single_planner(self, joint_start_state, joint_goal_state):
@@ -2491,7 +2490,7 @@ class HumanSubtaskQMDPPlanner(MediumLevelMdpPlanner):
         self.subtask_idx_dict = {}
 
     @staticmethod
-    def from_pickle_or_compute(mdp, mlp_params, greedy=False, custom_filename=None, force_compute_all=False, info=True, force_compute_more=False):
+    def from_pickle_or_compute(mdp, mlp_params, custom_filename=None, force_compute_all=False, info=True, force_compute_more=False):
 
         assert isinstance(mdp, OvercookedGridworld)
 
@@ -2499,7 +2498,7 @@ class HumanSubtaskQMDPPlanner(MediumLevelMdpPlanner):
 
         if force_compute_all:
             mdp_planner = HumanSubtaskQMDPPlanner(mdp, mlp_params)
-            mdp_planner.compute_mdp(filename, greedy=greedy)
+            mdp_planner.compute_mdp(filename)
             return mdp_planner
         
         try:
@@ -2507,13 +2506,13 @@ class HumanSubtaskQMDPPlanner(MediumLevelMdpPlanner):
             
             if force_compute_more:
                 print("Stored mdp_planner computed ", str(mdp_planner.num_rounds), " rounds. Compute another " + str(TRAINNINGUNIT) + " more...")
-                mdp_planner.compute_mdp(filename, greedy=greedy)
+                mdp_planner.compute_mdp(filename)
                 return mdp_planner
 
         except (FileNotFoundError, ModuleNotFoundError, EOFError, AttributeError) as e:
             print("Recomputing planner due to:", e)
             mdp_planner = HumanSubtaskQMDPPlanner(mdp, mlp_params)
-            mdp_planner.compute_mdp(filename, greedy=greedy)
+            mdp_planner.compute_mdp(filename)
             return mdp_planner
 
         if info:
@@ -2539,14 +2538,14 @@ class HumanSubtaskQMDPPlanner(MediumLevelMdpPlanner):
         for i, obj in enumerate(objects):
             for j, subtask in enumerate(self.subtask_dict.items()):
                 self.subtask_idx_dict[subtask[0]] = j
-                if self._is_valid_object_subtask_pair(obj, subtask[0]):
+                if self._init_is_valid_object_subtask_pair(obj, subtask[0]):
                     for ori_key, ori_value in original_state_dict.items():
                         new_key = ori_key+'_'+obj + '_' + subtask[0]
                         new_obj = original_state_dict[ori_key]+[obj] + [subtask[0]]
                         self.state_dict[new_key] = new_obj # update value
                         self.state_idx_dict[new_key] = len(self.state_idx_dict)
 
-    def init_transition(self, transition_matrix=None, greedy=False):
+    def init_transition(self, transition_matrix=None):
         """
         This transition matrix needs to include subtask tranistion for both robot and human. Humans' state transition is conditioned on the subtask.
         """
@@ -2561,7 +2560,7 @@ class HumanSubtaskQMDPPlanner(MediumLevelMdpPlanner):
                 # decode state information
                 p0_state, p1_state, world_info = self.decode_state_info(state_obj) # p0_obj; p1_obj, p1_subtask; num_item_in_pot, order_list;
                 # calculate next states for p1 (a.k.a. human)
-                p1_nxt_states, p1_nxt_world_info = self.human_state_subtask_transition(p1_state, world_info, greedy=greedy)
+                p1_nxt_states, p1_nxt_world_info = self.human_state_subtask_transition(p1_state, world_info)
 
                 # calculate next states for p0 (conditioned on p1 (a.k.a. human))
                 for p1_nxt_state in p1_nxt_states:
@@ -2599,7 +2598,7 @@ class HumanSubtaskQMDPPlanner(MediumLevelMdpPlanner):
     def decode_state_info(self, state_obj):
         return state_obj[0], state_obj[-2:], state_obj[1:-2]
 
-    def _is_valid_object_subtask_pair(self, obj, subtask):
+    def _init_is_valid_object_subtask_pair(self, obj, subtask):
         if obj == 'None':
             if subtask == 'pickup_dish':
                 return True
@@ -2626,7 +2625,36 @@ class HumanSubtaskQMDPPlanner(MediumLevelMdpPlanner):
                 return False
         return True
 
-    def human_state_subtask_transition(self, human_state, world_info, greedy=False):
+    def _is_valid_object_subtask_pair(self, obj, subtask, soup_finish, greedy=False):
+        if obj == 'None':
+            if greedy != True and (subtask == 'pickup_dish' or subtask == 'pickup_onion') and soup_finish <= self.mdp.num_items_for_soup:
+                return True
+            elif greedy == True and subtask == 'pickup_onion' and soup_finish < self.mdp.num_items_for_soup:
+                return True
+            elif greedy == True and subtask == 'pickup_dish' and soup_finish == self.mdp.num_items_for_soup:
+                return True
+            elif subtask == 'pickup_tomato':
+                return True
+            # elif subtask == 'pickup_soup':
+            #     return True
+            else:
+                return False
+        else:
+            if obj == 'onion' and subtask == 'drop_onion':
+                return True
+            elif obj == 'tomato' and subtask == 'drop_tomato':
+                return True
+            elif (obj == 'dish') and subtask == 'pickup_soup':
+                return True
+            # elif (obj == 'dish') and subtask == 'drop_dish':
+            #     return True
+            elif obj == 'soup' and subtask == 'deliver_soup':
+                return True
+            else:
+                return False
+        return True
+
+    def human_state_subtask_transition(self, human_state, world_info):
         player_obj = human_state[0]; subtask = human_state[1]
         soup_finish = world_info[0]; orders = [] if len(world_info) < 2 else world_info[1:]
         next_obj = player_obj; next_subtasks = []; 
@@ -2650,20 +2678,10 @@ class HumanSubtaskQMDPPlanner(MediumLevelMdpPlanner):
             #     next_subtasks = ['deliver_soup']
 
         else:
-            if greedy != True and player_obj == 'onion' and subtask == 'drop_onion' and soup_finish < self.mdp.num_items_for_soup:
+            if player_obj == 'onion' and subtask == 'drop_onion' and soup_finish < self.mdp.num_items_for_soup:
                 next_obj = 'None'
                 next_soup_finish += 1
                 next_subtasks = ['pickup_onion', 'pickup_dish'] # 'pickup_tomato'
-
-            elif greedy == True and player_obj == 'onion' and subtask == 'drop_onion' and soup_finish == self.mdp.num_items_for_soup:
-                next_obj = 'None'
-                next_soup_finish += 1
-                next_subtasks = ['pickup_dish']
-
-            elif greedy == True and player_obj == 'onion' and subtask == 'drop_onion' and soup_finish < self.mdp.num_items_for_soup:
-                next_obj = 'None'
-                next_soup_finish += 1
-                next_subtasks = ['pickup_onion']
             
             elif player_obj == 'onion' and subtask == 'drop_onion' and soup_finish == self.mdp.num_items_for_soup:
                 next_obj = 'onion'
@@ -3041,7 +3059,7 @@ class HumanSubtaskQMDPPlanner(MediumLevelMdpPlanner):
 
                         ## compute one step cost with joint motion considered
                         action_cost[i, Action.ACTION_TO_INDEX[joint_action[agent_idx]]] -= (one_step_cost)*self.transition_matrix[action_idx, mdp_state_idx, next_state_idx]
-
+                    # print('action_idx =', self.get_key_from_value(self.action_idx_dict, action_idx), '; mdp_state_key =', mdp_state_key, '; next_state_key =', self.get_key_from_value(self.state_idx_dict, next_state_idx))
                     # print('next_state_v =', next_state_v[i])
                     # print('action_cost =', action_cost[i])
 
@@ -3054,7 +3072,7 @@ class HumanSubtaskQMDPPlanner(MediumLevelMdpPlanner):
             return Action.INDEX_TO_ACTION[action_idx], None, low_level_action
         return action_idx, self.action_dict[self.get_key_from_value(self.action_idx_dict, action_idx)]
 
-    def belief_update(self, world_state, agent_player, soup_finish, human_player, belief_vector, prev_dist_to_feature):
+    def belief_update(self, world_state, agent_player, soup_finish, human_player, belief_vector, prev_dist_to_feature, greedy=False):
         """
         Update belief based on both human player's game logic and also it's current position and action.
         """
@@ -3072,7 +3090,7 @@ class HumanSubtaskQMDPPlanner(MediumLevelMdpPlanner):
         dist_belief_prob = np.zeros((len(belief_vector)), dtype=float)
         for i, belief in enumerate(belief_vector):
             ## estimating next subtask based on game logic
-            game_logic_prob[i] = self._is_valid_object_subtask_pair(human_obj, subtask_key[i])*1.0
+            game_logic_prob[i] = self._is_valid_object_subtask_pair(human_obj, subtask_key[i], soup_finish, greedy=greedy)*1.0
     
             ## tune subtask estimation based on current human's position and action (use minimum distance between features)
             possible_motion_goals, _ = self.map_action_to_location(world_state, None, self.subtask_dict[subtask_key[i]][0], self.subtask_dict[subtask_key[i]][1], p0_obj=human_obj, player_idx=1)
@@ -3089,9 +3107,12 @@ class HumanSubtaskQMDPPlanner(MediumLevelMdpPlanner):
 
         game_logic_prob /= game_logic_prob.sum()
         dist_belief_prob /= dist_belief_prob.sum()
-        update_prob = game_logic_prob*0.8 + dist_belief_prob*0.2
-        update_prob[update_prob == 0.0] = 0.000001
-        new_belief = belief*update_prob
+
+        game_logic_prob[game_logic_prob == 0.0] = 0.000001
+        dist_belief_prob[dist_belief_prob== 0.0] = 0.000001
+
+        new_belief = belief*game_logic_prob
+        new_belief = new_belief*0.7 * dist_belief_prob*0.3
 
         new_belief /= new_belief.sum()
         # print("It took {} seconds for belief update".format(time.time() - start_time))
@@ -3099,7 +3120,7 @@ class HumanSubtaskQMDPPlanner(MediumLevelMdpPlanner):
         return new_belief, prev_dist_to_feature
 
     def compute_V(self, next_world_state, mdp_state_key, search_depth=100):
-        next_world_state_str = self.mdp.state_string(next_world_state)
+        next_world_state_str = str(next_world_state)
         if next_world_state_str not in self.world_state_cost_dict:
 
             delivery_horizon=2
@@ -3138,16 +3159,16 @@ class HumanSubtaskQMDPPlanner(MediumLevelMdpPlanner):
     def get_best_action(self, q):
         return np.argmax(q)
 
-    def init_mdp(self, greedy=False):
+    def init_mdp(self):
         self.init_actions()
         self.init_human_aware_states(order_list=self.mdp.start_order_list)
-        self.init_transition(greedy=greedy)
+        self.init_transition()
 
-    def compute_mdp(self, filename, greedy=False):
+    def compute_mdp(self, filename):
         start_time = time.time()
 
         final_filepath = os.path.join(PLANNERS_DIR, filename)
-        self.init_mdp(greedy=greedy)
+        self.init_mdp()
         self.num_states = len(self.state_dict)
         self.num_actions = len(self.action_dict)
         # print('Total states =', self.num_states, '; Total actions =', self.num_actions)
