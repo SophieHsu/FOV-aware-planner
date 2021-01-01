@@ -234,7 +234,7 @@ if __name__ == "__main__":
     if opt.size_version == "small":
         lvl_size = (6, 9)
         gan_pth_path = os.path.join(GAN_TRAINING_DIR,
-                                    "netG_epoch_9999_999_small.pth")
+                                    "netG_epoch_49999_999_small.pth")
     elif opt.size_version == "large":
         lvl_size = (10, 15)
         gan_pth_path = os.path.join(GAN_TRAINING_DIR,

@@ -7,7 +7,7 @@ class DCGAN_D(nn.Module):
     """
     Discriminator DCGAN.
     """
-    def __init__(self, isize, nz, nc, ndf, ngpu, n_extra_layers=0):
+    def __init__(self, isize, nz, nc, ndf, ngpu, n_extra_layers=0, algo="w_gan"):
         """
         isize: size of input image
         nz: size of latent z vector
@@ -15,12 +15,16 @@ class DCGAN_D(nn.Module):
         ndf: number of output channels of initial conv2d layer
         ngpu: number of GPUs
         n_extra_layers: number of extra layers with out_channels to be ndf to add
+        algo: algorithm used to train the GAN.
+              "w_gan" for WGAN algorithm.
+              "vanilla" for vanilla training technique.
 
         Note:
         input to the GAN is nc x isize x isize
         output from the GAN is the likehood of the image being real
         """
         super(DCGAN_D, self).__init__()
+        self.algo = algo
         self.ngpu = ngpu
         self.nz = nz
         assert isize % 16 == 0, "isize has to be a multiple of 16"
@@ -59,8 +63,9 @@ class DCGAN_D(nn.Module):
         main.add_module('final:{0}-{1}:conv'.format(cndf, 1),
                         nn.Conv2d(cndf, 1, 4, 1, 0, bias=False))
 
-        # sigmoid to keep output in range [0, 1]
-        main.add_module('final:sigmoid', nn.Sigmoid())
+        if self.algo == "vanilla":
+            # sigmoid to keep output in range [0, 1]
+            main.add_module('final:sigmoid', nn.Sigmoid())
         self.main = main
 
     def forward(self, input):
@@ -69,8 +74,12 @@ class DCGAN_D(nn.Module):
         else:
             output = self.main(input)
 
-        # output = output.mean(0)
-        return output
+        if self.algo == "w_gan":
+            output = output.mean(0)
+            return output.view(1)
+
+        elif self.algo == "vanilla":
+            return output
 
 class DCGAN_G(nn.Module):
     """

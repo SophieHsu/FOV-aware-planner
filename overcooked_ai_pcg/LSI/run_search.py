@@ -372,7 +372,7 @@ def retrieve_lvl_size(size_version):
     """Retrieves level size and path to the corresponding GAN."""
     if size_version == "small":
         return (6, 9), os.path.join(GAN_TRAINING_DIR,
-                                    "netG_epoch_9999_999_small.pth")
+                                    "netG_epoch_49999_999_small.pth")
     if size_version == "large":
         return (10, 15), os.path.join(GAN_TRAINING_DIR,
                                       "netG_epoch_49999_999_large.pth")
