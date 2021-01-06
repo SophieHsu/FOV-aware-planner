@@ -27,9 +27,8 @@ import numpy as np
 import pandas as pd
 import seaborn as sns
 import toml
+from alive_progress import alive_bar
 from mpl_toolkits.axes_grid1.axes_divider import make_axes_locatable
-from tqdm import tqdm
-
 from overcooked_ai_pcg import LSI_CONFIG_ALGO_DIR, LSI_CONFIG_MAP_DIR
 
 # Visualization settings.
@@ -363,19 +362,21 @@ def main(opt):
                     np.arange(opt.step_size,
                               len(elite_map_data) + 1, opt.step_size),
                     np.full(5, len(elite_map_data)))
-                for i, frame in tqdm(tuple(enumerate(frames))):
-                    fig, ax, cbar_ax = create_axes(is_workloads_diff, dataframe,
-                                                   enumerate_name)
-                    dataframe = csv_data_to_pandas(elite_map_data[frame - 1],
-                                                   y_feature_idx, x_feature_idx,
-                                                   len(features),
-                                                   is_workloads_diff)
-                    plot_heatmap(dataframe, ax, cbar_ax, y_name, x_name,
-                                 is_workloads_diff)
-                    video_img_paths.append(
-                        os.path.join(img_dir, f"tmp_frame_{i}.png"))
-                    fig.savefig(video_img_paths[-1])
-                    plt.close(fig)
+                with alive_bar(len(frames)) as bar:
+                    for i, frame in enumerate(frames):
+                        fig, ax, cbar_ax = create_axes(is_workloads_diff,
+                                                       dataframe,
+                                                       enumerate_name)
+                        dataframe = csv_data_to_pandas(
+                            elite_map_data[frame - 1], y_feature_idx,
+                            x_feature_idx, len(features), is_workloads_diff)
+                        plot_heatmap(dataframe, ax, cbar_ax, y_name, x_name,
+                                     is_workloads_diff)
+                        video_img_paths.append(
+                            os.path.join(img_dir, f"tmp_frame_{i}.png"))
+                        fig.savefig(video_img_paths[-1])
+                        plt.close(fig)
+                        bar()
 
                 save_video(
                     video_img_paths,

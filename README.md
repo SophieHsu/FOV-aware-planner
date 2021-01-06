@@ -221,7 +221,8 @@ Note that the name should match the name of the function to calculate the bc in
 They are under `overcooked_ai_pcg/LSI/data/config/agents`.
 
 A agent config file contains the two agents used for running overcooked game.
-Each agent contains its own properties, which varies across different agent type.
+Each agent contains its own properties, which varies across different agent
+type.
 
 ### Making More GAN Training Data
 
@@ -269,6 +270,26 @@ prefix `gen` to its file name to differentiate it from non-GAN-training
 layouts.**
 
 Note: These are also the constraints that the MILP solver is trying to satisfy.
+
+### Reloading the Algorithm
+
+Sometimes, `run_search.py` will crash in the middle of a run, perhaps due to the
+HPC timing out or memory. Fortunately, we can continue running a crashed
+experiment. `run_search.py` saves algorithm state to the logging directory in a
+file called `reload.pkl`. In order to continue running from `reload.pkl`, you
+will need to pass in the same config files and level size as before. Then, you
+will need to pass in `reload.pkl` with the `-r` flag. Thus, your command should
+look like:
+
+```bash
+python run_search.py -c CONFIG.tml -s SIZE_VERSION -r ..../reload.pkl
+```
+
+Note that:
+
+- The same logging directory will be used (since we are continuing a run).
+- The algorithm will not redispatch the individuals from the previous run; it
+  will simply assume they failed.
 
 ### Running on HPC
 

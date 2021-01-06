@@ -90,7 +90,7 @@ def run(nz,
     if path_netG != '':
         netG.load_state_dict(torch.load(path_netG))
 
-    netD = dcgan.DCGAN_D(map_size, nz, z_dims, ndf, ngpu, n_extra_layers)
+    netD = dcgan.DCGAN_D(map_size, nz, z_dims, ndf, ngpu, n_extra_layers, algo="vanilla")
     netD.apply(weights_init)
     if path_netD != '':
         netD.load_state_dict(torch.load(path_netD))
@@ -284,7 +284,7 @@ if __name__ == '__main__':
     parser.add_argument('--lvl_data', help='Path to the human designed levels.', default=LAYOUTS_DIR)
     parser.add_argument('--save_length', type=int, default=100, help='Length of save point')
     parser.add_argument('--map_size', type=int, default=16, help='Size of the initial layer of feature map of D')
-    parser.add_argument('--size_version', type=str, default="small", help='Size of the level. Small for (6, 9), large for (10, 15)')
+    parser.add_argument('--size_version', type=str, default="large", help='Size of the level. Small for (6, 9), large for (10, 15)')
     opt = parser.parse_args()
 
 

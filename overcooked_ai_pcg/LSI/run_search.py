@@ -1,14 +1,13 @@
 """Runs a search to illuminate the latent space."""
 import argparse
 import os
-import subprocess
+import pickle
 import time
 
 import dask.distributed
 import toml
 import torch
 from dask_jobqueue import SLURMCluster
-
 from overcooked_ai_pcg import GAN_TRAINING_DIR, LSI_CONFIG_EXP_DIR, LSI_LOG_DIR
 from overcooked_ai_pcg.helper import read_gan_param, read_in_lsi_config
 from overcooked_ai_pcg.LSI.evaluator import run_overcooked_eval
@@ -16,8 +15,8 @@ from overcooked_ai_pcg.LSI.logger import (FrequentMapLog, MapSummaryLog,
                                           RunningIndividualLog)
 from overcooked_ai_pcg.LSI.qd_algorithms import (CMA_ME_Algorithm, FeatureMap,
                                                  MapElitesAlgorithm,
-                                                 RandomGenerator,
-                                                 MapElitesBaselineAlgorithm)
+                                                 MapElitesBaselineAlgorithm,
+                                                 RandomGenerator)
 
 
 def init_logging_dir(config_path, experiment_config, algorithm_config,
@@ -107,37 +106,13 @@ def init_dask(experiment_config, log_dir):
     return dask.distributed.Client(cluster)
 
 
-def search(dask_client, base_log_dir, num_simulations, algorithm_config,
-           elite_map_config, agent_configs, model_path, visualize, num_cores,
-           lvl_size):
-    """
-    Run search with the specified algorithm and elite map
-
+def create_loggers(base_log_dir, elite_map_config, agent_configs):
+    """Creates the loggers for the algorithm object.
     Args:
-        dask_client (dask.distributed.Client): client for accessing a Dask
-            cluster.
-        base_log_dir (str): Logging directory within LSI_LOG_DIR for storing
-            logs.
-        num_simulations (int): total number of evaluations of QD algorithm to run.
-        algorithm_config: toml config object of QD algorithm
+        base_log_dir: log directory path without LSI_LOG_DIR prepended
         elite_map_config: toml config object of the feature maps
-        agent_configs (list): list of toml config object of agents
-        model_path (string): file path to the GAN model
-        visualize (bool): render the game or not
-        num_cores (int): number of processes to run
-        lvl_size (tuple): size of the level to generate. Currently only supports
-                          (6, 9) and (10, 15)
+        agent_configs: toml config object of the agents used
     """
-
-    # config feature map
-    feature_ranges = []
-    resolutions = []
-    for bc in elite_map_config["Map"]["Features"]:
-        feature_ranges.append((bc["low"], bc["high"]))
-        resolutions.append(bc["resolution"])
-    feature_map = FeatureMap(num_simulations, feature_ranges, resolutions)
-
-    # create loggers
     running_individual_log = RunningIndividualLog(
         os.path.join(base_log_dir, "individuals_log.csv"), elite_map_config,
         agent_configs)
@@ -147,9 +122,33 @@ def search(dask_client, base_log_dir, num_simulations, algorithm_config,
     )
     map_summary_log = MapSummaryLog(
         os.path.join(base_log_dir, "map_summary.csv"))
+    return running_individual_log, frequent_map_log, map_summary_log
 
-    # config algorithm instance -> it runs on the head node so that it can
-    # access the logger files
+
+def create_algorithm(base_log_dir, num_simulations, elite_map_config,
+                     agent_configs, algorithm_config):
+    """Creates a new algorithm instance.
+
+    Args:
+        base_log_dir: log directory path without LSI_LOG_DIR prepended
+        num_simulations (int): total number of evaluations of QD algorithm to run
+        elite_map_config: toml config object of the feature maps
+        agent_configs (list): list of toml config object of agents
+        algorithm_config: toml config object of the QD algorithm
+    """
+    feature_map = FeatureMap(
+        num_simulations,
+        feature_ranges=[(bc["low"], bc["high"])
+                        for bc in elite_map_config["Map"]["Features"]],
+        resolutions=[
+            bc["resolution"] for bc in elite_map_config["Map"]["Features"]
+        ],
+    )
+
+    (running_individual_log, frequent_map_log,
+     map_summary_log) = create_loggers(base_log_dir, elite_map_config,
+                                       agent_configs)
+
     algorithm_name = algorithm_config["name"]
 
     # take the max of all num params of all agent configs
@@ -163,9 +162,8 @@ def search(dask_client, base_log_dir, num_simulations, algorithm_config,
         # pylint: disable=no-member
         algorithm = MapElitesAlgorithm(mutation_power, initial_population,
                                        num_simulations, feature_map,
-                                       running_individual_log,
-                                       frequent_map_log, map_summary_log,
-                                       num_params)
+                                       running_individual_log, frequent_map_log,
+                                       map_summary_log, num_params)
     elif algorithm_name == "RANDOM":
         print("Start Running RANDOM")
         # pylint: disable=no-member
@@ -197,7 +195,31 @@ def search(dask_client, base_log_dir, num_simulations, algorithm_config,
         for i in range(32, num_params):
             algorithm.add_bound_constraint(i, (0.0, 1.0))
 
-    # run search
+    return algorithm
+
+
+def search(dask_client, num_simulations, algorithm_config, elite_map_config,
+           agent_configs, model_path, visualize, num_cores, lvl_size,
+           reload_saver, algorithm):
+    """Run search with the specified algorithm and elite map
+
+    Args:
+        dask_client (dask.distributed.Client): client for accessing a Dask
+            cluster
+        num_simulations (int): total number of evaluations of QD algorithm to run
+        algorithm_config: toml config object of QD algorithm
+        elite_map_config: toml config object of the feature maps
+        agent_configs (list): list of toml config object of agents
+        model_path (string): file path to the GAN model
+        visualize (bool): render the game or not
+        num_cores (int): number of processes to run
+        reload_saver (callable): function which saves data necessary for a
+            reload to a pickle file
+        algorithm (QDAlgorithmBase): QD algorithm instance, either created from
+            scratch or reloaded from a checkpoint
+        lvl_size (tuple): size of the level to generate. Currently only supports
+            (6, 9) and (10, 15)
+    """
     start_time = time.time()
 
     # GAN data
@@ -208,21 +230,40 @@ def search(dask_client, base_log_dir, num_simulations, algorithm_config,
     # initialize the workers with num_cores jobs
     evaluations = []
     active_evals = 0
-    while active_evals < num_cores and not algorithm.is_blocking():
-        evaluations.append(
-            dask_client.submit(
+
+    def _request_evals(before_loop):
+        """Submits more evaluations for the algorithm.
+
+        Args:
+            before_loop (bool): Whether this is being called before the for loop
+                below. If in the loop, the `evaluations` list has been converted
+                into a Dask `as_completed` list.
+        """
+        nonlocal active_evals
+        while active_evals < num_cores and not algorithm.is_blocking():
+            print("Starting simulation: ", end="")
+            new_ind = algorithm.generate_individual()
+            future = dask_client.submit(
                 run_overcooked_eval,
-                algorithm.generate_individual(),
+                new_ind,
                 visualize,
                 elite_map_config,
                 agent_configs,
                 algorithm_config,
                 G_params,
                 gan_state_dict,
-                active_evals + 1,  # worker_id
+                algorithm.individuals_disbatched,
                 lvl_size,
-            ))
-        active_evals += 1
+            )
+            active_evals += 1
+            if before_loop:
+                evaluations.append(future)  # pylint: disable=no-member
+            else:
+                evaluations.add(future)
+            print(f"{algorithm.individuals_disbatched}/{num_simulations}")
+        print(f"Active evaluations: {active_evals}")
+
+    _request_evals(True)
     evaluations = dask.distributed.as_completed(evaluations)
     print(f"Started {active_evals} simulations")
 
@@ -239,8 +280,8 @@ def search(dask_client, base_log_dir, num_simulations, algorithm_config,
 
             if evaluated_ind is None:
                 print("Received a failed evaluation.")
-            elif (evaluated_ind is not None
-                  and algorithm.insert_if_still_running(evaluated_ind)):
+            elif (evaluated_ind is not None and
+                  algorithm.insert_if_still_running(evaluated_ind)):
                 cur_time = time.time()
                 print("Finished simulation.\n"
                       f"Total simulations done: "
@@ -248,6 +289,7 @@ def search(dask_client, base_log_dir, num_simulations, algorithm_config,
                       f"Time since last simulation: {cur_time - last_eval}s\n"
                       f"Active evaluations: {active_evals}")
                 last_eval = cur_time
+                reload_saver(algorithm)
         except dask.distributed.scheduler.KilledWorker as err:  # pylint: disable=no-member
             # worker may fail due to, for instance, memory
             print("Worker failed with the following error; continuing anyway\n"
@@ -260,27 +302,7 @@ def search(dask_client, base_log_dir, num_simulations, algorithm_config,
 
         if algorithm.is_running():
             # request more evaluations if still running
-            while active_evals < num_cores and not algorithm.is_blocking():
-                print("Starting simulation: ", end="")
-                new_ind = algorithm.generate_individual()
-                future = dask_client.submit(
-                    run_overcooked_eval,
-                    new_ind,
-                    visualize,
-                    elite_map_config,
-                    agent_configs,
-                    algorithm_config,
-                    G_params,
-                    gan_state_dict,
-                    # since there are no more "workers", we just pass in the
-                    # id of the individual as the worker id
-                    algorithm.individuals_disbatched,
-                    lvl_size,
-                )
-                evaluations.add(future)
-                active_evals += 1
-                print(f"{algorithm.individuals_disbatched}/{num_simulations}")
-            print(f"Active evaluations: {active_evals}")
+            _request_evals(False)
         else:
             # otherwise, terminate
             break
@@ -289,30 +311,50 @@ def search(dask_client, base_log_dir, num_simulations, algorithm_config,
     print("Total evaluation time:", str(finish_time - start_time), "seconds")
 
 
-def run(
-    config,
-    model_path,
-    lvl_size,
-):
-    """
-    Read in toml config files and run the search
+def run(config, reload, lvl_size, model_path):
+    """Read in toml config files and run the search.
 
     Args:
         config (toml): toml config path of current experiment
-        model_path (string): file path to the GAN model
+        reload (str): path to pickle file for reloading experiment
+        lvl_size (tuple of int): Size of the level
+        model_path (str): file path to the GAN model
     """
-    experiment_config, algorithm_config, elite_map_config, agent_configs = \
-        read_in_lsi_config(config)
+    # configs are same regardless of reload
+    (experiment_config, algorithm_config, elite_map_config,
+     agent_configs) = read_in_lsi_config(config)
 
-    log_dir, base_log_dir = init_logging_dir(config, experiment_config,
-                                             algorithm_config,
-                                             elite_map_config, agent_configs)
+    # algorithm, log_dir, and base_log_dir are reused if we are reloading
+    if reload is None:
+        log_dir, base_log_dir = init_logging_dir(config, experiment_config,
+                                                 algorithm_config,
+                                                 elite_map_config,
+                                                 agent_configs)
+        algorithm = create_algorithm(base_log_dir,
+                                     experiment_config["num_simulations"],
+                                     elite_map_config, agent_configs,
+                                     algorithm_config)
+    else:
+        with open(reload, "rb") as file:
+            data = pickle.load(file)
+        log_dir = data["log_dir"]
+        base_log_dir = data["base_log_dir"]
+        algorithm = data["algorithm"]
+
+    def reload_saver(algorithm_):
+        """Saves the algorithm to reload.pkl in the logging directory."""
+        with open(os.path.join(log_dir, "reload.pkl"), "wb") as file:
+            pickle.dump(
+                {
+                    "algorithm": algorithm_,
+                    "base_log_dir": base_log_dir,
+                    "log_dir": log_dir,
+                }, file)
+
     print("LOGGING DIRECTORY:", log_dir)
 
-    # start LSI search
     search(
         init_dask(experiment_config, log_dir),
-        base_log_dir,
         experiment_config["num_simulations"],
         algorithm_config,
         elite_map_config,
@@ -321,24 +363,47 @@ def run(
         experiment_config["visualize"],
         experiment_config["num_cores"],
         lvl_size,
+        reload_saver,
+        algorithm,
     )
+
+
+def retrieve_lvl_size(size_version):
+    """Retrieves level size and path to the corresponding GAN."""
+    if size_version == "small":
+        return (6, 9), os.path.join(GAN_TRAINING_DIR,
+                                    "netG_epoch_49999_999_small.pth")
+    if size_version == "large":
+        return (10, 15), os.path.join(GAN_TRAINING_DIR,
+                                      "netG_epoch_49999_999_large.pth")
+    raise NotImplementedError(f"Unrecognized size_version {size_version}")
 
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
-    parser.add_argument('-c',
-                        '--config',
-                        help='path of experiment config file',
-                        required=False,
-                        default=os.path.join(LSI_CONFIG_EXP_DIR,
-                                             "MAPELITES_demo.tml"))
-    parser.add_argument('-s',
-                        '--size_version',
-                        type=str,
-                        default="small",
-                        help='Size of the level. \
-                             "small" for (6, 9), \
-                             "large" for (10, 15)')
+    parser.add_argument(
+        '-c',
+        '--config',
+        help='path of experiment config file',
+        required=False,
+        default=os.path.join(LSI_CONFIG_EXP_DIR, "MAPELITES_demo.tml"),
+    )
+    parser.add_argument(
+        '-r',
+        '--reload',
+        help='path to pickle file for reloading experiment',
+        required=False,
+        default=None,
+    )
+    parser.add_argument(
+        '-s',
+        '--size_version',
+        type=str,
+        default="small",
+        help=("Size of the level\n"
+              '"small" for (6, 9),\n'
+              '"large" for (10, 15)'),
+    )
     # parser.add_argument('-m',
     #                     '--model_path',
     #                     help='path of the GAN trained',
@@ -346,15 +411,4 @@ if __name__ == "__main__":
     #                     default=os.path.join(GAN_TRAINING_DIR,
     #                                          "netG_epoch_49999_999.pth"))
     opt = parser.parse_args()
-
-    lvl_size = None
-    gan_pth_path = None
-    if opt.size_version == "small":
-        lvl_size = (6, 9)
-        gan_pth_path = os.path.join(GAN_TRAINING_DIR,
-                                    "netG_epoch_9999_999_small.pth")
-    elif opt.size_version == "large":
-        lvl_size = (10, 15)
-        gan_pth_path = os.path.join(GAN_TRAINING_DIR,
-                                    "netG_epoch_49999_999_large.pth")
-    run(opt.config, gan_pth_path, lvl_size)
+    run(opt.config, opt.reload, *retrieve_lvl_size(opt.size_version))
