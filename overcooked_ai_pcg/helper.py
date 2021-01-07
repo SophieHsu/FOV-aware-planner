@@ -23,7 +23,7 @@ num_obj_type = len(obj_types)
 CONFIG = {
     "start_order_list": ['onion'] * 2,
     "cook_time": 10,
-    "num_items_for_soup": 2,
+    "num_items_for_soup": 3,
     "delivery_reward": 20,
     "rew_shaping_params": None
 }
@@ -329,7 +329,7 @@ def run_overcooked_game(ind, agent_config, render=True, worker_id=0, num_iters=1
     fitnesses = []; total_sparse_rewards = []; checkpointses = []; workloadses = []; 
     joint_actionses = []; concurr_actives = []; stuck_times = []
     np.random.seed(ind.rand_seed)
-    
+
     for num_iter in range(num_iters):
         done = False
         total_sparse_reward = 0
