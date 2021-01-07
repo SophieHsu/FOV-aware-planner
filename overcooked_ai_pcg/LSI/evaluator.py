@@ -88,7 +88,7 @@ def run_overcooked_eval(ind, visualize, elite_map_config, agent_configs,
     joint_actions = []
     concurr_actives = []
     stuck_times = []
-
+    max_iter = max([agent_config["Search"]["num_iter"] for agent_config in agent_configs])
     # run evaluation for all sets of agent configs
     # normalize the fitness if more than 1 sets are running
     for agent_config in agent_configs:
@@ -105,7 +105,19 @@ def run_overcooked_eval(ind, visualize, elite_map_config, agent_configs,
         # run simulation
         try:
             fitness, score, checkpoint, workload, joint_action, concurr_active, stuck_time = run_overcooked_game(
-                ind, agent_config, render=visualize, worker_id=worker_id)
+                ind, agent_config, render=visualize, worker_id=worker_id, num_iters=max_iter)
+
+            # if agent_config["Search"]["multi_iter"] == False:
+            #     print(workload)
+            #     print(workload[0])
+            #     fitness = np.repeat(fitness[0], max_iter)
+            #     score = np.repeat(score[0], max_iter)
+            #     checkpoint = np.repeat(checkpoint[0], max_iter)
+            #     workload = np.repeat(workload[0], max_iter)
+            #     joint_action = np.repeat(joint_action[0], max_iter)
+            #     concurr_active = np.repeat(concurr_active[0], max_iter)
+            #     stuck_time = np.repeat(stuck_time[0], max_iter)
+
             fitnesses.append(fitness)
             scores.append(score)
             checkpoints.append(checkpoint)

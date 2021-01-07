@@ -23,7 +23,7 @@ num_obj_type = len(obj_types)
 CONFIG = {
     "start_order_list": ['onion'] * 2,
     "cook_time": 10,
-    "num_items_for_soup": 3,
+    "num_items_for_soup": 2,
     "delivery_reward": 20,
     "rew_shaping_params": None
 }
@@ -320,7 +320,7 @@ def visualize_lvl(lvl_str, log_dir, filename):
     grid = lvl_str2grid(lvl_str)
     render_from_grid(grid, log_dir, filename)
 
-def run_overcooked_game(ind, agent_config, render=True, worker_id=0, num_iters=10):
+def run_overcooked_game(ind, agent_config, render=True, worker_id=0, num_iters=1):
     """
     Run one turn of overcooked game and return the sparse reward as fitness
     """
@@ -386,7 +386,8 @@ def run_overcooked_game(ind, agent_config, render=True, worker_id=0, num_iters=1
         checkpointses = np.array(checkpointses)
         fitnesses.append(sum(fitnesses)/len(fitnesses))
         total_sparse_rewards.append(sum(total_sparse_rewards)/len(total_sparse_rewards))
-        checkpointses = np.append(checkpointses, [[sum(checkpointses[:,0])/len(checkpointses[:,0]), sum(checkpointses[:,1])/len(checkpointses[:,1])]], axis=0)
+        checkpoint = [sum(checkpointses[:,i])/len(checkpointses[:,i]) for i in range(len(checkpointses[0]))]
+        checkpointses = np.append(checkpointses, [checkpoint], axis=0)
         workloadses.append(get_workload_avg(workloadses))
         concurr_actives.append(sum(concurr_actives)/len(concurr_actives))
         stuck_times.append(sum(stuck_times)/len(stuck_times))

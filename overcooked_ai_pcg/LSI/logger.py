@@ -124,7 +124,7 @@ class RunningIndividualLog(LoggerBase):
         ]
         self._write_row(to_add)
 
-        for i in range(10):
+        for i in range(len(ind.fitness)):
             to_add = [
                 '',
                 ind.fitness[i],
