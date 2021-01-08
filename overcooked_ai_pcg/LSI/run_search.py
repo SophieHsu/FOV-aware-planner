@@ -18,6 +18,9 @@ from overcooked_ai_pcg.LSI.qd_algorithms import (CMA_ME_Algorithm, FeatureMap,
                                                  MapElitesBaselineAlgorithm,
                                                  RandomGenerator)
 
+# How many iterations to wait before saving algorithm state.
+RELOAD_FREQ = 200
+
 
 def init_logging_dir(config_path, experiment_config, algorithm_config,
                      elite_map_config, agent_configs):
@@ -289,7 +292,8 @@ def search(dask_client, num_simulations, algorithm_config, elite_map_config,
                       f"Time since last simulation: {cur_time - last_eval}s\n"
                       f"Active evaluations: {active_evals}")
                 last_eval = cur_time
-                reload_saver(algorithm)
+                if algorithm.individuals_evaluated % RELOAD_FREQ == 0:
+                    reload_saver(algorithm)
         except dask.distributed.scheduler.KilledWorker as err:  # pylint: disable=no-member
             # worker may fail due to, for instance, memory
             print("Worker failed with the following error; continuing anyway\n"
