@@ -382,6 +382,15 @@ def run_overcooked_game(ind, agent_config, render=True, worker_id=0, num_iters=1
 
         env = reset_env_from_mdp(mdp)
 
+    if agent_config["Search"]["multi_iter"] == False:
+        fitnesses = [fitnesses[0] for i in range(num_iters)]
+        total_sparse_rewards = [total_sparse_rewards[0] for i in range(num_iters)]
+        checkpointses = [checkpointses[0] for i in range(num_iters)]
+        workloadses = [workloadses[0] for i in range(num_iters)]
+        joint_actionses = [joint_actionses[0] for i in range(num_iters)]
+        concurr_actives = [concurr_actives[0] for i in range(num_iters)]
+        stuck_times = [stuck_times[0] for i in range(num_iters)]
+
     if num_iters > 1:
         checkpointses = np.array(checkpointses)
         fitnesses.append(sum(fitnesses)/len(fitnesses))
