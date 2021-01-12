@@ -20,8 +20,11 @@ import argparse
 import csv
 import os
 import shutil
+from enum import Enum
+from typing import Dict, List, Tuple, Union
 
 import cv2
+import matplotlib as mpl
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
@@ -53,7 +56,18 @@ FEATURE_NAME = {
 }
 
 
-def read_in_lsi_config(exp_config_file):
+class Mode(Enum):
+    """Script mode, determines the type of plot to generate."""
+    NORMAL = 0
+    WORKLOADS_DIFF = 1
+    WORKLOADS_DIFF_FINE = 2
+
+    def use_3d(self):
+        """Whether to enumerate one of the dimensions to display 3D BCs."""
+        return self in [Mode.WORKLOADS_DIFF, Mode.WORKLOADS_DIFF_FINE]
+
+
+def read_in_lsi_config(exp_config_file: str) -> Tuple[Dict, Dict, Dict]:
     experiment_config = toml.load(exp_config_file)
     algorithm_config = toml.load(
         os.path.join(
@@ -66,22 +80,28 @@ def read_in_lsi_config(exp_config_file):
     return experiment_config, algorithm_config, elite_map_config
 
 
-def csv_data_to_pandas(data, y_feature_idx, x_feature_idx, num_features,
-                       is_workloads_diff):
+def csv_data_to_pandas(
+        data: List, y_feature_idx: int, x_feature_idx: int, num_features: int,
+        mode: Mode) -> Union[Dict[int, pd.DataFrame], pd.DataFrame]:
     """Converts one row from elite_map.csv into a dataframe.
 
     (One row of the data contains a snapshot of the entire map at that
     iteration).
 
-    If is_workloads_diff is True, this function will instead return a dict of
-    dataframes mapping values along one of the BCs to dataframes with data of
-    elites with that BC.
+    If Mode.use_3d(), this function will instead return a dict of dataframes
+    mapping values along one of the BCs to dataframes with the data of elites
+    with that BC.
     """
     map_dims = tuple(map(int, data[0].split('x')))
     elites = data[1:]  # The rest of the row contains all the data.
 
     # Create 2D dataframe(s) to store the map data.
-    if is_workloads_diff:
+
+    # Index is descending to make the heatmap look better.
+    index_labels = np.arange(map_dims[y_feature_idx] - 1, -1, -1)
+    column_labels = np.arange(0, map_dims[x_feature_idx])
+
+    if mode.use_3d():
         # For workload diff, create a dict of pandas dataframes; each one has y
         # as index and x as columns, and the dict is indexed by our 3rd BC.
         dataframes = {}
@@ -90,42 +110,24 @@ def csv_data_to_pandas(data, y_feature_idx, x_feature_idx, num_features,
         # covered by y_feature_idx and x_feature_idx.
         enumerate_idx = list(set(range(3)) - {y_feature_idx, x_feature_idx})[0]
 
-        # Index is descending to make the heatmap look better.
-        index_labels = np.arange(WORKLOAD_DIFFS_HIGH[y_feature_idx],
-                                 WORKLOAD_DIFFS_LOW[y_feature_idx] - 1, -1)
-        column_labels = np.arange(WORKLOAD_DIFFS_LOW[x_feature_idx],
-                                  WORKLOAD_DIFFS_HIGH[x_feature_idx] + 1)
         initial_data = np.full((len(index_labels), len(column_labels)), np.nan)
-        for i in range(WORKLOAD_DIFFS_LOW[enumerate_idx],
-                       WORKLOAD_DIFFS_HIGH[enumerate_idx] + 1):
-            # Make sure to copy the initial data -- it seems pandas keeps a
-            # reference to it.
+        for i in range(map_dims[enumerate_idx]):
+            # Make sure to copy the initial data as pandas uses a reference.
             dataframes[i] = pd.DataFrame(np.copy(initial_data), index_labels,
                                          column_labels)
     else:
         # Create a pandas dataframe with our two BCs on the indices and columns.
         # Index is descending to make the heatmap look better.
-        index_labels = np.arange(map_dims[y_feature_idx] - 1, -1, -1)
-        column_labels = np.arange(0, map_dims[x_feature_idx])
         initial_data = np.full((len(index_labels), len(column_labels)), np.nan)
         dataframe = pd.DataFrame(initial_data, index_labels, column_labels)
 
     # Iterate through the entries in the map and insert them into the
     # appropriate dict.
     for elite in elites:
-        # Do some pre-processing (see recordList) -- parse the data, normalize
-        # the fitness.
         tokens = elite.split(":")  # Each elite starts in string format.
         bc_indices = np.array(list(map(int, tokens[:num_features])))
         cell_y = bc_indices[y_feature_idx]
         cell_x = bc_indices[x_feature_idx]
-
-        # Adjust BCs only for workloads diff.
-        if is_workloads_diff:
-            cell_y += WORKLOAD_DIFFS_LOW[y_feature_idx]
-            cell_x += WORKLOAD_DIFFS_LOW[x_feature_idx]
-            cell_enum = bc_indices[enumerate_idx] + WORKLOAD_DIFFS_LOW[
-                enumerate_idx]
 
         # Adjust fitness.
         fitness = float(tokens[num_features + 1])
@@ -140,9 +142,10 @@ def csv_data_to_pandas(data, y_feature_idx, x_feature_idx, num_features,
             "Fitness min should be 0 to have proper normalization"
         fitness /= FITNESS_MAX  # Normalization - assumes min is 0.
 
-        if is_workloads_diff:
+        if mode.use_3d():
             # Insert into the correct dict. We keep all vals (none should be
             # intersecting).
+            cell_enum = bc_indices[enumerate_idx]
             dataframes[cell_enum].loc[cell_y, cell_x] = fitness
         else:
             # Insert into the dataframe. Override with better vals.
@@ -150,26 +153,58 @@ def csv_data_to_pandas(data, y_feature_idx, x_feature_idx, num_features,
             if np.isnan(old_fitness) or fitness > old_fitness:
                 dataframe.loc[cell_y, cell_x] = fitness
 
-    return dataframes if is_workloads_diff else dataframe
+    # Use correct BC values.
+    if mode.use_3d():
+        old_dataframes = dataframes
+        dataframes = {}
+        step = {Mode.WORKLOADS_DIFF: 1, Mode.WORKLOADS_DIFF_FINE: 0.1}[mode]
+        enum_labels = np.arange(WORKLOAD_DIFFS_LOW[enumerate_idx],
+                                WORKLOAD_DIFFS_HIGH[enumerate_idx] + step, step)
+        x_labels = np.arange(WORKLOAD_DIFFS_LOW[x_feature_idx],
+                             WORKLOAD_DIFFS_HIGH[x_feature_idx] + step, step)
+        y_labels = np.arange(WORKLOAD_DIFFS_HIGH[y_feature_idx],
+                             WORKLOAD_DIFFS_LOW[y_feature_idx] - step, -step)
+
+        if mode == Mode.WORKLOADS_DIFF_FINE:
+            # Make decimal keys look pretty.
+            enum_labels = list(map(lambda x: f"{x:.1f}", enum_labels))
+            x_labels = list(map(lambda x: f"{x:.1f}", x_labels))
+            y_labels = list(map(lambda x: f"{x:.1f}", y_labels))
+
+        for idx, df in old_dataframes.items():
+            df.rename(index=dict(zip(index_labels, y_labels)), inplace=True)
+            df.rename(columns=dict(zip(column_labels, x_labels)), inplace=True)
+            dataframes[enum_labels[idx]] = df
+
+    return dataframes if mode.use_3d() else dataframe
 
 
-def create_axes(is_workloads_diff, dataframe, enumerate_name):
+def create_axes(
+    mode: Mode, dataframe: pd.DataFrame, enumerate_name: str
+) -> Tuple[mpl.figure.Figure, Union[mpl.axes.Axes, np.ndarray], mpl.axes.Axes]:
     """Creates a figure, axis/axes, and colorbar axis.
 
-    If is_workloads_diff is True, the ax returned will be an array of axes rather
+    If mode.use_3d() is True, the ax returned will be an array of axes rather
     than a single axis.
 
-    enumerate_name only applies if is_workloads_diff is True.
+    enumerate_name only applies if mode.use_3d() is True.
     """
-    if is_workloads_diff:
+    if mode.use_3d():
         y_len = len(dataframe[list(dataframe)[0]].index)
         x_len = len(dataframe[list(dataframe)[0]].columns)
         is_vertical = y_len > x_len
 
-        # Make the figure wider for horizontal and square plots.
-        figsize = (9, 6) if is_vertical else (15, 3)
-        if y_len == x_len:
+        if is_vertical:
+            # These are the main dims we use (we don't really plot horizontal
+            # and square archives).
+            if mode == Mode.WORKLOADS_DIFF:
+                figsize = (9, 6)
+            elif mode == Mode.WORKLOADS_DIFF_FINE:
+                figsize = (72, 7)
+        elif y_len == x_len:
             figsize = (18, 3)
+        else:
+            figsize = (15, 3)
 
         # third row is padding.
         height_ratios = ([0.03, 0.82, 0.08, 0.05]
@@ -193,8 +228,9 @@ def create_axes(is_workloads_diff, dataframe, enumerate_name):
 
         # Make the colorbar span the entire figure in vertical plots and only
         # the middle three plots in horizontal figures.
-        cbar_ax = fig.add_subplot(spec[-1, :] if is_vertical else spec[
-            -1, num_plots // 2 - 1:num_plots // 2 + 2])
+        cbar_ax = fig.add_subplot(
+            spec[-1, :] if is_vertical and mode == Mode.WORKLOADS_DIFF else
+            spec[-1, num_plots // 2 - 1:num_plots // 2 + 2],)
 
     else:
         fig, ax = plt.subplots(1, 1, figsize=REGULAR_FIGSIZE)
@@ -204,23 +240,23 @@ def create_axes(is_workloads_diff, dataframe, enumerate_name):
     return fig, ax, cbar_ax
 
 
-def set_spines_visible(ax):
+def set_spines_visible(ax: mpl.axis.Axis):
     for pos in ["top", "right", "bottom", "left"]:
         ax.spines[pos].set_visible(True)
 
 
-def plot_heatmap(dataframe, ax, cbar_ax, y_name, x_name, is_workloads_diff):
+def plot_heatmap(dataframe: Union[pd.DataFrame, Dict[int, pd.DataFrame]],
+                 ax: Union[mpl.axes.Axes, np.ndarray], cbar_ax: mpl.axes.Axes,
+                 y_name: str, x_name: str, mode: Mode):
     """Plots a heatmap of the given dataframe onto the given ax.
 
     A colorbar is created on cbar_ax.
 
-    If is_workloads_diff is True, ax should be an array of axes on which to plot
+    If  is True, ax should be an array of axes on which to plot
     the heatmap for each value of the enumerating BC. dataframe should then be a
     dict as described in csv_data_to_pandas().
-
-    enum_bc_name is only provided if is_workload_diff is True.
     """
-    if is_workloads_diff:
+    if mode.use_3d():
         for idx, entry in enumerate(dataframe.items()):
             enum_bc, ind_dataframe = entry
             sns.heatmap(
@@ -228,9 +264,7 @@ def plot_heatmap(dataframe, ax, cbar_ax, y_name, x_name, is_workloads_diff):
                 annot=False,
                 cmap=COLORMAP,
                 fmt=".0f",
-                xticklabels=len(ind_dataframe.columns) // NUM_TICKS + 1,
-                yticklabels=(len(ind_dataframe.index) // NUM_TICKS +
-                             1 if idx == 0 else False),
+                yticklabels=False,
                 vmin=0,
                 vmax=1,
                 square=True,
@@ -243,6 +277,20 @@ def plot_heatmap(dataframe, ax, cbar_ax, y_name, x_name, is_workloads_diff):
                 ax[idx].set_ylabel(y_name, labelpad=8)
             if idx == len(dataframe) // 2:  # x-label on center plot.
                 ax[idx].set_xlabel(x_name, labelpad=6)
+
+            # Hard-coded...
+            if mode == Mode.WORKLOADS_DIFF:
+                ax[idx].set_xticks([0.5, 2.5, 4.5])
+                ax[idx].set_xticklabels([-2, 0, 2], rotation=0)
+                if idx == 0:
+                    ax[idx].set_yticks([0.5, 3.5, 6.5, 9.5, 12.5])
+                    ax[idx].set_yticklabels([-6, -3, 0, 3, 6][::-1], rotation=0)
+            elif mode == Mode.WORKLOADS_DIFF_FINE:
+                ax[idx].set_xticks([0.5, 20.5, 40.5])
+                ax[idx].set_xticklabels([-2, 0, 2], rotation=0)
+                if idx == 0:
+                    ax[idx].set_yticks([0.5, 30.5, 60.5, 90.5, 120.5])
+                    ax[idx].set_yticklabels([-6, -3, 0, 3, 6][::-1], rotation=0)
         for a in ax.ravel():
             set_spines_visible(a)
         ax[0].figure.tight_layout()
@@ -267,8 +315,10 @@ def plot_heatmap(dataframe, ax, cbar_ax, y_name, x_name, is_workloads_diff):
         ax.figure.tight_layout()
 
 
-def save_video(img_paths, video_path):
+def save_video(img_paths: List[str], video_path: str):
     """Creates a video from the given images."""
+    # pylint: disable = no-member
+
     # Grab the dimensions of the image.
     img = cv2.imread(img_paths[0])
     img_dims = img.shape[:2][::-1]
@@ -289,15 +339,21 @@ def main(opt):
     experiment_config, _, elite_map_config = read_in_lsi_config(
         os.path.join(opt.logdir, "config.tml"))
     features = elite_map_config['Map']['Features']
-    is_workloads_diff = (experiment_config["experiment_config"]
-                         ["elite_map_config"] == "workloads_diff.tml")
+
+    mode = {
+        "workloads_diff.tml": Mode.WORKLOADS_DIFF,
+        "workloads_diff_finer_ver.tml": Mode.WORKLOADS_DIFF_FINE,
+    }.get(
+        experiment_config["experiment_config"]["elite_map_config"],
+        Mode.NORMAL,
+    )
 
     # Global plot settings.
     sns.set_theme(
         context="paper",
         style="ticks",
         font="Palatino Linotype",
-        font_scale=2.4 if is_workloads_diff else 3.5,
+        font_scale=2.4 if mode.use_3d() else 3.5,
         rc={
             # Refer to https://matplotlib.org/3.2.1/tutorials/introductory/customizing.html
             "axes.facecolor": "1",
@@ -330,7 +386,7 @@ def main(opt):
 
             y_name = FEATURE_NAME.get(y_feature["name"], y_feature["name"])
             x_name = FEATURE_NAME.get(x_feature["name"], x_feature["name"])
-            if is_workloads_diff:
+            if mode.use_3d():
                 # The index of the feature along which to enumerate BCs.
                 enumerate_idx = list(
                     set(range(3)) - {y_feature_idx, x_feature_idx})[0]
@@ -345,13 +401,10 @@ def main(opt):
                   f"y: Feature {y_feature_idx} ({y_name})\n"
                   f"x: Feature {x_feature_idx} ({x_name})\n"
                   "## Saving PDF of final map ##")
-            dataframe = csv_data_to_pandas(elite_map_data[-1],
-                                           y_feature_idx, x_feature_idx,
-                                           len(features), is_workloads_diff)
-            fig, ax, cbar_ax = create_axes(is_workloads_diff, dataframe,
-                                           enumerate_name)
-            plot_heatmap(dataframe, ax, cbar_ax, y_name, x_name,
-                         is_workloads_diff)
+            dataframe = csv_data_to_pandas(elite_map_data[-1], y_feature_idx,
+                                           x_feature_idx, len(features), mode)
+            fig, ax, cbar_ax = create_axes(mode, dataframe, enumerate_name)
+            plot_heatmap(dataframe, ax, cbar_ax, y_name, x_name, mode)
             fig.savefig(
                 os.path.join(img_dir,
                              f"map_final_{y_feature_idx}_{x_feature_idx}.pdf"))
@@ -363,21 +416,20 @@ def main(opt):
                     np.arange(opt.step_size,
                               len(elite_map_data) + 1, opt.step_size),
                     np.full(5, len(elite_map_data)))
-                with alive_bar(len(frames)) as bar:
+                with alive_bar(len(frames)) as progress:
                     for i, frame in enumerate(frames):
-                        fig, ax, cbar_ax = create_axes(is_workloads_diff,
-                                                       dataframe,
+                        fig, ax, cbar_ax = create_axes(mode, dataframe,
                                                        enumerate_name)
                         dataframe = csv_data_to_pandas(
                             elite_map_data[frame - 1], y_feature_idx,
-                            x_feature_idx, len(features), is_workloads_diff)
+                            x_feature_idx, len(features), mode)
                         plot_heatmap(dataframe, ax, cbar_ax, y_name, x_name,
-                                     is_workloads_diff)
+                                     mode)
                         video_img_paths.append(
                             os.path.join(img_dir, f"tmp_frame_{i}.png"))
                         fig.savefig(video_img_paths[-1])
                         plt.close(fig)
-                        bar()
+                        progress()
 
                 save_video(
                     video_img_paths,
@@ -390,10 +442,10 @@ def main(opt):
 
             # Break early because we only want the plot for features 0 and 1 for
             # workload_diff
-            if is_workloads_diff:
+            if mode.use_3d():
                 print("Breaking early for workload diff")
                 break
-        if is_workloads_diff:
+        if mode.use_3d():
             break
 
 
