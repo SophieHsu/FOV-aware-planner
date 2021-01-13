@@ -2910,6 +2910,7 @@ class HumanSubtaskQMDPPlanner(MediumLevelMdpPlanner):
                         location = self.mdp.get_partially_full_pots(pots_states_dict)
                     else:
                         location = self.mdp.get_ready_pots(pots_states_dict) + self.mdp.get_cooking_pots(pots_states_dict) + self.mdp.get_full_pots(pots_states_dict)
+                        
                     if len(location) > 0: return location, WAIT
 
                 location = self.mdp.get_partially_full_pots(pots_states_dict) + self.mdp.get_empty_pots(pots_states_dict)
