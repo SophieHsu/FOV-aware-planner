@@ -1,0 +1,14 @@
+visualize=false
+num_cores=8
+num_simulations=8
+algorithm_config="cma_me.tml"
+elite_map_config="2dim_workloads_diff_finer.tml"
+agent_config=["qmdp_agent_w_greedy_agent.tml"]
+
+
+slurm=true
+num_cores=120
+num_cores_per_slurm_worker=8
+mem_gib_per_slurm_worker=32
+slurm_worker_walltime="24:00:00"
+slurm_project="nikolaid_548"
