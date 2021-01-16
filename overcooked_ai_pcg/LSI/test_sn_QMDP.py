@@ -61,53 +61,8 @@ def init_logging_dir(config_path, experiment_config, algorithm_config,
     return log_dir, base_log_dir
 
 
-def init_dask(experiment_config, log_dir):
-    """Initializes Dask with a local or SLURM cluster.
 
-    Args:
-        experiment_config (toml): toml config object of experiment
-        log_dir (str): directory for storing logs
-    Returns:
-        A Dask client for the cluster created.
-    """
-    num_cores = experiment_config["num_cores"]
-
-    if experiment_config.get("slurm", False):
-        worker_logs = os.path.join(log_dir, "worker_logs")
-        os.mkdir(worker_logs)
-        output_file = os.path.join(worker_logs, 'slurm-%j.out')
-
-        cores_per_worker = experiment_config["num_cores_per_slurm_worker"]
-
-        # 1 process per CPU since cores == processes
-        cluster = SLURMCluster(
-            project=experiment_config["slurm_project"],
-            cores=cores_per_worker,
-            memory=f"{experiment_config['mem_gib_per_slurm_worker']}GiB",
-            processes=cores_per_worker,
-            walltime=experiment_config['slurm_worker_walltime'],
-            job_extra=[
-                f"--output {output_file}",
-                f"--error {output_file}",
-            ],
-        )
-
-        print("### SLURM Job script ###")
-        print("--------------------------------------")
-        print(cluster.job_script())
-        print("--------------------------------------")
-
-        cluster.scale(cores=num_cores)
-        return dask.distributed.Client(cluster)
-
-    # Single machine -- run with num_cores worker processes.
-    cluster = dask.distributed.LocalCluster(n_workers=num_cores,
-                                            threads_per_worker=1,
-                                            processes=True)
-    return dask.distributed.Client(cluster)
-
-
-def search(dask_client, base_log_dir, num_simulations, algorithm_config,
+def search(base_log_dir, num_simulations, algorithm_config,
            elite_map_config, agent_configs, model_path, visualize, num_cores,
            lvl_size):
     """
@@ -156,23 +111,6 @@ def search(dask_client, base_log_dir, num_simulations, algorithm_config,
     num_params = 0
     for agent_config in agent_configs:
         num_params = max(num_params, agent_config["Search"]["num_param"])
-    if algorithm_name == "MAPELITES":
-        print("Start Running MAPELITES")
-        mutation_power = algorithm_config["mutation_power"]
-        initial_population = algorithm_config["initial_population"]
-        # pylint: disable=no-member
-        algorithm = MapElitesAlgorithm(mutation_power, initial_population,
-                                       num_simulations, feature_map,
-                                       running_individual_log,
-                                       frequent_map_log, map_summary_log,
-                                       num_params)
-    elif algorithm_name == "RANDOM":
-        print("Start Running RANDOM")
-        # pylint: disable=no-member
-        algorithm = RandomGenerator(num_simulations, feature_map,
-                                    running_individual_log, frequent_map_log,
-                                    map_summary_log, num_params)
-    elif algorithm_name == "CMAME":
         print("Start CMA-ME")
         mutation_power = algorithm_config["mutation_power"]
         pop_size = algorithm_config["population_size"]
@@ -180,17 +118,6 @@ def search(dask_client, base_log_dir, num_simulations, algorithm_config,
                                      feature_map, running_individual_log,
                                      frequent_map_log, map_summary_log,
                                      num_params)
-    elif algorithm_name == "MAPELITES-BASE":
-        print("Start Running MAPELITES-BASE")
-        mutation_k = algorithm_config["mutation_k"]
-        mutation_power = algorithm_config["mutation_power"]
-        initial_population = algorithm_config["initial_population"]
-        algorithm = MapElitesBaselineAlgorithm(mutation_k, mutation_power,
-                                               initial_population,
-                                               num_simulations, feature_map,
-                                               running_individual_log,
-                                               frequent_map_log,
-                                               map_summary_log, num_params)
 
     # Super hacky! This is where we add bounded constraints for the human model.
     if num_params > 32:
@@ -210,13 +137,7 @@ def search(dask_client, base_log_dir, num_simulations, algorithm_config,
     evaluations = []
     active_evals = 0
     while active_evals < num_cores and not algorithm.is_blocking():
-    
-
-    
-        evaluations.append(
-            dask_client.submit(
-                run_overcooked_eval,
-                algorithm.generate_individual(),
+        run_overcooked_eval(algorithm.generate_individual(),
                 visualize,
                 elite_map_config,
                 agent_configs,
@@ -224,10 +145,24 @@ def search(dask_client, base_log_dir, num_simulations, algorithm_config,
                 G_params,
                 gan_state_dict,
                 active_evals + 1,  # worker_id
-                lvl_size,
-            ))
+                lvl_size)
+
+    
+        # evaluations.append(
+        #     dask_client.submit(
+        #         run_overcooked_eval,
+        #         algorithm.generate_individual(),
+        #         visualize,
+        #         elite_map_config,
+        #         agent_configs,
+        #         algorithm_config,
+        #         G_params,
+        #         gan_state_dict,
+        #         active_evals + 1,  # worker_id
+        #         lvl_size,
+        #     ))
         active_evals += 1
-    evaluations = dask.distributed.as_completed(evaluations)
+    #evaluations = dask.distributed.as_completed(evaluations)
     print(f"Started {active_evals} simulations")
 
      
@@ -316,7 +251,6 @@ def run(
 
     # start LSI search
     search(
-        init_dask(experiment_config, log_dir),
         base_log_dir,
         experiment_config["num_simulations"],
         algorithm_config,
