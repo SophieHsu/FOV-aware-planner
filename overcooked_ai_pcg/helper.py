@@ -320,7 +320,7 @@ def visualize_lvl(lvl_str, log_dir, filename):
     grid = lvl_str2grid(lvl_str)
     render_from_grid(grid, log_dir, filename)
 
-def run_overcooked_game(ind, agent_config, render=True, worker_id=0, num_iters=10):
+def run_overcooked_game(ind, agent_config, render=True, worker_id=0, num_iters=1):
     """
     Run one turn of overcooked game and return the sparse reward as fitness
     """
@@ -329,7 +329,6 @@ def run_overcooked_game(ind, agent_config, render=True, worker_id=0, num_iters=1
     fitnesses = []; total_sparse_rewards = []; checkpointses = []; workloadses = []; 
     joint_actionses = []; concurr_actives = []; stuck_times = []
     np.random.seed(ind.rand_seed)
-    
 
     for num_iter in range(num_iters):
         done = False
@@ -386,11 +385,21 @@ def run_overcooked_game(ind, agent_config, render=True, worker_id=0, num_iters=1
 
         env = reset_env_from_mdp(mdp)
 
+    if agent_config["Search"]["multi_iter"] == False:
+        fitnesses = [fitnesses[0] for i in range(num_iters)]
+        total_sparse_rewards = [total_sparse_rewards[0] for i in range(num_iters)]
+        checkpointses = [checkpointses[0] for i in range(num_iters)]
+        workloadses = [workloadses[0] for i in range(num_iters)]
+        joint_actionses = [joint_actionses[0] for i in range(num_iters)]
+        concurr_actives = [concurr_actives[0] for i in range(num_iters)]
+        stuck_times = [stuck_times[0] for i in range(num_iters)]
+
     if num_iters > 1:
         checkpointses = np.array(checkpointses)
         fitnesses.append(sum(fitnesses)/len(fitnesses))
         total_sparse_rewards.append(sum(total_sparse_rewards)/len(total_sparse_rewards))
-        checkpointses = np.append(checkpointses, [[sum(checkpointses[:,0])/len(checkpointses[:,0]), sum(checkpointses[:,1])/len(checkpointses[:,1])]], axis=0)
+        checkpoint = [sum(checkpointses[:,i])/len(checkpointses[:,i]) for i in range(len(checkpointses[0]))]
+        checkpointses = np.append(checkpointses, [checkpoint], axis=0)
         workloadses.append(get_workload_avg(workloadses))
         concurr_actives.append(sum(concurr_actives)/len(concurr_actives))
         stuck_times.append(sum(stuck_times)/len(stuck_times))
@@ -423,9 +432,9 @@ def get_workload_avg(workloadses):
         b /= len(workloadses)
         c /= len(workloadses)
         avg_workloads.append({
-            "num_ingre_held": a,
-            "num_plate_held": b,
-            "num_served": c,
+            "num_ingre_held": round(a, 1),
+            "num_plate_held": round(b, 1),
+            "num_served": round(c, 1),
         })
     return avg_workloads
 

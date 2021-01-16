@@ -14,6 +14,7 @@ setup(
     install_requires=[
         'numpy',
         'tqdm',
+        'alive_progress',
         'gym',
         'pygame',
         'torch',
