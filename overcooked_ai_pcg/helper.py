@@ -427,9 +427,9 @@ def get_workload_avg(workloadses):
         b /= len(workloadses)
         c /= len(workloadses)
         avg_workloads.append({
-            "num_ingre_held": round(a, 1),
-            "num_plate_held": round(b, 1),
-            "num_served": round(c, 1),
+            "num_ingre_held": a,
+            "num_plate_held": b,
+            "num_served": c,
         })
     return avg_workloads
 
