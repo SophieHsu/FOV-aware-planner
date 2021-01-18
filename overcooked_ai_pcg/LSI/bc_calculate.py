@@ -71,6 +71,11 @@ def diff_num_ingre_held(ind):
         workload_diff = []
         for w0, w1 in zip(workloads[:,0], workloads[:,1]):
             workload_diff.append(w0["num_ingre_held"] - w1["num_ingre_held"])
+
+        #replace avg with median of workloads
+        median_diff = np.median(workload_diff[:-1])
+        workload_diff[-1] = median_diff
+
         return workload_diff
     else:
         return workloads[0]["num_ingre_held"] - workloads[1]["num_ingre_held"]
@@ -82,6 +87,12 @@ def diff_num_plate_held(ind):
         workload_diff = []
         for w0, w1 in zip(workloads[:,0], workloads[:,1]):
             workload_diff.append(w0["num_plate_held"] - w1["num_plate_held"])
+
+        #replace avg with median of workloads
+        median_diff = np.median(workload_diff[:-1])
+        workload_diff[-1] = median_diff
+
+
         return workload_diff
     else:
         return workloads[0]["num_plate_held"] - workloads[1]["num_plate_held"]
@@ -93,6 +104,11 @@ def diff_num_dish_served(ind):
         workload_diff = []
         for w0, w1 in zip(workloads[:,0], workloads[:,1]):
             workload_diff.append(w0["num_served"] - w1["num_served"])
+
+        #replace avg with median of workloads
+        median_diff = np.median(workload_diff[:-1])
+        workload_diff[-1] = median_diff
+
         return workload_diff
     else:
         return workloads[0]["num_served"] - workloads[1]["num_served"]

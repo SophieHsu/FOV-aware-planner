@@ -396,13 +396,22 @@ def run_overcooked_game(ind, agent_config, render=True, worker_id=0, num_iters=1
 
     if num_iters > 1:
         checkpointses = np.array(checkpointses)
-        fitnesses.append(sum(fitnesses)/len(fitnesses))
-        total_sparse_rewards.append(sum(total_sparse_rewards)/len(total_sparse_rewards))
-        checkpoint = [sum(checkpointses[:,i])/len(checkpointses[:,i]) for i in range(len(checkpointses[0]))]
+        fitnesses.append(np.median(fitnesses))
+        total_sparse_rewards.append(np.median(total_sparse_rewards))
+        checkpoint = [np.median(checkpointses[:,i]) for i in range(len(checkpointses[0]))]
         checkpointses = np.append(checkpointses, [checkpoint], axis=0)
         workloadses.append(get_workload_avg(workloadses))
-        concurr_actives.append(sum(concurr_actives)/len(concurr_actives))
-        stuck_times.append(sum(stuck_times)/len(stuck_times))
+        concurr_actives.append(np.median(concurr_actives))
+        stuck_times.append(np.median(stuck_times))
+    # if num_iters > 1:
+    #     checkpointses = np.array(checkpointses)
+    #     fitnesses.append(sum(fitnesses)/len(fitnesses))
+    #     total_sparse_rewards.append(sum(total_sparse_rewards)/len(total_sparse_rewards))
+    #     checkpoint = [sum(checkpointses[:,i])/len(checkpointses[:,i]) for i in range(len(checkpointses[0]))]
+    #     checkpointses = np.append(checkpointses, [checkpoint], axis=0)
+    #     workloadses.append(get_workload_avg(workloadses))
+    #     concurr_actives.append(sum(concurr_actives)/len(concurr_actives))
+    #     stuck_times.append(sum(stuck_times)/len(stuck_times))
 
     # Free up some memory
     del agent1, agent2, env, mdp
@@ -419,6 +428,25 @@ def run_overcooked_game(ind, agent_config, render=True, worker_id=0, num_iters=1
     return fitnesses, total_sparse_rewards, checkpointses, workloadses, joint_actionses, concurr_actives, stuck_times
     # return fitness, total_sparse_reward, checkpoints, workloads, joint_actions, concurr_active, stuck_time
     # return ind
+
+# def get_workload_median(workloadses):
+#     median_workloads = []
+#     for agent in range(2):
+#         a = 0; b = 0; c = 0;
+#         for workloads in workloadses:
+#             a += workloads[agent]['num_ingre_held']
+#             b += workloads[agent]['num_plate_held']
+#             c += workloads[agent]['num_served']
+#         a = np.median(workloadses)
+#         b = np.median(workloadses)
+#         c = np.median(workloadses)
+#         median_workloads.append({
+#             "num_ingre_held": a,
+#             "num_plate_held": b,
+#             "num_served": c,
+#         })
+#     return median_workloads
+
 
 def get_workload_avg(workloadses):
     avg_workloads = []
