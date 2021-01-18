@@ -10,10 +10,9 @@ import numpy as np
 
 from overcooked_ai_pcg import LSI_CONFIG_EXP_DIR, LSI_LOG_DIR, LSI_CONFIG_ALGO_DIR, LSI_CONFIG_MAP_DIR, LSI_CONFIG_AGENT_DIR
 from overcooked_ai_pcg.helper import run_overcooked_game, read_in_lsi_config
-from overcooked_ai_pcg.LSI.qd_algorithms import Individual
+from overcooked_ai_pcg.LSI.qd_algorithms import Individual, FeatureMap
 from overcooked_ai_pcg.helper import read_in_lsi_config, init_env_and_agent
-
-
+ 
 # def read_in_lsi_config(exp_config_file):
 #     experiment_config = toml.load(exp_config_file)
 #     algorithm_config = toml.load(
@@ -30,6 +29,74 @@ from overcooked_ai_pcg.helper import read_in_lsi_config, init_env_and_agent
 #     return experiment_config, algorithm_config, elite_map_config, agent_configs
 
 
+def retrieve_k_individuals(experiment_config, elite_map_config, agent_configs, individuals, row_idx, col_idx, mat_idx, log_dir, k):
+
+    #from IPython import embed
+    #embed()
+
+    num_simulations = experiment_config["num_simulations"
+    ]
+    feature_map = FeatureMap(
+        num_simulations,
+        feature_ranges=[(bc["low"], bc["high"])
+                        for bc in elite_map_config["Map"]["Features"]],
+        resolutions=[
+            bc["resolution"] for bc in elite_map_config["Map"]["Features"]
+        ],
+    )
+    feature0_name = features[0]["name"]
+    feature1_name = features[1]["name"]
+    feature2_name = features[2]["name"]
+
+
+    num_individuals = num_simulations * 52
+    relevant_individuals = []
+    for indx in range(num_individuals):
+        individual = individuals.iloc[indx]
+        if indx % 1000== 0:
+          print(indx)
+
+        if (np.isnan(individual["ID"])==False): 
+             feature0 = individual[feature0_name]
+             feature1 = individual[feature1_name]
+             feature2 = individual[feature2_name]
+             ind = Individual()
+             ind.features = ([feature0], [feature1], [feature2])
+             #from IPython import embed
+             #em3bed()
+
+             ind.fitness = individual["fitness"]
+             index = feature_map.get_index(ind)
+
+             if index[0] == row_idx and index[1] == col_idx and index[2] == mat_idx: 
+                relevant_individuals.append(individual)
+
+    sorted_individuals = sorted(relevant_individuals, key=lambda x: x.fitness)[::-1]
+    sorted_individuals = sorted_individuals[:k]
+
+    IDs = []
+    for dd in range(k):
+      IDs.append(sorted_individuals[dd]["ID"])
+
+    
+    return IDs, sorted_individuals
+
+
+def play_individual(individual, agent_configs):
+    ind = Individual()
+    ind.level = individual.lvl_str
+    ind.rand_seed = int(individual.rand_seed)
+    agent1, agent2, env, mdp = init_env_and_agent(ind, agent_configs[-1])
+
+    for agent_config in agent_configs:
+        fitness, _, _, _, ind.joint_actions, _, _ = run_overcooked_game(ind, agent_config, render=True)
+    return
+
+    print("Fitness: {}; Total sparse reward: {};".format(ind.fitness, ind.scores))
+    print("Checkpoints", ind.checkpoints)
+    print("Workloads:", ind.player_workloads, "; Concurrently active:", ind.concurr_active, "; Stuck time:", ind.stuck_time)
+
+    return
 
 
 def play(elite_map, agent_configs, individuals, row_idx, col_idx, mat_idx, log_dir):
@@ -44,6 +111,8 @@ def play(elite_map, agent_configs, individuals, row_idx, col_idx, mat_idx, log_d
         f1, f2 (int, int): index of the features to use
         row_idx, col_idx (int, int): index of the cell in the elite map
     """
+
+
     for elite in elite_map:
         splited = elite.split(":")
         curr_row_idx = int(splited[0])
@@ -51,9 +120,6 @@ def play(elite_map, agent_configs, individuals, row_idx, col_idx, mat_idx, log_d
         curr_mat_idx = int(splited[2])
 
         ind_id = int(splited[3])
-        if ind_id == 1886:
-            pass
-
 
         if curr_row_idx == row_idx and curr_col_idx == col_idx and curr_mat_idx == mat_idx:
 
@@ -138,7 +204,7 @@ if __name__ == "__main__":
 
 
     # read in configs
-    _, _, elite_map_config, agent_configs = read_in_lsi_config(opt.config)
+    experiment_config, _, elite_map_config, agent_configs = read_in_lsi_config(opt.config)
 
     # read in feature index
     features = elite_map_config['Map']['Features']
@@ -157,9 +223,19 @@ if __name__ == "__main__":
     mat_idx = int(opt.mat_idx)
 
 
-
     assert (row_idx < num_row)
     assert (col_idx < num_col)
     assert (mat_idx < num_mat)
 
-    play(elite_map, agent_configs, individuals, row_idx, col_idx, mat_idx, log_dir)
+
+    IDs, individuals  = retrieve_k_individuals(experiment_config, elite_map_config, agent_configs, individuals, row_idx, col_idx, mat_idx, log_dir,3)
+
+    from IPython import embed
+    embed()
+    
+    for individual in individuals:
+      play_individual(individual, agent_configs)
+
+
+
+    #play(elite_map, agent_configs, individuals, row_idx, col_idx, mat_idx, log_dir)
