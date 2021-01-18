@@ -2,6 +2,9 @@ import heapq, time
 import numpy as np
 import scipy.sparse
 
+from overcooked_ai_py.utils import MergePlanError
+
+
 class SearchTree(object):
     """
     A class to help perform tree searches of various types. Once a goal state is found, returns a list of tuples
@@ -259,7 +262,12 @@ class Graph(object):
         cur_index = goal_index
         while cur_index != start_index:
             traceback_path.append(cur_index)
+
+            if cur_index < 0:
+                raise MergePlanError("INVALID CUR_INDEX IN TRACING PATH")
+
             cur_index = self.predecessors[start_index][cur_index]
+
         traceback_path.append(start_index)
         traceback_path.reverse()
 

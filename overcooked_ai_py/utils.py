@@ -7,6 +7,9 @@ from collections.abc import Iterable
 
 # I/O
 
+class MergePlanError(ValueError):
+    """Base class for other exceptions"""
+
 def save_pickle(data, filename):
     with open(fix_filetype(filename, ".pickle"), "wb") as f:
         pickle.dump(data, f, protocol=pickle.HIGHEST_PROTOCOL)
