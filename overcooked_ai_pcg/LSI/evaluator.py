@@ -14,6 +14,9 @@ import ast
 import subprocess
 import ast 
 
+from overcooked_ai_py.utils import MergePlanError
+
+
 def print_mem_usage(info, worker_id):
     print(f"worker({worker_id}): Memory usage ({info}):",
           resource.getrusage(resource.RUSAGE_SELF).ru_maxrss)
@@ -105,7 +108,9 @@ def run_overcooked_eval(ind, visualize, elite_map_config, agent_configs,
         # run simulation
         try:
             fitness, score, checkpoint, workload, joint_action, concurr_active, stuck_time = run_overcooked_game(
+
                 ind, agent_config, render=visualize, worker_id=worker_id, num_iters=max_iter)
+
 
             fitnesses.append(fitness)
             scores.append(score)
@@ -117,6 +122,11 @@ def run_overcooked_eval(ind, visualize, elite_map_config, agent_configs,
         except TimeoutError:
             print(
                 "worker(%d): Level generated taking too much time to plan. Skipping"
+                % worker_id)
+            return None
+        except MergePlanError:
+            print(
+                "worker(%d): Merge plan failed. Skipping"
                 % worker_id)
             return None
 
@@ -141,6 +151,8 @@ def run_overcooked_eval(ind, visualize, elite_map_config, agent_configs,
             ind.fitness = ind.fitnesses[0,:] - ind.fitnesses[1,:]
         else:    
             ind.fitness = ind.fitnesses[0] - ind.fitnesses[1]
+
+    print("The fitness of the individual is: " + str(ind.fitness))
 
     print_mem_usage("after running overcooked game", worker_id)
 

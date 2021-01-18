@@ -393,6 +393,9 @@ class GreedyHumanModel(Agent):
     def action(self, state):
         possible_motion_goals = self.ml_action(state)
 
+        #from IPython import embed
+        #embed()
+
         # Once we have identified the motion goals for the medium
         # level action we want to perform, select the one with lowest cost
         start_pos_and_or = state.players_pos_and_or[self.agent_index]
@@ -424,6 +427,9 @@ class GreedyHumanModel(Agent):
                 else:
                     chosen_action = Action.STAY
                 action_probs = self.a_probs_from_action(chosen_action)
+
+                #from IPython import embed
+                #embed()
 
                 state.players[self.agent_index].stuck_log += [1]
             else:

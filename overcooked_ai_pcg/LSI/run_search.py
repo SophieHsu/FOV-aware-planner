@@ -18,6 +18,8 @@ from overcooked_ai_pcg.LSI.qd_algorithms import (CMA_ME_Algorithm, FeatureMap,
                                                  MapElitesBaselineAlgorithm,
                                                  RandomGenerator)
 
+import random
+
 # How many iterations to wait before saving algorithm state.
 RELOAD_FREQ = 200
 
@@ -201,11 +203,11 @@ def create_algorithm(base_log_dir, num_simulations, elite_map_config,
     return algorithm
 
 
+
 def search(dask_client, num_simulations, algorithm_config, elite_map_config,
            agent_configs, model_path, visualize, num_cores, lvl_size,
            reload_saver, algorithm):
     """Run search with the specified algorithm and elite map
-
     Args:
         dask_client (dask.distributed.Client): client for accessing a Dask
             cluster
@@ -236,7 +238,6 @@ def search(dask_client, num_simulations, algorithm_config, elite_map_config,
 
     def _request_evals(before_loop):
         """Submits more evaluations for the algorithm.
-
         Args:
             before_loop (bool): Whether this is being called before the for loop
                 below. If in the loop, the `evaluations` list has been converted

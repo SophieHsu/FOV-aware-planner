@@ -373,6 +373,9 @@ def run_overcooked_game(ind, agent_config, render=True, worker_id=0, num_iters=1
             fitness *= env.horizon
             fitness -= timestep
 
+
+        #print("fitness is: " + str(fitness))
+
         fitnesses.append(fitness)
         total_sparse_rewards.append(total_sparse_reward)
         checkpointses.append(checkpoints)
@@ -411,6 +414,8 @@ def run_overcooked_game(ind, agent_config, render=True, worker_id=0, num_iters=1
     # ind.checkpoints.append(checkpoints)
     # ind.player_workloads.append(workloads)
     # ind.joint_actions.append(joint_actions)
+
+
 
     return fitnesses, total_sparse_rewards, checkpointses, workloadses, joint_actionses, concurr_actives, stuck_times
     # return fitness, total_sparse_reward, checkpoints, workloads, joint_actions, concurr_active, stuck_time

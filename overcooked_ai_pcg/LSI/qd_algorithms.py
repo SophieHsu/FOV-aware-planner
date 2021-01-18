@@ -86,7 +86,8 @@ class FeatureMap:
         return index
 
     def get_index(self, cur):
-        if len(cur.features[0]) > 1:
+        #if len(cur.features[0]) > 1:
+        if isinstance(cur.features[0],list): #need to check if it is a list
             tmp = np.array(cur.features)
             return tuple(
                 self.get_feature_index(i, f) for i, f in enumerate(tmp[:,-1]))
