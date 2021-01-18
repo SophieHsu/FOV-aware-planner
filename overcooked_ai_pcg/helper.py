@@ -373,7 +373,7 @@ def run_overcooked_game(ind, agent_config, render=True, worker_id=0, num_iters=1
             fitness -= timestep
 
 
-        print("fitness is: " + str(fitness))
+        #print("fitness is: " + str(fitness))
 
         fitnesses.append(fitness)
         total_sparse_rewards.append(total_sparse_reward)

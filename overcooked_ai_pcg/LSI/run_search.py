@@ -416,23 +416,4 @@ if __name__ == "__main__":
     #                     default=os.path.join(GAN_TRAINING_DIR,
     #                                          "netG_epoch_49999_999.pth"))
     opt = parser.parse_args()
-<<<<<<< HEAD
-
-    lvl_size = None
-    gan_pth_path = None
-    if opt.size_version == "small":
-        lvl_size = (6, 9)
-        gan_pth_path = os.path.join(GAN_TRAINING_DIR,
-                                    "netG_epoch_49999_999_small.pth")
-    elif opt.size_version == "large":
-        lvl_size = (10, 15)
-        gan_pth_path = os.path.join(GAN_TRAINING_DIR,
-                                    "netG_epoch_49999_999_large.pth")
-                                    
-     
-    #from IPython import embed
-    #embed()
-    run(opt.config, gan_pth_path, lvl_size)
-=======
     run(opt.config, opt.reload, *retrieve_lvl_size(opt.size_version))
->>>>>>> 886ddb127e4e1165b401f433286b7339d6f73d30
