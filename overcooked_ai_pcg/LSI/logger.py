@@ -124,7 +124,7 @@ class RunningIndividualLog(LoggerBase):
         ]
         self._write_row(to_add)
 
-        for i in range(len(ind.fitness)):
+        for i in range(len(ind.fitness)-1):
             to_add = [
                 '',
                 ind.fitness[i],
@@ -137,7 +137,7 @@ class RunningIndividualLog(LoggerBase):
                 ind.human_adaptiveness,
                 '',
                 '',
-                *ind.joint_actions[:,i-1],
+                *ind.joint_actions[:,i],
             ]
             self._write_row(to_add)
 
