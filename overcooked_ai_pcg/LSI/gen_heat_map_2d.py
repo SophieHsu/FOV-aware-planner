@@ -28,7 +28,7 @@ ELITE_MAP_NAME = None  # type of feature map used
 
 # max and min value of fitness
 FITNESS_MIN = 0
-FITNESS_MAX = 20000
+FITNESS_MAX = 400000
 
 
 def read_in_lsi_config(exp_config_file):
@@ -78,12 +78,12 @@ def createRecordList(mapData, mapDims):
         fitness = float(splitedData[nonFeatureIdx + 1])
 
         # re-range the fitness
-        if fitness == 1:
-            fitness = 0
-        elif fitness >= 200000 and fitness < 400000:
-            fitness -= 200000
-        elif fitness >= 400000:
-            fitness -= 390000
+        # if fitness == 1:
+        #     fitness = 0
+        # elif fitness >= 200000 and fitness < 400000:
+        #     fitness -= 200000
+        # elif fitness >= 400000:
+        #     fitness -= 390000
 
         f1 = float(splitedData[nonFeatureIdx + 2 + ROW_INDEX])
         f2 = float(splitedData[nonFeatureIdx + 2 + COL_INDEX])
