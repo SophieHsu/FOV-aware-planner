@@ -203,11 +203,11 @@ def create_algorithm(base_log_dir, num_simulations, elite_map_config,
     return algorithm
 
 
+
 def search(dask_client, num_simulations, algorithm_config, elite_map_config,
            agent_configs, model_path, visualize, num_cores, lvl_size,
            reload_saver, algorithm):
     """Run search with the specified algorithm and elite map
-
     Args:
         dask_client (dask.distributed.Client): client for accessing a Dask
             cluster
@@ -238,7 +238,6 @@ def search(dask_client, num_simulations, algorithm_config, elite_map_config,
 
     def _request_evals(before_loop):
         """Submits more evaluations for the algorithm.
-
         Args:
             before_loop (bool): Whether this is being called before the for loop
                 below. If in the loop, the `evaluations` list has been converted
@@ -417,4 +416,23 @@ if __name__ == "__main__":
     #                     default=os.path.join(GAN_TRAINING_DIR,
     #                                          "netG_epoch_49999_999.pth"))
     opt = parser.parse_args()
+<<<<<<< HEAD
+
+    lvl_size = None
+    gan_pth_path = None
+    if opt.size_version == "small":
+        lvl_size = (6, 9)
+        gan_pth_path = os.path.join(GAN_TRAINING_DIR,
+                                    "netG_epoch_49999_999_small.pth")
+    elif opt.size_version == "large":
+        lvl_size = (10, 15)
+        gan_pth_path = os.path.join(GAN_TRAINING_DIR,
+                                    "netG_epoch_49999_999_large.pth")
+                                    
+     
+    #from IPython import embed
+    #embed()
+    run(opt.config, gan_pth_path, lvl_size)
+=======
     run(opt.config, opt.reload, *retrieve_lvl_size(opt.size_version))
+>>>>>>> 886ddb127e4e1165b401f433286b7339d6f73d30

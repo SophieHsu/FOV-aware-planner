@@ -108,6 +108,7 @@ def run_overcooked_eval(ind, visualize, elite_map_config, agent_configs,
         # run simulation
         try:
             fitness, score, checkpoint, workload, joint_action, concurr_active, stuck_time = run_overcooked_game(
+
                 ind, agent_config, render=visualize, worker_id=worker_id, num_iters=max_iter)
 
 
@@ -150,6 +151,8 @@ def run_overcooked_eval(ind, visualize, elite_map_config, agent_configs,
             ind.fitness = ind.fitnesses[0,:] - ind.fitnesses[1,:]
         else:    
             ind.fitness = ind.fitnesses[0] - ind.fitnesses[1]
+
+    print("The fitness of the individual is: " + str(ind.fitness))
 
     print_mem_usage("after running overcooked game", worker_id)
 
