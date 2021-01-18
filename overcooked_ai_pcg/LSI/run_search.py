@@ -18,6 +18,8 @@ from overcooked_ai_pcg.LSI.qd_algorithms import (CMA_ME_Algorithm, FeatureMap,
                                                  MapElitesBaselineAlgorithm,
                                                  RandomGenerator)
 
+import random
+
 # How many iterations to wait before saving algorithm state.
 RELOAD_FREQ = 200
 
