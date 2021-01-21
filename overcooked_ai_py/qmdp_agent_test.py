@@ -27,7 +27,7 @@ n, s = Direction.NORTH, Direction.SOUTH
 e, w = Direction.EAST, Direction.WEST
 stay, interact = Action.STAY, Action.INTERACT
 P, Obj = PlayerState, ObjectState
-DISPLAY = True
+DISPLAY = False
 
 class App:
     """Class to run an Overcooked Gridworld game, leaving one of the players as fixed.
@@ -139,12 +139,12 @@ if __name__ == "__main__" :
 
     # np.random.seed(0)
     start_time = time.time()
-    scenario_1_mdp = OvercookedGridworld.from_layout_name('train_gan_large/gen2_basic_2-3', start_order_list=['onion','onion'], num_items_for_soup=3, cook_time=5)
+    scenario_1_mdp = OvercookedGridworld.from_layout_name('10x15_test1', start_order_list=['onion','onion'], num_items_for_soup=2, cook_time=10)
     # start_state = OvercookedState(
     #     [P((2, 1), s, Obj('onion', (2, 1))),
     #      P((3, 2), s)],
     #     {}, order_list=['onion','onion'])
-    env = OvercookedEnv.from_mdp(scenario_1_mdp, horizon = 1000)
+    env = OvercookedEnv.from_mdp(scenario_1_mdp, horizon = 100)
 
     # ml_action_manager = planners.MediumLevelActionManager(scenario_1_mdp, NO_COUNTERS_PARAMS)
 
@@ -157,7 +157,7 @@ if __name__ == "__main__" :
 
     qmdp_start_time = time.time()
     mdp_planner = planners.HumanSubtaskQMDPPlanner.from_pickle_or_compute(scenario_1_mdp, NO_COUNTERS_PARAMS, force_compute_all=True)
-    ai_agent = agent.MediumQMdpPlanningAgent(mdp_planner, greedy=False, auto_unstuck=True)
+    ai_agent = agent.MediumQMdpPlanningAgent(mdp_planner, greedy=True, auto_unstuck=True)
     # ai_agent = agent.QMDPAgent(mlp, env)
 
     ai_agent.set_agent_index(0)
@@ -169,19 +169,19 @@ if __name__ == "__main__" :
     agent_pair = agent.AgentPair(ai_agent, human_agent) # if use QMDP, the first agent has to be the AI agent
     print("It took {} seconds for planning".format(time.time() - start_time))
     total_t = 0
-    for i in range(10):
+    for i in range(100):
         game_start_time = time.time()
         s_t, joint_a_t, r_t, done_t = env.run_agents(agent_pair, include_final_state=True, display=DISPLAY)
-        print("It took {} seconds for qmdp to compute".format(game_start_time - qmdp_start_time))
-        print("It took {} seconds for playing the entire level".format(time.time() - game_start_time))
-        print("It took {} seconds to plan".format(time.time() - start_time))
-        env = OvercookedEnv.from_mdp(scenario_1_mdp, horizon = 1000)
+        # print("It took {} seconds for qmdp to compute".format(game_start_time - qmdp_start_time))
+        # print("It took {} seconds for playing the entire level".format(time.time() - game_start_time))
+        # print("It took {} seconds to plan".format(time.time() - start_time))
+        env = OvercookedEnv.from_mdp(scenario_1_mdp, horizon = 100)
         done = False
         total_t += len(s_t)
     print('Average timesteps =', total_t/10.0)
     t = 0
-    scenario_1_mdp = OvercookedGridworld.from_layout_name('train_gan_large/gen2_basic_2-3', start_order_list=['onion','onion'], num_items_for_soup=3, cook_time=5)
-    env = OvercookedEnv.from_mdp(scenario_1_mdp, horizon = 1000)
+    scenario_1_mdp = OvercookedGridworld.from_layout_name('10x15_test1', start_order_list=['onion','onion'], num_items_for_soup=2, cook_time=10)
+    env = OvercookedEnv.from_mdp(scenario_1_mdp, horizon = 100)
     while not done:
         if t >= 0 and t <= len(s_t):
             # env.render("blur", time_left=t)
@@ -194,7 +194,6 @@ if __name__ == "__main__" :
                         if isinstance(agent2_action, list) else agent2_action)
         next_state, timestep_sparse_reward, done, info = env.step(joint_action)
         t += 1
-        # print(t)
         tmp = input()
 
     del scenario_1_mdp, env, agent_pair, ai_agent, human_agent

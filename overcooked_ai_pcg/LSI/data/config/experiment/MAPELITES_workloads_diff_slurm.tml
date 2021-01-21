@@ -2,6 +2,7 @@ visualize=false
 num_simulations=10000
 algorithm_config="map_elites.tml"
 elite_map_config="workloads_diff.tml"
+agent_config=["fixed_plan_w_fixed_plan.tml", "human_w_human_aware_agent.tml"]
 
 # For SLURM, specify number of cores. The number of workers is calculated as
 # num_cores / num_cores_per_slurm_worker, so we recommend setting num_cores to
@@ -9,6 +10,6 @@ elite_map_config="workloads_diff.tml"
 slurm=true
 num_cores=120
 num_cores_per_slurm_worker=12
-mem_gib_per_slurm_worker=36
+mem_gib_per_slurm_worker=48
 slurm_worker_walltime="7:00:00"
 slurm_project="nikolaid_548"
