@@ -1,0 +1,13 @@
+visualize=false
+num_simulations=100
+algorithm_config="map_elites_baseline.tml"
+elite_map_config="demo.tml"
+agent_config=["fixed_plan_w_fixed_plan.tml", "human_w_human_aware_agent.tml"]
+
+
+slurm=true
+num_cores=60
+num_cores_per_slurm_worker=12
+mem_gib_per_slurm_worker=24
+slurm_worker_walltime="02:00:00"
+slurm_project="nikolaid_548"

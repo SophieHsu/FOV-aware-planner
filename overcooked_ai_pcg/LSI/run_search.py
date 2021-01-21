@@ -3,6 +3,7 @@ import argparse
 import os
 import pickle
 import time
+import shutil
 
 import dask.distributed
 import toml
@@ -76,7 +77,8 @@ def init_dask(experiment_config, log_dir):
 
     if experiment_config.get("slurm", False):
         worker_logs = os.path.join(log_dir, "worker_logs")
-        os.mkdir(worker_logs)
+        if not os.path.isdir(worker_logs):
+            os.mkdir(worker_logs)
         output_file = os.path.join(worker_logs, 'slurm-%j.out')
 
         cores_per_worker = experiment_config["num_cores_per_slurm_worker"]
@@ -129,7 +131,7 @@ def create_loggers(base_log_dir, elite_map_config, agent_configs):
 
 
 def create_algorithm(base_log_dir, num_simulations, elite_map_config,
-                     agent_configs, algorithm_config):
+                     agent_configs, algorithm_config, lvl_size):
     """Creates a new algorithm instance.
 
     Args:
@@ -191,7 +193,8 @@ def create_algorithm(base_log_dir, num_simulations, elite_map_config,
                                                num_simulations, feature_map,
                                                running_individual_log,
                                                frequent_map_log,
-                                               map_summary_log, num_params)
+                                               map_summary_log, num_params,
+                                               lvl_size)
 
     # Super hacky! This is where we add bounded constraints for the human model.
     if num_params > 32:
@@ -337,7 +340,7 @@ def run(config, reload, lvl_size, model_path):
         algorithm = create_algorithm(base_log_dir,
                                      experiment_config["num_simulations"],
                                      elite_map_config, agent_configs,
-                                     algorithm_config)
+                                     algorithm_config, lvl_size)
     else:
         with open(reload, "rb") as file:
             data = pickle.load(file)
