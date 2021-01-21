@@ -7,26 +7,68 @@ import argparse
 import pandas as pd
 import pygame
 import numpy as np
+from itertools import combinations
 
 from overcooked_ai_pcg import LSI_CONFIG_EXP_DIR, LSI_LOG_DIR, LSI_CONFIG_ALGO_DIR, LSI_CONFIG_MAP_DIR, LSI_CONFIG_AGENT_DIR
 from overcooked_ai_pcg.helper import run_overcooked_game, read_in_lsi_config
 from overcooked_ai_pcg.LSI.qd_algorithms import Individual, FeatureMap
 from overcooked_ai_pcg.helper import read_in_lsi_config, init_env_and_agent
  
-# def read_in_lsi_config(exp_config_file):
-#     experiment_config = toml.load(exp_config_file)
-#     algorithm_config = toml.load(
-#         os.path.join(LSI_CONFIG_ALGO_DIR,
-#                      experiment_config["experiment_config"]["algorithm_config"]))
-#     elite_map_config = toml.load(
-#         os.path.join(LSI_CONFIG_MAP_DIR,
-#                      experiment_config["experiment_config"]["elite_map_config"]))
-#     agent_configs = []
-#     for agent_config_file in experiment_config["agent_config"]:
-#         agent_config = toml.load(
-#         os.path.join(LSI_CONFIG_AGENT_DIR, experiment_config["experiment_config"]["agent_config"]))
-#         agent_configs.append(agent_config)
-#     return experiment_config, algorithm_config, elite_map_config, agent_configs
+def search_extreme_cells(elite_map, features)
+    feature_combs = combinations(range(0,len(features)), 2):
+    f_extreme_bound = []
+    for i in range(len(feature_combs)):
+        f_extreme_bound.append([[np.inf, np.inf], [np.inf, -np.inf], [-np.inf, np.inf], [-np.inf, -np.inf]]) # four extreme corners [(0,0), (0, max), (max, 0), (max, max)]
+    f_extreme_bound = np.array(f_extreme_bound) # lenght should be the amount of 2d plots
+    print('f_extreme_bound shape =', f_extreme_bound.shape())
+
+    for elite in elite_map:
+        splited = elite.split(":")
+        curr_row_idx = int(splited[0])
+        curr_col_idx = int(splited[1])
+        curr_mat_idx = int(splited[2])
+
+        for i in feature_comb in enumerate(feature_combs): # for each 2d plot, find 4 corners
+            curr_row = int(splited[feature_comb[0]])
+            curr_col = int(splited[feature_comb[1]])
+
+            # find (0,0)
+            low_left_row, low_left_col = f_extreme_bound[i][0]
+            if curr_row < low_left_row:
+                low_left_row = curr_row
+                low_left_col = curr_col
+            elif curr_row == low_left_row:
+                if curr_col < low_left_col:
+                    low_left_row = curr_row
+                    low_left_col = curr_col
+            f_extreme_bound[i][0][0] = low_left_row
+            f_extreme_bound[i][0][1] = low_left_col  
+
+            # find (0,max)
+            low_left_row, up_left_col = f_extreme_bound[i][1]
+            if curr_row < low_left_row:
+                low_left_row = curr_row
+                up_left_col = curr_col
+            elif curr_row == low_left_row:
+                if curr_col > up_left_col:
+                    low_left_row = curr_row
+                    up_left_col = curr_col
+            f_extreme_bound[i][1][0] = low_left_row
+            f_extreme_bound[i][1][1] = up_left_col  
+
+            # find (max, 0)
+            up_row, low_col = f_extreme_bound[i][2]
+            if curr_col < low_col:
+                up_row = curr_row
+                low_col = curr_col
+            elif curr_col == low_col:
+                if curr_row > up_row:
+                    up_row = curr_row
+                    low_col = curr_col
+            f_extreme_bound[i][2][0] = up_row
+            f_extreme_bound[i][2][1] = low_col  
+
+
 
 
 def retrieve_k_individuals(experiment_config, elite_map_config, agent_configs, individuals, row_idx, col_idx, mat_idx, log_dir, k):
@@ -49,7 +91,7 @@ def retrieve_k_individuals(experiment_config, elite_map_config, agent_configs, i
     feature2_name = features[2]["name"]
 
 
-    num_individuals = num_simulations * 52
+    num_individuals = num_simulations * 51
     relevant_individuals = []
     for indx in range(num_individuals):
         individual = individuals.iloc[indx]

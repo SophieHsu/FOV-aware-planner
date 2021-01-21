@@ -39,6 +39,14 @@ def log_actions(ind, agent_config, log_dir, f1, f2, row_idx, col_idx, ind_id):
             "name"] == "human_aware_agent":
         log_file = "human_aware"
 
+    elif agent1_config["name"] == "mdp_agent" and agent2_config[
+            "name"] == "greedy_agent":
+        log_file = "mdp_"
+
+    elif agent1_config["name"] == "qmdp_agent" and agent2_config[
+            "name"] == "greedy_agent":
+        log_file = "qmdp_"
+
     log_file += ("_joint_actions_"+str(f1)+"_"+str(f2)+"_"+str(row_idx)+"_"+str(col_idx)+"_"+str(ind_id)+".json")
     full_path = os.path.join(log_dir, log_file)
     if os.path.exists(full_path):
@@ -69,17 +77,20 @@ def play(elite_map, agent_configs, individuals, f1, f2, row_idx, col_idx,
         row_idx, col_idx (int, int): index of the cell in the elite map
     """
     ind_id = int(ind_id)
-    lvl_str = individuals["lvl_str"][ind_id]
+    ind_id_index = ind_id*51
+    lvl_str = individuals["lvl_str"][ind_id_index]
     print("Playing in individual %d" % ind_id)
     print(lvl_str)
     ind = Individual()
     ind.level = lvl_str
-    ind.human_preference = individuals["human_preference"][ind_id]
-    ind.human_adaptiveness = individuals["human_adaptiveness"][ind_id]
-    ind.rand_seed = individuals["rand_seed"][ind_id]
+    ind.human_preference = individuals["human_preference"][ind_id_index]
+    ind.human_adaptiveness = individuals["human_adaptiveness"][ind_id_index]
+    ind.rand_seed = int(individuals["rand_seed"][ind_id_index])
+    print(ind.rand_seed)
     for agent_config in agent_configs:
-        fitness, _, _, _, ind.joint_actions, _, _ = run_overcooked_game(ind, agent_config, render=False)
-        print("Fitness: %d" % fitness)
+        print(agent_config["Agent1"], agent_config["Agent2"])
+        fitness, _, _, _, ind.joint_actions, _, _ = run_overcooked_game(ind, agent_config, render=True)
+        print("Fitness:", fitness)
         log_actions(ind, agent_config, log_dir, f1, f2, row_idx, col_idx, ind_id)
     return
 
@@ -119,6 +130,11 @@ if __name__ == "__main__":
                         help='id of the individual',
                         required=False,
                         default=1)
+    parser.add_argument('-m',
+                        '--mode',
+                        help='analyze heat map mode',
+                        required=False,
+                        default=False)
 
     opt = parser.parse_args()
 
