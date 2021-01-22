@@ -94,7 +94,6 @@ def play(elite_map,
             for "render": the script merely render the level
             for "replay": the script rerun the game
     """
-    print(is_3d)
     for elite in elite_map:
         splited = elite.split(":")
         curr_row_idx = int(splited[0])
@@ -175,7 +174,6 @@ if __name__ == "__main__":
     is_3d = True
     if opt.matrix_idx is None:
         is_3d = False
-    print(is_3d)
     # read in full elite map
     log_dir = opt.log_dir
     elite_map_log_file = os.path.join(log_dir, "elite_map.csv")
