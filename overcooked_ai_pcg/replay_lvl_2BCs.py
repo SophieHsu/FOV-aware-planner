@@ -29,7 +29,7 @@ from overcooked_ai_pcg.helper import read_in_lsi_config, init_env_and_agent
 #     return experiment_config, algorithm_config, elite_map_config, agent_configs
 
 
-def retrieve_k_individuals(experiment_config, elite_map_config, agent_configs, individuals, row_idx, col_idx, mat_idx, log_dir, k):
+def retrieve_k_individuals(experiment_config, elite_map_config, agent_configs, individuals, row_idx, col_idx, log_dir, k):
 
     #from IPython import embed
     #embed()
@@ -46,7 +46,7 @@ def retrieve_k_individuals(experiment_config, elite_map_config, agent_configs, i
     )
     feature0_name = features[0]["name"]
     feature1_name = features[1]["name"]
-    feature2_name = features[2]["name"]
+    #feature2_name = features[2]["name"]
 
 
     num_individuals = num_simulations * 52
@@ -59,16 +59,16 @@ def retrieve_k_individuals(experiment_config, elite_map_config, agent_configs, i
         if (np.isnan(individual["ID"])==False): 
              feature0 = individual[feature0_name]
              feature1 = individual[feature1_name]
-             feature2 = individual[feature2_name]
+             #feature2 = individual[feature2_name]
              ind = Individual()
-             ind.features = ([feature0], [feature1], [feature2])
+             ind.features = ([feature0], [feature1])
              #from IPython import embed
              #em3bed()
 
              ind.fitness = individual["fitness"]
              index = feature_map.get_index(ind)
 
-             if index[0] == row_idx and index[1] == col_idx and index[2] == mat_idx: 
+             if index[0] == row_idx and index[1] == col_idx: 
                 relevant_individuals.append(individual)
 
     sorted_individuals = sorted(relevant_individuals, key=lambda x: x.fitness)[::-1]
@@ -89,17 +89,18 @@ def play_individual(individual, agent_configs):
     agent1, agent2, env, mdp = init_env_and_agent(ind, agent_configs[-1])
 
     for agent_config in agent_configs:
-        fitness, _, _, _, ind.joint_actions, _, _ = run_overcooked_game(ind, agent_config, render=True)
+        fitnesses, _, _, _, joint_actionses, concurr_actives, stuck_times = run_overcooked_game(ind, agent_config, render=True)
+        print("Fitness: {}".format(fitnesses))
+        print("Concurrently active:", concurr_actives, "; Stuck time:", stuck_times)
+        #from IPython import embed
+        #embed()
     return
 
-    print("Fitness: {}; Total sparse reward: {};".format(ind.fitness, ind.scores))
-    print("Checkpoints", ind.checkpoints)
-    print("Workloads:", ind.player_workloads, "; Concurrently active:", ind.concurr_active, "; Stuck time:", ind.stuck_time)
 
     return
 
 
-def play(elite_map, agent_configs, individuals, row_idx, col_idx, mat_idx, log_dir):
+def play(elite_map, agent_configs, individuals, row_idx, col_idx, log_dir):
     """
     Find the individual in the specified cell in the elite map
     and run overcooked game with the specified agents
@@ -117,21 +118,20 @@ def play(elite_map, agent_configs, individuals, row_idx, col_idx, mat_idx, log_d
         splited = elite.split(":")
         curr_row_idx = int(splited[0])
         curr_col_idx = int(splited[1])
-        curr_mat_idx = int(splited[2])
+        #curr_mat_idx = int(splited[2])
 
-        ind_id = int(splited[3])
+        ind_id = int(splited[2])
 
  
-        if curr_row_idx == row_idx and curr_col_idx == col_idx and curr_mat_idx == mat_idx:
+        if curr_row_idx == row_idx and curr_col_idx == col_idx:
 
 
-            ind_id = int(splited[3])*51
+            ind_id = int(splited[2])*51
             lvl_str = individuals["lvl_str"][ind_id]
             print("Playing in individual %d" % ind_id)
             print(lvl_str)
 
-            from IPython import embed
-            embed()
+
 
 
             ind = Individual()
@@ -145,16 +145,17 @@ def play(elite_map, agent_configs, individuals, row_idx, col_idx, mat_idx, log_d
             #theApp = App(env, agent1, agent2, rand_seed=ind.rand_seed, player_idx=0, slow_time=False)
             #ind.fitness, ind.scores, ind.checkpoints, ind.player_workloads, ind.joint_actions, ind.concurr_active, ind.stuck_time = theApp.on_execute()
             for agent_config in agent_configs:
-                fitness, _, _, _, ind.joint_actions, _, _ = run_overcooked_game(ind, agent_config, render=True)
-                #from IPython import embed
+                fitnesses, _, _, _, joint_actionses, concurr_actives, stuck_times = run_overcooked_game(ind, agent_config, render=True)
+                print("Fitness: {}".format(fitnesses))
+                print("Concurrently active:", concurr_actives, "; Stuck time:", stuck_times)                #from IPython import embed
                 #embed()
                 #print("Fitness: %d" % fitness[0])
                 #log_actions(ind, agent_config, log_dir, f1, f2, row_idx, col_idx, ind_id)
-            return
+            #return
 
-            print("Fitness: {}; Total sparse reward: {};".format(ind.fitness, ind.scores))
-            print("Checkpoints", ind.checkpoints)
-            print("Workloads:", ind.player_workloads, "; Concurrently active:", ind.concurr_active, "; Stuck time:", ind.stuck_time)
+            #print("Fitness: {}; Total sparse reward: {};".format(ind.fitness, ind.scores))
+            #print("Checkpoints", ind.checkpoints)
+            #print("Workloads:", ind.player_workloads, "; Concurrently active:", ind.concurr_active, "; Stuck time:", ind.stuck_time)
 
             #log_actions(ind, agent_configs[-1], log_dir, f1, f2, row_idx, col_idx, ind_id)
 
@@ -180,11 +181,6 @@ if __name__ == "__main__":
     parser.add_argument('-col',
                         '--col_idx',
                         help='index f2 in elite map',
-                        required=True)
-
-    parser.add_argument('-matrix',
-                        '--mat_idx',
-                        help='index f3 in elite map',
                         required=True)
 
     parser.add_argument('-id',
@@ -221,21 +217,20 @@ if __name__ == "__main__":
     # read in row/col index
     num_row = features[0]['resolution']
     num_col = features[1]['resolution']
-    num_mat = features[2]['resolution']
     row_idx = int(opt.row_idx)
     col_idx = int(opt.col_idx)
-    mat_idx = int(opt.mat_idx)
 
+    #from IPython import embed
+    #embed()
 
     assert (row_idx < num_row)
     assert (col_idx < num_col)
-    assert (mat_idx < num_mat)
 
-    play(elite_map, agent_configs, individuals, row_idx, col_idx, mat_idx, log_dir)
+    play(elite_map, agent_configs, individuals, row_idx, col_idx, log_dir)
  
     exit()
 
-    IDs, individuals  = retrieve_k_individuals(experiment_config, elite_map_config, agent_configs, individuals, row_idx, col_idx, mat_idx, log_dir,3)
+    IDs, individuals  = retrieve_k_individuals(experiment_config, elite_map_config, agent_configs, individuals, row_idx, col_idx, log_dir,3)
     for individual in individuals:
       play_individual(individual, agent_configs)
 

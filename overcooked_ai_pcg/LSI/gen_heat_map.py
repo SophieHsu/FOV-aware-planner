@@ -42,7 +42,7 @@ COLORMAP = "viridis"  # Colormap for everything.
 
 # Map settings.
 FITNESS_MIN = 0
-FITNESS_MAX = 20000
+FITNESS_MAX = 40000
 WORKLOAD_DIFFS_LOW = np.array([-6, -2, -2])
 WORKLOAD_DIFFS_HIGH = np.array([6, 2, 2])
 
@@ -132,14 +132,22 @@ def csv_data_to_pandas(
         # Adjust fitness.
         fitness = float(tokens[num_features + 1])
         if fitness == 1:
-            fitness = 0
-        elif 200_000 <= fitness < 400_000:
-            fitness -= 200_000
-        elif fitness >= 400_000:
-            fitness -= 390_000
+             fitness = 0
+        elif fitness < 200_000:
+              fitness -= 100_000
+        elif fitness <  300_000:
+              fitness -= 190_000
+        elif  fitness < 400_000:
+              fitness -= 280_000
+        else: 
+              fitness -= 370_000   
+         #elif 200_000 <= fitness < 400_000:
+         #    fitness -= 200_000
+         #elif fitness >= 400_000:
+         #    fitness -= 390_000
 
-        assert FITNESS_MIN == 0, \
-            "Fitness min should be 0 to have proper normalization"
+        # assert FITNESS_MIN == 0, \
+        #     "Fitness min should be 0 to have proper normalization"
         fitness /= FITNESS_MAX  # Normalization - assumes min is 0.
 
         if mode.use_3d():
@@ -296,6 +304,7 @@ def plot_heatmap(dataframe: Union[pd.DataFrame, Dict[int, pd.DataFrame]],
         ax[0].figure.tight_layout()
     else:
         # Mainly specialized for the 2D plots in the paper.
+
         sns.heatmap(dataframe,
                     annot=False,
                     cmap=COLORMAP,
@@ -304,16 +313,27 @@ def plot_heatmap(dataframe: Union[pd.DataFrame, Dict[int, pd.DataFrame]],
                     vmax=1,
                     square=True,
                     ax=ax,
-                    cbar_ax=cbar_ax)
-        ax.set_xticks([0.5, 20.5, 40.5, 60.5, 80.5, 100.5])
-        ax.set_yticks([0.5, 20.5, 40.5, 60.5, 80.5, 100.5])
-        ax.set_xticklabels([0, 20, 40, 60, 80, 100], rotation=0)
-        ax.set_yticklabels([0, 20, 40, 60, 80, 100][::-1])
+                    cbar_ax=cbar_ax,linewidths = 0.1, linecolor= (0,0,0))
+        #ax.set_xticks([0.5, 20.5, 40.5, 60.5, 80.5, 100.5])
+        #ax.set_yticks([0.5, 20.5, 40.5, 60.5, 80.5, 100.5])
+        # ax.set_xticks([0.5,20.5,40.5])
+        ax.set_xticks([0.5,10.5,20.5,30.5,40.5])
+        ax.set_xticklabels([0,10,20,30,40], rotation = 0)
+        #ax.set_yticks([0.5, 20,])
+        #ax.set_xticklabels([0, 20, 40], rotation=0)
+        
+
+        ax.set_yticks([0.5,10.5,20.5,30.5,40.5,50.5,60.5,70.5])
+        #ax.set_yticklabels([30,40,50,60,70,80,90,100][::-1])
+        ax.set_yticklabels([0,10,20,30,40,50,60,70][::-1])
+
+        #ax.set_yticklabels([0, 30, 60, 90][::-1])
         ax.set_ylabel(y_name, labelpad=12)
         ax.set_xlabel(x_name, labelpad=10)
         set_spines_visible(ax)
         ax.figure.tight_layout()
-
+        #from IPython import embed
+        #embed()
 
 def save_video(img_paths: List[str], video_path: str):
     """Creates a video from the given images."""
