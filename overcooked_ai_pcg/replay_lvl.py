@@ -99,7 +99,6 @@ def play(elite_map,
             for "render": the script merely render the level
             for "replay": the script rerun the game
     """
-    print(is_3d)
     for elite in elite_map:
         splited = elite.split(":")
         curr_row_idx = int(splited[0])
@@ -111,7 +110,7 @@ def play(elite_map,
             ind_id = int(splited[num_features])
             ind_idx = ind_id*num_sim
             lvl_str = individuals["lvl_str"][ind_idx]
-            print("Playing in individual %d" % ind_idx)
+            print("Playing in individual %d" % ind_id)
             print(lvl_str)
             ind = Individual()
             ind.level = lvl_str
@@ -120,14 +119,7 @@ def play(elite_map,
             ind.rand_seed = individuals["rand_seed"][ind_idx]
             if mode == "replay":
                 for agent_config in agent_configs:
-                    fitness, _, _, _, ind.joint_actions, _, _ = run_overcooked_game(
-                        ind.level,
-                        agent_config,
-                        ind.human_preference,
-                        ind.human_adaptiveness,
-                        ind.rand_seed,
-                        render=True,
-                    )
+                    fitness, _, _, _, ind.joint_actions, _, _ = run_overcooked_game(ind, agent_config, render=True)
                     print("Fitness: %d" % fitness)
             elif mode == "render":
                 visualize_lvl(
@@ -165,8 +157,7 @@ if __name__ == "__main__":
                         ',
                         required=False)
     parser.add_argument('-mode',
-                        help='index f3 in elite map. If this is passed in, the\
-                        script would attempt to get individual from 3D archive.\
+                        help='render or replay the level\
                         ',
                         required=False,
                         default="replay")
@@ -220,21 +211,21 @@ if __name__ == "__main__":
     assert (f2 < num_features)
 
     # read in row/col index
-    num_row = features[0]['resolution']
-    num_col = features[1]['resolution']
-    num_mat = features[2]['resolution']
+    # num_row = features[0]['resolution']
+    # num_col = features[1]['resolution']
+    # num_mat = features[2]['resolution']
     row_idx = int(opt.row_idx)
     col_idx = int(opt.col_idx)
-    assert (row_idx < num_row)
-    assert (col_idx < num_col)
+    # assert (row_idx < num_row)
+    # assert (col_idx < num_col)
 
     # number of simulations for one level map to row number in log files
     num_sim = 1
-    if opt.num_sim > 1:
-        num_sim = opt.num_sim + 1 # extra row for logging average/mode
+    if int(opt.num_sim) > 1:
+        num_sim = int(opt.num_sim) + 1 # extra row for logging average/mode
     
     # play_ind_id(elite_map, agent_configs, individuals, f1, f2, row_idx, col_idx, log_dir, opt.ind_id, num_sim)
-
+    mat_idx = None
     if is_3d:
         mat_idx = int(opt.matrix_idx)
         assert (mat_idx < num_mat)
@@ -245,7 +236,7 @@ if __name__ == "__main__":
          log_dir,
          row_idx,
          col_idx,
-         mat_idx,
+         mat_idx=mat_idx,
          is_3d=is_3d,
          mode=opt.mode, 
          num_sim=num_sim)
