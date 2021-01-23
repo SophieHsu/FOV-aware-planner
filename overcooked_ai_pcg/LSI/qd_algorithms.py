@@ -309,9 +309,9 @@ class MapElitesBaselineAlgorithm(QDAlgorithmBase):
                 ind.unrepaired_lvl[x][y] = np.random.randint(num_obj_type)
 
             # mutate human params directly
-            ind.human_preference += parent.human_preference + \
+            ind.human_preference = parent.human_preference + \
                 np.random.normal(0.0, self.mutation_power)
-            ind.human_adaptiveness += parent.human_adaptiveness + \
+            ind.human_adaptiveness = parent.human_adaptiveness + \
                 np.random.normal(0.0, self.mutation_power)
 
         ind.human_preference = np.clip(ind.human_preference, 0.0, 1.0)

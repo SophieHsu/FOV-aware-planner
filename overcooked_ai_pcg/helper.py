@@ -4,6 +4,7 @@ import torch
 import toml
 import pickle
 import numpy as np
+from statistics import median
 from matplotlib import pyplot as plt
 from overcooked_ai_py.mdp.graphics import render_from_grid
 from overcooked_ai_py.mdp.overcooked_mdp import OvercookedGridworld
@@ -396,9 +397,9 @@ def run_overcooked_game(ind, agent_config, render=True, worker_id=0, num_iters=1
 
     if num_iters > 1:
         checkpointses = np.array(checkpointses)
-        fitnesses.append(np.median(fitnesses))
-        total_sparse_rewards.append(np.median(total_sparse_rewards))
-        checkpoint = [np.median(checkpointses[:,i]) for i in range(len(checkpointses[0]))]
+        fitnesses.append(median(fitnesses))
+        total_sparse_rewards.append(sum(total_sparse_rewards)/len(total_sparse_rewards))
+        checkpoint = [sum(checkpointses[:,i])/len(checkpointses[:,i]) for i in range(len(checkpointses[0]))]
         checkpointses = np.append(checkpointses, [checkpoint], axis=0)
         workloadses.append(get_workload_avg(workloadses))
         concurr_actives.append(np.median(concurr_actives))
@@ -460,9 +461,9 @@ def get_workload_avg(workloadses):
         b /= len(workloadses)
         c /= len(workloadses)
         avg_workloads.append({
-            "num_ingre_held": a,
-            "num_plate_held": b,
-            "num_served": c,
+            "num_ingre_held": round(a),
+            "num_plate_held": round(b),
+            "num_served": round(c),
         })
     return avg_workloads
 

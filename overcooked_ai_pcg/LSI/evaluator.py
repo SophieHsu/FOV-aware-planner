@@ -44,13 +44,14 @@ def run_overcooked_eval(ind, visualize, elite_map_config, agent_configs,
     """
     # generate new level
     try:
-        # if algorithm is MAp-Elites-Baseline, the unrepaired level should be
+        # if algorithm is MAP-Elites-Baseline, the unrepaired level should be
         # already generated in the algorithm
         if algorithm_config["name"] == "MAPELITES-BASE":
             ind.level = generate_lvl(
                 1,
                 lvl_int_unrepaired=ind.unrepaired_lvl,
                 worker_id=worker_id,
+                lvl_size=lvl_size,
                 mode="random",
             )
         else:

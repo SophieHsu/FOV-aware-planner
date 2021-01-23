@@ -276,6 +276,7 @@ class OvercookedEnv(object):
         done = False
         start_time = time.time()
         if display: print(self)
+
         while not done:
             s_t = self.state
 
@@ -294,7 +295,7 @@ class OvercookedEnv(object):
             if self.t > 3000:
                 break
 
-            print("Time spent: {}".format(time.time()-start_time))
+            # print("Time spent: {}".format(time.time()-start_time))
             # tmp = input()
             
         assert len(trajectory) == self.t, "{} vs {}".format(len(trajectory), self.t)

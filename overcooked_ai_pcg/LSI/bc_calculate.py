@@ -74,7 +74,7 @@ def diff_num_ingre_held(ind):
 
         #replace avg with median of workloads
         median_diff = np.median(workload_diff[:-1])
-        workload_diff[-1] = median_diff
+        workload_diff[-1] = round(median_diff)
 
         return workload_diff
     else:
@@ -90,9 +90,7 @@ def diff_num_plate_held(ind):
 
         #replace avg with median of workloads
         median_diff = np.median(workload_diff[:-1])
-        workload_diff[-1] = median_diff
-
-
+        workload_diff[-1] = round(median_diff)
         return workload_diff
     else:
         return workloads[0]["num_plate_held"] - workloads[1]["num_plate_held"]
@@ -107,7 +105,7 @@ def diff_num_dish_served(ind):
 
         #replace avg with median of workloads
         median_diff = np.median(workload_diff[:-1])
-        workload_diff[-1] = median_diff
+        workload_diff[-1] = round(median_diff)
 
         return workload_diff
     else:
