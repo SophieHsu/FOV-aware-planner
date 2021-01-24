@@ -7,12 +7,14 @@ import argparse
 import pandas as pd
 import pygame
 import numpy as np
+import pickle 
 
 from overcooked_ai_pcg import LSI_CONFIG_EXP_DIR, LSI_LOG_DIR, LSI_CONFIG_ALGO_DIR, LSI_CONFIG_MAP_DIR, LSI_CONFIG_AGENT_DIR
 from overcooked_ai_pcg.helper import run_overcooked_game, read_in_lsi_config
 from overcooked_ai_pcg.LSI.qd_algorithms import Individual, FeatureMap
 from overcooked_ai_pcg.helper import read_in_lsi_config, init_env_and_agent
- 
+from overcooked_ai_py.mdp.overcooked_env import OvercookedEnv
+
 # def read_in_lsi_config(exp_config_file):
 #     experiment_config = toml.load(exp_config_file)
 #     algorithm_config = toml.load(
@@ -29,7 +31,7 @@ from overcooked_ai_pcg.helper import read_in_lsi_config, init_env_and_agent
 #     return experiment_config, algorithm_config, elite_map_config, agent_configs
 
 
-def retrieve_k_individuals(experiment_config, elite_map_config, agent_configs, individuals, row_idx, col_idx, log_dir, k):
+def retrieve_k_individuals(experiment_config, elite_map_config, agent_configs, individuals, row_idx, col_idx, mat_idx, log_dir, k):
 
     #from IPython import embed
     #embed()
@@ -46,7 +48,7 @@ def retrieve_k_individuals(experiment_config, elite_map_config, agent_configs, i
     )
     feature0_name = features[0]["name"]
     feature1_name = features[1]["name"]
-    #feature2_name = features[2]["name"]
+    feature2_name = features[2]["name"]
 
 
     num_individuals = num_simulations * 52
@@ -59,16 +61,16 @@ def retrieve_k_individuals(experiment_config, elite_map_config, agent_configs, i
         if (np.isnan(individual["ID"])==False): 
              feature0 = individual[feature0_name]
              feature1 = individual[feature1_name]
-             #feature2 = individual[feature2_name]
+             feature2 = individual[feature2_name]
              ind = Individual()
-             ind.features = ([feature0], [feature1])
+             ind.features = ([feature0], [feature1], [feature2])
              #from IPython import embed
              #em3bed()
 
              ind.fitness = individual["fitness"]
              index = feature_map.get_index(ind)
 
-             if index[0] == row_idx and index[1] == col_idx: 
+             if index[0] == row_idx and index[1] == col_idx and index[2] == mat_idx: 
                 relevant_individuals.append(individual)
 
     sorted_individuals = sorted(relevant_individuals, key=lambda x: x.fitness)[::-1]
@@ -89,12 +91,145 @@ def play_individual(individual, agent_configs):
     agent1, agent2, env, mdp = init_env_and_agent(ind, agent_configs[-1])
 
     for agent_config in agent_configs:
-        fitnesses, _, _, _, joint_actionses, concurr_actives, stuck_times = run_overcooked_game(ind, agent_config, render=True)
-        print("Fitness: {}".format(fitnesses))
-        print("Concurrently active:", concurr_actives, "; Stuck time:", stuck_times)
-        #from IPython import embed
-        #embed()
+        fitness, _, _, _, ind.joint_actions, _, _ = run_overcooked_game(ind, agent_config, render=True)
     return
+
+    print("Fitness: {}; Total sparse reward: {};".format(ind.fitness, ind.scores))
+    print("Checkpoints", ind.checkpoints)
+    print("Workloads:", ind.player_workloads, "; Concurrently active:", ind.concurr_active, "; Stuck time:", ind.stuck_time)
+
+    return
+
+class GameConfigLog:
+    def __init__(self, log_dir, filename):
+        self.db = {}
+        self.full_path = os.path.join(log_dir, filename+'.pkl')
+
+    def addData(self, keys, values):
+        for key, value in zip(keys, values):
+            self.db[key] = value 
+
+    def storeData(self): 
+        dbfile = open(self.full_path, 'wb') 
+        pickle.dump(self.db, dbfile)                      
+        dbfile.close() 
+      
+    def loadData(self): 
+        # for reading also binary mode is important 
+        dbfile = open(self.full_path, 'rb')      
+        self.db = pickle.load(dbfile) 
+        agent1 = self.db['agent1']
+        agent2 = self.db['agent2']
+        mdp = self.db['mdp']
+        dbfile.close() 
+
+        return agent1, agent2, mdp
+
+    def is_exist(self):
+        return os.path.exists(self.full_path)
+
+
+def run_overcooked_local(agent1, agent2, env, mdp, render=True, worker_id=0, num_iters=1):
+    """
+    Run one turn of overcooked game and return the sparse reward as fitness
+    """
+    fitnesses = []; total_sparse_rewards = []; checkpointses = []; workloadses = []; 
+    joint_actionses = []; concurr_actives = []; stuck_times = []
+    np.random.seed(0)
+
+    for num_iter in range(num_iters):
+        done = False
+        total_sparse_reward = 0
+        last_state = None
+        timestep = 0
+
+        # Saves when each soup (order) was delivered
+        checkpoints = [env.horizon - 1] * env.num_orders
+        cur_order = 0
+
+        # store all actions
+        joint_actions = []
+
+        while not done:
+            if render:
+                env.render()
+                time.sleep(0.5)
+            joint_action = (agent1.action(env.state)[0],
+                            agent2.action(env.state)[0])
+            # print(joint_action)
+            joint_actions.append(joint_action)
+            next_state, timestep_sparse_reward, done, info = env.step(joint_action)
+            total_sparse_reward += timestep_sparse_reward
+
+            if timestep_sparse_reward > 0:
+                checkpoints[cur_order] = timestep
+                cur_order += 1
+
+            last_state  = next_state
+            timestep += 1
+
+        workloads = last_state.get_player_workload()
+        concurr_active = last_state.cal_concurrent_active_sum()
+        stuck_time = last_state.cal_total_stuck_time()
+
+        # Smooth fitness is the total reward tie-broken by soup delivery times.
+        # Later soup deliveries are higher priority.
+        fitness = total_sparse_reward + 1
+        for timestep in reversed(checkpoints):
+            fitness *= env.horizon
+            fitness -= timestep
+
+
+        #print("fitness is: " + str(fitness))
+
+        fitnesses.append(fitness)
+        total_sparse_rewards.append(total_sparse_reward)
+        checkpointses.append(checkpoints)
+        workloadses.append(workloads)
+        joint_actionses.append(joint_actions)
+        concurr_actives.append(concurr_active)
+        stuck_times.append(stuck_time)
+
+        #env = reset_env_from_mdp(mdp)
+
+    #if agent_config["Search"]["multi_iter"] == False:
+        fitnesses = [fitnesses[0] for i in range(num_iters)]
+        total_sparse_rewards = [total_sparse_rewards[0] for i in range(num_iters)]
+        checkpointses = [checkpointses[0] for i in range(num_iters)]
+        workloadses = [workloadses[0] for i in range(num_iters)]
+        joint_actionses = [joint_actionses[0] for i in range(num_iters)]
+        concurr_actives = [concurr_actives[0] for i in range(num_iters)]
+        stuck_times = [stuck_times[0] for i in range(num_iters)]
+
+    # if num_iters > 1:
+    #     checkpointses = np.array(checkpointses)
+    #     fitnesses.append(median(fitnesses))
+    #     total_sparse_rewards.append(sum(total_sparse_rewards)/len(total_sparse_rewards))
+    #     checkpoint = [sum(checkpointses[:,i])/len(checkpointses[:,i]) for i in range(len(checkpointses[0]))]
+    #     checkpointses = np.append(checkpointses, [checkpoint], axis=0)
+    #     workloadses.append(get_workload_avg(workloadses))
+    #     concurr_actives.append(np.median(concurr_actives))
+    #     stuck_times.append(np.median(stuck_times))
+    # if num_iters > 1:
+    #     checkpointses = np.array(checkpointses)
+    #     fitnesses.append(sum(fitnesses)/len(fitnesses))
+    #     total_sparse_rewards.append(sum(total_sparse_rewards)/len(total_sparse_rewards))
+    #     checkpoint = [sum(checkpointses[:,i])/len(checkpointses[:,i]) for i in range(len(checkpointses[0]))]
+    #     checkpointses = np.append(checkpointses, [checkpoint], axis=0)
+    #     workloadses.append(get_workload_avg(workloadses))
+    #     concurr_actives.append(sum(concurr_actives)/len(concurr_actives))
+    #     stuck_times.append(sum(stuck_times)/len(stuck_times))
+
+    # Free up some memory
+    # ind.fitnesses.append(fitness)
+    # ind.scores.append(total_sparse_reward)
+    # ind.checkpoints.append(checkpoints)
+    # ind.player_workloads.append(workloads)
+    # ind.joint_actions.append(joint_actions)
+
+
+
+    return fitnesses, total_sparse_rewards, checkpointses, workloadses, joint_actionses, concurr_actives, stuck_times
 
 
 
@@ -228,36 +363,7 @@ class App:
         return fitness, self.total_sparse_reward, self.checkpoints, workloads, self.joint_actions, concurr_active, stuck_time
 
 
-class GameConfigLog:
-    def __init__(self, log_dir, filename):
-        self.db = {}
-        self.full_path = os.path.join(log_dir, filename+'.pkl')
-
-    def addData(self, keys, values):
-        for key, value in zip(keys, values):
-            self.db[key] = value 
-
-    def storeData(self): 
-        dbfile = open(self.full_path, 'wb') 
-        pickle.dump(self.db, dbfile)                      
-        dbfile.close() 
-      
-    def loadData(self): 
-        # for reading also binary mode is important 
-        dbfile = open(self.full_path, 'rb')      
-        self.db = pickle.load(dbfile) 
-        agent1 = self.db['agent1']
-        agent2 = self.db['agent2']
-        mdp = self.db['mdp']
-        dbfile.close() 
-
-        return agent1, agent2, mdp
-
-    def is_exist(self):
-        return os.path.exists(self.full_path)
-
-
-def play(elite_map, agent_configs, individuals, row_idx, col_idx, log_dir, load_data):
+def play(elite_map, agent_configs, individuals, row_idx, col_idx, mat_idx, log_dir, load_data, agent_config_idx):
     """
     Find the individual in the specified cell in the elite map
     and run overcooked game with the specified agents
@@ -275,20 +381,21 @@ def play(elite_map, agent_configs, individuals, row_idx, col_idx, log_dir, load_
         splited = elite.split(":")
         curr_row_idx = int(splited[0])
         curr_col_idx = int(splited[1])
-        #curr_mat_idx = int(splited[2])
+        curr_mat_idx = int(splited[2])
 
-        ind_id = int(splited[2])
+        ind_id = int(splited[3])
 
  
-        if curr_row_idx == row_idx and curr_col_idx == col_idx:
+        if curr_row_idx == row_idx and curr_col_idx == col_idx and curr_mat_idx == mat_idx:
 
 
-            ind_id = int(splited[2])*51
+            ind_id = int(splited[3])*51
             lvl_str = individuals["lvl_str"][ind_id]
             print("Playing in individual %d" % ind_id)
             print(lvl_str)
 
-
+            #from IPython import embed
+            #embed()
 
 
             ind = Individual()
@@ -299,12 +406,10 @@ def play(elite_map, agent_configs, individuals, row_idx, col_idx, log_dir, load_
 
             log_file_name = str(row_idx) + "_" + str(col_idx) + "_" + str(mat_idx)+"_" + str(agent_configs[agent_config_idx]['Agent1']['name'])
 
-
-            #load_data_dir = os.path.join(log_dir, "stored_data/")
-            #log_file_name = str(row_)
-
             load_data_dir = os.path.join(log_dir, "stored_data/")
             game_log = GameConfigLog(load_data_dir, log_file_name)
+
+
 
             if load_data == 0: 
                 agent1, agent2, env, mdp = init_env_and_agent(ind, agent_configs[agent_config_idx])
@@ -315,23 +420,21 @@ def play(elite_map, agent_configs, individuals, row_idx, col_idx, log_dir, load_
                 env = OvercookedEnv.from_mdp(mdp, info_level=0, horizon=100)
 
 
-               #game_log = GameConfigLog(load_data_dir, log_file_name)
-
-
             #theApp = App(env, agent1, agent2, rand_seed=ind.rand_seed, player_idx=0, slow_time=False)
             #ind.fitness, ind.scores, ind.checkpoints, ind.player_workloads, ind.joint_actions, ind.concurr_active, ind.stuck_time = theApp.on_execute()
-            for agent_config in agent_configs:
-                fitnesses, _, _, _, joint_actionses, concurr_actives, stuck_times = run_overcooked_game(ind, agent_config, render=True)
-                print("Fitness: {}".format(fitnesses))
-                print("Concurrently active:", concurr_actives, "; Stuck time:", stuck_times)                #from IPython import embed
+            #for agent_config in agent_configs:
+            ind.fitness, ind.scores, ind.checkpoints, ind.player_workloads, ind.joint_actions, ind.concurr_active, ind.stuck_time= run_overcooked_local(agent1, agent2, env, mdp, render=True)
+            print("Fitness: {}".format(ind.fitness))
+            print("Concurrently active:", ind.concurr_active, "; Stuck time:", ind.stuck_time)                #from IPython import embed
+                #from IPython import embed
                 #embed()
                 #print("Fitness: %d" % fitness[0])
                 #log_actions(ind, agent_config, log_dir, f1, f2, row_idx, col_idx, ind_id)
             #return
 
-            #print("Fitness: {}; Total sparse reward: {};".format(ind.fitness, ind.scores))
-            #print("Checkpoints", ind.checkpoints)
-            #print("Workloads:", ind.player_workloads, "; Concurrently active:", ind.concurr_active, "; Stuck time:", ind.stuck_time)
+            print("Fitness: {}; Total sparse reward: {};".format(ind.fitness, ind.scores))
+            print("Checkpoints", ind.checkpoints)
+            print("Workloads:", ind.player_workloads, "; Concurrently active:", ind.concurr_active, "; Stuck time:", ind.stuck_time)
 
             #log_actions(ind, agent_configs[-1], log_dir, f1, f2, row_idx, col_idx, ind_id)
 
@@ -359,6 +462,11 @@ if __name__ == "__main__":
                         help='index f2 in elite map',
                         required=True)
 
+    parser.add_argument('-matrix',
+                        '--mat_idx',
+                        help='index f3 in elite map',
+                        required=True)
+
     parser.add_argument('-id',
                         '--ind_id',
                         help='id of the individual',
@@ -369,28 +477,24 @@ if __name__ == "__main__":
                         '--load_data',
                          help = 'load the data from pkl file',
                          required = False,
-                         default = False)
-
+                         default = 0)
 
     parser.add_argument('-agent_config_idx',
                          '--agent_config_idx',
                          help='index of agent config',
                          required = False,
                          default = -1)
-
     opt = parser.parse_args()
 
     # read in full elite map
     log_dir = opt.log_dir
+    load_data = int(opt.load_data)
     elite_map_log_file = os.path.join(log_dir, "elite_map.csv")
     elite_map_log = open(elite_map_log_file, 'r')
     all_rows = list(csv.reader(elite_map_log, delimiter=','))
     elite_map = all_rows[-1][1:]
     elite_map_log.close()
     agent_config_idx = int(opt.agent_config_idx)
-
-    load_data = opt.load_data
-
 
     # read in individuals
     individuals = pd.read_csv(os.path.join(log_dir, "individuals_log.csv"))
@@ -410,22 +514,23 @@ if __name__ == "__main__":
     # read in row/col index
     num_row = features[0]['resolution']
     num_col = features[1]['resolution']
+    num_mat = features[2]['resolution']
     row_idx = int(opt.row_idx)
     col_idx = int(opt.col_idx)
+    mat_idx = int(opt.mat_idx)
 
-    #from IPython import embed
-    #embed()
 
     assert (row_idx < num_row)
     assert (col_idx < num_col)
+    assert (mat_idx < num_mat)
 
     play(elite_map, agent_configs, individuals, row_idx, col_idx, mat_idx, log_dir, load_data, agent_config_idx)
  
     exit()
 
-    IDs, individuals  = retrieve_k_individuals(experiment_config, elite_map_config, agent_configs, individuals, row_idx, col_idx, log_dir,3)
-    for individual in individuals:
-      play_individual(individual, agent_configs)
+    #IDs, individuals  = retrieve_k_individuals(experiment_config, elite_map_config, agent_configs, individuals, row_idx, col_idx, mat_idx, log_dir,3)
+    #for individual in individuals:
+    #  play_individual(individual, agent_configs)
 
     #from IPython import embed
     #embed()

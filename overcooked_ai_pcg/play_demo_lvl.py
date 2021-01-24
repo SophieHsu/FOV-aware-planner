@@ -175,6 +175,8 @@ class GameConfigLog:
 def write_row(log_dir, to_add):
     """Append a row to csv file"""
     print(os.path.join(log_dir, 'human_exp_log.csv'))
+    from IPython import embed
+    embed
     with open(os.path.join(log_dir,'human_exp_log.csv'), 'a+') as f:
         writer = csv.writer(f)
         writer.writerow(to_add)
@@ -200,7 +202,8 @@ def gen_log_file_name(agent_config, f1, f2, row_idx, col_idx, ind_id):
     agent1_config = agent_config["Agent1"]
     agent2_config = agent_config["Agent2"]
 
-    log_file = "human_exp/human_w_"
+    #log_file = "human_exp/human_w_"
+    log_file = "human_exp/qmdp_"
 
     if agent1_config["name"] == "fixed_plan_agent" and agent2_config[
             "name"] == "fixed_plan_agent":
@@ -264,7 +267,8 @@ def play(agent_configs, individuals, f1, f2, row_idx, col_idx,
     ind.level = lvl_str
     ind.human_preference = individuals["human_preference"][ind_id]
     ind.human_adaptiveness = individuals["human_adaptiveness"][ind_id]
-    ind.rand_seed = individuals["rand_seed"][ind_id]
+    #ind.rand_seed = individuals["rand_seed"][ind_id]
+    ind.rand_seed = 0
     
     agent1 = None; agent2 = None; env = None
     game_log = GameConfigLog(bc_exp_dir, log_file_name)

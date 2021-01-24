@@ -7,12 +7,14 @@ import argparse
 import pandas as pd
 import pygame
 import numpy as np
+import pickle 
 
 from overcooked_ai_pcg import LSI_CONFIG_EXP_DIR, LSI_LOG_DIR, LSI_CONFIG_ALGO_DIR, LSI_CONFIG_MAP_DIR, LSI_CONFIG_AGENT_DIR
 from overcooked_ai_pcg.helper import run_overcooked_game, read_in_lsi_config
 from overcooked_ai_pcg.LSI.qd_algorithms import Individual, FeatureMap
 from overcooked_ai_pcg.helper import read_in_lsi_config, init_env_and_agent
- 
+from overcooked_ai_py.mdp.overcooked_env import OvercookedEnv
+
 # def read_in_lsi_config(exp_config_file):
 #     experiment_config = toml.load(exp_config_file)
 #     algorithm_config = toml.load(
@@ -29,57 +31,57 @@ from overcooked_ai_pcg.helper import read_in_lsi_config, init_env_and_agent
 #     return experiment_config, algorithm_config, elite_map_config, agent_configs
 
 
-def retrieve_k_individuals(experiment_config, elite_map_config, agent_configs, individuals, row_idx, col_idx, log_dir, k):
+# def retrieve_k_individuals(experiment_config, elite_map_config, agent_configs, individuals, row_idx, col_idx, log_dir, k):
 
-    #from IPython import embed
-    #embed()
+#     #from IPython import embed
+#     #embed()
 
-    num_simulations = experiment_config["num_simulations"
-    ]
-    feature_map = FeatureMap(
-        num_simulations,
-        feature_ranges=[(bc["low"], bc["high"])
-                        for bc in elite_map_config["Map"]["Features"]],
-        resolutions=[
-            bc["resolution"] for bc in elite_map_config["Map"]["Features"]
-        ],
-    )
-    feature0_name = features[0]["name"]
-    feature1_name = features[1]["name"]
-    #feature2_name = features[2]["name"]
+#     num_simulations = experiment_config["num_simulations"
+#     ]
+#     feature_map = FeatureMap(
+#         num_simulations,
+#         feature_ranges=[(bc["low"], bc["high"])
+#                         for bc in elite_map_config["Map"]["Features"]],
+#         resolutions=[
+#             bc["resolution"] for bc in elite_map_config["Map"]["Features"]
+#         ],
+#     )
+#     feature0_name = features[0]["name"]
+#     feature1_name = features[1]["name"]
+#     #feature2_name = features[2]["name"]
 
 
-    num_individuals = num_simulations * 52
-    relevant_individuals = []
-    for indx in range(num_individuals):
-        individual = individuals.iloc[indx]
-        if indx % 1000== 0:
-          print(indx)
+#     num_individuals = num_simulations * 52
+#     relevant_individuals = []
+#     for indx in range(num_individuals):
+#         individual = individuals.iloc[indx]
+#         if indx % 1000== 0:
+#           print(indx)
 
-        if (np.isnan(individual["ID"])==False): 
-             feature0 = individual[feature0_name]
-             feature1 = individual[feature1_name]
-             #feature2 = individual[feature2_name]
-             ind = Individual()
-             ind.features = ([feature0], [feature1])
-             #from IPython import embed
-             #em3bed()
+#         if (np.isnan(individual["ID"])==False): 
+#              feature0 = individual[feature0_name]
+#              feature1 = individual[feature1_name]
+#              #feature2 = individual[feature2_name]
+#              ind = Individual()
+#              ind.features = ([feature0], [feature1])
+#              #from IPython import embed
+#              #em3bed()
 
-             ind.fitness = individual["fitness"]
-             index = feature_map.get_index(ind)
+#              ind.fitness = individual["fitness"]
+#              index = feature_map.get_index(ind)
 
-             if index[0] == row_idx and index[1] == col_idx: 
-                relevant_individuals.append(individual)
+#              if index[0] == row_idx and index[1] == col_idx: 
+#                 relevant_individuals.append(individual)
 
-    sorted_individuals = sorted(relevant_individuals, key=lambda x: x.fitness)[::-1]
-    sorted_individuals = sorted_individuals[:k]
+#     sorted_individuals = sorted(relevant_individuals, key=lambda x: x.fitness)[::-1]
+#     sorted_individuals = sorted_individuals[:k]
 
-    IDs = []
-    for dd in range(k):
-      IDs.append(sorted_individuals[dd]["ID"])
+#     IDs = []
+#     for dd in range(k):
+#       IDs.append(sorted_individuals[dd]["ID"])
 
     
-    return IDs, sorted_individuals
+#     return IDs, sorted_individuals
 
 
 def play_individual(individual, agent_configs):
@@ -98,134 +100,90 @@ def play_individual(individual, agent_configs):
 
 
 
-class App:
-    """Class to run an Overcooked Gridworld game, leaving one of the players as fixed.
-    Useful for debugging. Most of the code from http://pygametutorials.wikidot.com/tutorials-basic."""
-    def __init__(self, env, agent, agent2, rand_seed, player_idx, slow_time):
-        self._running = True
-        self._display_surf = None
-        self.env = env
-        self.agent = agent
-        self.agent2 = agent2
-        self.agent_idx = player_idx
-        self.slow_time = slow_time
-        self.total_sparse_reward = 0
-        self.last_state = None
-        self.rand_seed = rand_seed
+def run_overcooked_local(agent1, agent2, env, mdp, render=True, worker_id=0, num_iters=1):
+    """
+    Run one turn of overcooked game and return the sparse reward as fitness
+    """
+    fitnesses = []; total_sparse_rewards = []; checkpointses = []; workloadses = []; 
+    joint_actionses = []; concurr_actives = []; stuck_times = []
+    np.random.seed(0)
+
+    for num_iter in range(num_iters):
+        done = False
+        total_sparse_reward = 0
+        last_state = None
+        timestep = 0
 
         # Saves when each soup (order) was delivered
-        self.checkpoints = [env.horizon - 1] * env.num_orders
-        self.cur_order = 0
-        self.timestep = 0
-        self.joint_actions = []
-        # print("Human player index:", player_idx)
+        checkpoints = [env.horizon - 1] * env.num_orders
+        cur_order = 0
 
-    def on_init(self):
-        pygame.init()
+        # store all actions
+        joint_actions = []
 
-        # Adding pre-trained agent as teammate
-        self.agent.set_agent_index(self.agent_idx)
-        self.agent.set_mdp(self.env.mdp)
-        self.agent2.set_agent_index(self.agent_idx+1)
-        self.agent2.set_mdp(self.env.mdp)
+        while not done:
+            if render:
+                env.render()
+                time.sleep(0.5)
+            joint_action = (agent1.action(env.state)[0],
+                            agent2.action(env.state)[0])
+            # print(joint_action)
+            joint_actions.append(joint_action)
+            next_state, timestep_sparse_reward, done, info = env.step(joint_action)
+            total_sparse_reward += timestep_sparse_reward
 
-        # print(self.env)
-        self.env.render()
-        self._running = True
-        np.random.seed(self.rand_seed)
+            if timestep_sparse_reward > 0:
+                checkpoints[cur_order] = timestep
+                cur_order += 1
 
-    def on_event(self, event):
-        done = False
-        next_state = None
+            last_state  = next_state
+            timestep += 1
 
-        if event.type == pygame.KEYDOWN:
-            pressed_key = event.dict['key']
-            action = None
+        workloads = last_state.get_player_workload()
+        concurr_active = last_state.cal_concurrent_active_sum()
+        stuck_time = last_state.cal_total_stuck_time()
 
-            if pressed_key == pygame.K_UP:
-                action = Direction.NORTH
-            elif pressed_key == pygame.K_RIGHT:
-                action = Direction.EAST
-            elif pressed_key == pygame.K_DOWN:
-                action = Direction.SOUTH
-            elif pressed_key == pygame.K_LEFT:
-                action = Direction.WEST
-            elif pressed_key == pygame.K_SPACE:
-                action = Action.INTERACT
-            elif pressed_key == pygame.K_s:
-                action = Action.STAY
-
-            if action in Action.ALL_ACTIONS:
-
-                done, next_state = self.step_env(action)
-
-                if self.slow_time and not done:
-                    for _ in range(2):
-                        action = Action.STAY
-                        done, next_state = self.step_env(action)
-                        if done:
-                            break
-
-        if event.type == pygame.QUIT or done:
-            # print("TOT rew", self.env.cumulative_sparse_rewards)
-            self._running = False
-            self.last_state = next_state
+        # Smooth fitness is the total reward tie-broken by soup delivery times.
+        # Later soup deliveries are higher priority.
+        fitness = total_sparse_reward + 1
+        for timestep in reversed(checkpoints):
+            fitness *= env.horizon
+            fitness -= timestep
 
 
-    def step_env(self, my_action):
-        agent_action = self.agent.action(self.env.state)[0]
-        agent2_action = self.agent2.action(self.env.state)[0]
+        #print("fitness is: " + str(fitness))
 
-        if self.agent_idx == 0:
-            joint_action = (my_action, agent2_action)
-        else:
-            joint_action = (agent2_action, my_action)
+        fitnesses.append(fitness)
+        total_sparse_rewards.append(total_sparse_reward)
+        checkpointses.append(checkpoints)
+        workloadses.append(workloads)
+        joint_actionses.append(joint_actions)
+        concurr_actives.append(concurr_active)
+        stuck_times.append(stuck_time)
 
-        self.joint_actions.append(joint_action)
-        next_state, timestep_sparse_reward, done, info = self.env.step(joint_action)
+        #env = reset_env_from_mdp(mdp)
 
-        if timestep_sparse_reward > 0:
-            self.checkpoints[self.cur_order] = self.timestep
-            self.cur_order += 1
+    #if agent_config["Search"]["multi_iter"] == False:
+    fitnesses = [fitnesses[0] for i in range(num_iters)]
+    total_sparse_rewards = [total_sparse_rewards[0] for i in range(num_iters)]
+    checkpointses = [checkpointses[0] for i in range(num_iters)]
+    workloadses = [workloadses[0] for i in range(num_iters)]
+    joint_actionses = [joint_actionses[0] for i in range(num_iters)]
+    concurr_actives = [concurr_actives[0] for i in range(num_iters)]
+    stuck_times = [stuck_times[0] for i in range(num_iters)]
 
-        self.total_sparse_reward += timestep_sparse_reward
-        self.timestep += 1
+    # if num_iters > 1:
+    #     checkpointses = np.array(checkpointses)
+    #     fitnesses.append(median(fitnesses))
+    #     total_sparse_rewards.append(sum(total_sparse_rewards)/len(total_sparse_rewards))
+    #     checkpoint = [sum(checkpointses[:,i])/len(checkpointses[:,i]) for i in range(len(checkpointses[0]))]
+    #     checkpointses = np.append(checkpointses, [checkpoint], axis=0)
+    #     workloadses.append(get_workload_avg(workloadses))
+    #     concurr_actives.append(np.median(concurr_actives))
+    #     stuck_times.append(np.median(stuck_times))
 
-        # print(self.env)
-        self.env.render()
-        # print("Curr reward: (sparse)", timestep_sparse_reward, "\t(dense)", info["shaped_r_by_agent"])
-        # print(self.env.t)
-        return done, next_state
+    return fitnesses, total_sparse_rewards, checkpointses, workloadses, joint_actionses, concurr_actives, stuck_times
 
-    def on_loop(self):
-        pass
-    def on_render(self):
-        pass
-
-    def on_cleanup(self):
-        pygame.quit()
-
-    def on_execute(self):
-        if self.on_init() == False:
-            self._running = False
-
-        while( self._running ):
-            for event in pygame.event.get():
-                self.on_event(event)
-            self.on_loop()
-            self.on_render()
-        self.on_cleanup()
-
-        workloads = self.last_state.get_player_workload()
-        concurr_active = self.last_state.cal_concurrent_active_sum()
-        stuck_time = self.last_state.cal_total_stuck_time()
-
-        fitness = self.total_sparse_reward + 1
-        for checked_time in reversed(self.checkpoints):
-            fitness *= self.env.horizon
-            fitness -= checked_time
-
-        return fitness, self.total_sparse_reward, self.checkpoints, workloads, self.joint_actions, concurr_active, stuck_time
 
 
 class GameConfigLog:
@@ -257,7 +215,7 @@ class GameConfigLog:
         return os.path.exists(self.full_path)
 
 
-def play(elite_map, agent_configs, individuals, row_idx, col_idx, log_dir, load_data):
+def play(elite_map, agent_configs, individuals, row_idx, col_idx, log_dir, load_data, agent_config_idx):
     """
     Find the individual in the specified cell in the elite map
     and run overcooked game with the specified agents
@@ -297,7 +255,7 @@ def play(elite_map, agent_configs, individuals, row_idx, col_idx, log_dir, load_
             ind.human_adaptiveness = individuals["human_adaptiveness"][ind_id]
             ind.rand_seed = int(individuals["rand_seed"][ind_id])
 
-            log_file_name = str(row_idx) + "_" + str(col_idx) + "_" + str(mat_idx)+"_" + str(agent_configs[agent_config_idx]['Agent1']['name'])
+            log_file_name = str(row_idx) + "_" + str(col_idx) + "_" + str(agent_configs[agent_config_idx]['Agent1']['name'])
 
 
             #load_data_dir = os.path.join(log_dir, "stored_data/")
@@ -306,6 +264,8 @@ def play(elite_map, agent_configs, individuals, row_idx, col_idx, log_dir, load_
             load_data_dir = os.path.join(log_dir, "stored_data/")
             game_log = GameConfigLog(load_data_dir, log_file_name)
 
+           #from IPython import embed
+           #embed()
             if load_data == 0: 
                 agent1, agent2, env, mdp = init_env_and_agent(ind, agent_configs[agent_config_idx])
                 game_log.addData(["agent1", "agent2", "mdp"], [agent1, agent2, mdp])
@@ -321,9 +281,9 @@ def play(elite_map, agent_configs, individuals, row_idx, col_idx, log_dir, load_
             #theApp = App(env, agent1, agent2, rand_seed=ind.rand_seed, player_idx=0, slow_time=False)
             #ind.fitness, ind.scores, ind.checkpoints, ind.player_workloads, ind.joint_actions, ind.concurr_active, ind.stuck_time = theApp.on_execute()
             for agent_config in agent_configs:
-                fitnesses, _, _, _, joint_actionses, concurr_actives, stuck_times = run_overcooked_game(ind, agent_config, render=True)
-                print("Fitness: {}".format(fitnesses))
-                print("Concurrently active:", concurr_actives, "; Stuck time:", stuck_times)                #from IPython import embed
+                ind.fitness, ind.scores, ind.checkpoints, ind.player_workloads, ind.joint_actions, ind.concurr_active, ind.stuck_time  = run_overcooked_local(agent1, agent2, env, mdp, render=True)
+                print("Fitness: {}".format(ind.fitness))
+                print("Concurrently active:", ind.concurr_active, "; Stuck time:", ind.stuck_time)                #from IPython import embed
                 #embed()
                 #print("Fitness: %d" % fitness[0])
                 #log_actions(ind, agent_config, log_dir, f1, f2, row_idx, col_idx, ind_id)
@@ -369,7 +329,7 @@ if __name__ == "__main__":
                         '--load_data',
                          help = 'load the data from pkl file',
                          required = False,
-                         default = False)
+                         default = 0)
 
 
     parser.add_argument('-agent_config_idx',
@@ -389,7 +349,7 @@ if __name__ == "__main__":
     elite_map_log.close()
     agent_config_idx = int(opt.agent_config_idx)
 
-    load_data = opt.load_data
+    load_data = int(opt.load_data)
 
 
     # read in individuals
@@ -419,13 +379,13 @@ if __name__ == "__main__":
     assert (row_idx < num_row)
     assert (col_idx < num_col)
 
-    play(elite_map, agent_configs, individuals, row_idx, col_idx, mat_idx, log_dir, load_data, agent_config_idx)
+    play(elite_map, agent_configs, individuals, row_idx, col_idx, log_dir, load_data, agent_config_idx)
  
     exit()
 
-    IDs, individuals  = retrieve_k_individuals(experiment_config, elite_map_config, agent_configs, individuals, row_idx, col_idx, log_dir,3)
-    for individual in individuals:
-      play_individual(individual, agent_configs)
+    #IDs, individuals  = retrieve_k_individuals(experiment_config, elite_map_config, agent_configs, individuals, row_idx, col_idx, log_dir,3)
+    #for individual in individuals:
+    #  play_individual(individual, agent_configs)
 
     #from IPython import embed
     #embed()
