@@ -114,11 +114,8 @@ def play(elite_map,
             if mode == "replay":
                 for agent_config in agent_configs:
                     fitness, _, _, _, ind.joint_actions, _, _ = run_overcooked_game(
-                        ind.level,
+                        ind,
                         agent_config,
-                        ind.human_preference,
-                        ind.human_adaptiveness,
-                        ind.rand_seed,
                         render=True,
                     )
                     print("Fitness: %d" % fitness)

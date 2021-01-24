@@ -6,7 +6,7 @@ import json
 import toml
 import argparse
 import pandas as pd
-import pickle 
+import pickle
 import numpy as np
 from overcooked_ai_pcg import LSI_CONFIG_EXP_DIR, LSI_LOG_DIR, LSI_CONFIG_ALGO_DIR, LSI_CONFIG_MAP_DIR, LSI_CONFIG_AGENT_DIR
 from overcooked_ai_pcg.helper import read_in_lsi_config, init_env_and_agent
@@ -43,7 +43,7 @@ class App:
         # Adding pre-trained agent as teammate
         self.agent.set_agent_index(self.agent_idx)
         self.agent.set_mdp(self.env.mdp)
-        self.agent2.set_agent_index(self.agent_idx+1)
+        self.agent2.set_agent_index(self.agent_idx + 1)
         self.agent2.set_mdp(self.env.mdp)
 
         # print(self.env)
@@ -88,7 +88,6 @@ class App:
             self._running = False
             self.last_state = next_state
 
-
     def step_env(self, my_action):
         agent_action = self.agent.action(self.env.state)[0]
         agent2_action = self.agent2.action(self.env.state)[0]
@@ -99,7 +98,8 @@ class App:
             joint_action = (agent2_action, my_action)
 
         self.joint_actions.append(joint_action)
-        next_state, timestep_sparse_reward, done, info = self.env.step(joint_action)
+        next_state, timestep_sparse_reward, done, info = self.env.step(
+            joint_action)
 
         if timestep_sparse_reward > 0:
             self.checkpoints[self.cur_order] = self.timestep
@@ -116,6 +116,7 @@ class App:
 
     def on_loop(self):
         pass
+
     def on_render(self):
         pass
 
@@ -126,7 +127,7 @@ class App:
         if self.on_init() == False:
             self._running = False
 
-        while( self._running ):
+        while (self._running):
             for event in pygame.event.get():
                 self.on_event(event)
             self.on_loop()
@@ -144,86 +145,102 @@ class App:
 
         return fitness, self.total_sparse_reward, self.checkpoints, workloads, self.joint_actions, concurr_active, stuck_time
 
+
 class GameConfigLog:
-    def __init__(self, log_dir, filename):
+    def __init__(self, bc_exp_dir, filename):
         self.db = {}
-        self.full_path = os.path.join(log_dir, filename+'.pkl')
+        self.full_path = os.path.join(bc_exp_dir, filename + '.pkl')
 
     def addData(self, keys, values):
         for key, value in zip(keys, values):
-            self.db[key] = value 
+            self.db[key] = value
 
-    def storeData(self): 
-        dbfile = open(self.full_path, 'wb') 
-        pickle.dump(self.db, dbfile)                      
-        dbfile.close() 
-      
-    def loadData(self): 
-        # for reading also binary mode is important 
-        dbfile = open(self.full_path, 'rb')      
-        self.db = pickle.load(dbfile) 
+    def storeData(self):
+        dbfile = open(self.full_path, 'wb')
+        pickle.dump(self.db, dbfile)
+        dbfile.close()
+
+    def loadData(self):
+        # for reading also binary mode is important
+        dbfile = open(self.full_path, 'rb')
+        self.db = pickle.load(dbfile)
         agent1 = self.db['agent1']
         agent2 = self.db['agent2']
         mdp = self.db['mdp']
-        dbfile.close() 
+        dbfile.close()
 
         return agent1, agent2, mdp
 
     def is_exist(self):
         return os.path.exists(self.full_path)
 
+
 def write_row(log_dir, to_add):
     """Append a row to csv file"""
-    print(os.path.join(log_dir, 'human_exp_log.csv'))
-    with open(os.path.join(log_dir,'human_exp_log.csv'), 'a+') as f:
+    # print(os.path.join(log_dir, 'human_exp_log.csv'))
+    with open(os.path.join(log_dir, 'human_exp_log.csv'), 'a+') as f:
         writer = csv.writer(f)
         writer.writerow(to_add)
         f.close()
 
-def init_log(log_dir):
-        # remove the file if exists
-        if os.path.exists(os.path.join(log_dir, 'human_exp_log.csv')):
-            os.remove(os.path.join(log_dir, 'human_exp_log.csv'))
 
-        # construct labels
-        data_labels = ["ID", "feature 1", "feature 2", "row index", "column index", "joint actions", "fitness"]
-        # We need to be told how many orders we have
-        # data_labels += [
-        #     "scores", "order_delivered(1)", "order_delivered(2)", "player_workloads", "concurr_active", "stuck_time", "random seed", "lvl_str"
-        # ]
-        data_labels += [
-            "scores", "order_delivered", "player_workloads", "concurr_active", "stuck_time", "random seed", "lvl_str"
-        ]
-        write_row(log_dir, data_labels)
+def init_log(log_dir):
+    # remove the file if exists
+    if os.path.exists(os.path.join(log_dir, 'human_exp_log.csv')):
+        os.remove(os.path.join(log_dir, 'human_exp_log.csv'))
+
+    # construct labels
+    data_labels = [
+        "ID", "feature 1", "feature 2", "row index", "column index",
+        "joint actions", "fitness"
+    ]
+    # We need to be told how many orders we have
+    data_labels += [
+        "scores", "order_delivered", "player_workloads", "concurr_active",
+        "stuck_time", "random seed", "lvl_str"
+    ]
+    write_row(log_dir, data_labels)
+
 
 def gen_log_file_name(agent_config, f1, f2, row_idx, col_idx, ind_id):
     agent1_config = agent_config["Agent1"]
     agent2_config = agent_config["Agent2"]
 
-    log_file = "human_exp/human_w_"
+    log_file = "human_w_"
 
     if agent1_config["name"] == "fixed_plan_agent" and agent2_config[
             "name"] == "fixed_plan_agent":
         log_file += "fixed_plan"
-
     elif agent1_config["name"] == "preferenced_human" and agent2_config[
             "name"] == "human_aware_agent":
         log_file += "human_aware"
+    elif agent1_config["name"] == "qmdp_agent" and agent2_config[
+            "name"] == "greedy_agent":
+        log_file += "qmdp"
+    elif agent1_config["name"] == "mdp_agent" and agent2_config[
+            "name"] == "greedy_agent":
+        log_file += "mdp"
+    else:
+        print("Agent configs not recognized. Please check your config file.")
 
-    log_file += ("_joint_actions_"+str(f1)+"_"+str(f2)+"_"+str(row_idx)+"_"+str(col_idx)+"_"+str(ind_id))
+    log_file += ("_joint_actions_" + str(f1) + "_" + str(f2) + "_" +
+                 str(row_idx) + "_" + str(col_idx) + "_" + str(ind_id))
 
     return log_file
 
-def log_actions(ind, agent_config, log_dir, individuals, f1, f2, row_idx, col_idx, ind_id, log_file_name):
-    
-    full_path = os.path.join(log_dir, log_file_name+'.json')
+
+def log_actions(ind, agent_config, log_dir, individuals, f1, f2, row_idx,
+                col_idx, ind_id, log_file_name):
+
+    full_path = os.path.join(log_dir, log_file_name + '.json')
     # if os.path.exists(full_path):
     #     print("Joint actions logged before, skipping...")
     #     return
 
     # log the joint actions if not logged before
     with open(full_path, "w") as f:
-        json.dump({
+        json.dump(
+            {
                 "joint_actions": ind.joint_actions,
                 "lvl_str": ind.level,
                 "fitness": ind.fitness,
@@ -236,14 +253,25 @@ def log_actions(ind, agent_config, log_dir, individuals, f1, f2, row_idx, col_id
             }, f)
         print("Joint actions saved")
 
-    write_row(log_dir, [ind_id, f1, f2, row_idx, col_idx, ind.joint_actions, ind.fitness, ind.scores, *ind.checkpoints, ind.player_workloads, ind.concurr_active, ind.stuck_time, ind.rand_seed, ind.level])
-    # write_row(log_dir, ["", "", "", "", "", "", individuals["fitness"][ind_id], individuals["score"][ind_id], individuals["order_delivered(1)"][ind_id], individuals["order_delivered(2)"][ind_id], individuals["player_workload"][ind_id]])#, individuals["concurr_active"][ind_id], individuals["stuck_time"][ind_id]])
-    write_row(log_dir, ["", "", "", "", "", "", individuals["fitness"][ind_id], individuals["score_preferenced_human_w_human_aware_agent"][ind_id], individuals["order_delivered_preferenced_human_w_human_aware_agent"][ind_id], individuals["player_workload_preferenced_human_w_human_aware_agent"][ind_id], individuals["cc_active"][ind_id], individuals["stuck_time"][ind_id]])
+    write_row(log_dir, [
+        ind_id, f1, f2, row_idx, col_idx, ind.joint_actions, ind.fitness,
+        ind.scores, *ind.checkpoints, ind.player_workloads, ind.concurr_active,
+        ind.stuck_time, ind.rand_seed, ind.level
+    ])
+
+    write_row(log_dir, [
+        "", "", "", "", "", "", individuals["fitness"][ind_id],
+        individuals["score_preferenced_human_w_human_aware_agent"][ind_id],
+        individuals["order_delivered_preferenced_human_w_human_aware_agent"]
+        [ind_id],
+        individuals["player_workload_preferenced_human_w_human_aware_agent"]
+        [ind_id], individuals["cc_active"][ind_id],
+        individuals["stuck_time"][ind_id]
+    ])
 
 
-
-def play(agent_configs, individuals, f1, f2, row_idx, col_idx,
-         log_dir, ind_id, log_file_name):
+def play(agent_configs, individuals, f1, f2, row_idx, col_idx, bc_exp_dir,
+         curr_exp_log_dir, log_file_name, ind_id):
     """
     Find the individual in the specified cell in the elite map
     and run overcooked game with the specified agents
@@ -265,8 +293,11 @@ def play(agent_configs, individuals, f1, f2, row_idx, col_idx,
     ind.human_preference = individuals["human_preference"][ind_id]
     ind.human_adaptiveness = individuals["human_adaptiveness"][ind_id]
     ind.rand_seed = individuals["rand_seed"][ind_id]
-    
-    agent1 = None; agent2 = None; env = None
+
+    agent1 = None
+    agent2 = None
+    env = None
+    # Not logging to the results directory because we want to reuse this.
     game_log = GameConfigLog(bc_exp_dir, log_file_name)
     if game_log.is_exist():
         agent1, agent2, mdp = game_log.loadData()
@@ -276,18 +307,50 @@ def play(agent_configs, individuals, f1, f2, row_idx, col_idx,
         game_log.addData(["agent1", "agent2", "mdp"], [agent1, agent2, mdp])
         game_log.storeData()
 
-    theApp = App(env, agent1, agent2, rand_seed=ind.rand_seed, player_idx=0, slow_time=False)
-    ind.fitness, ind.scores, ind.checkpoints, ind.player_workloads, ind.joint_actions, ind.concurr_active, ind.stuck_time = theApp.on_execute()
+    # theApp = App(env,
+    #              agent1,
+    #              agent2,
+    #              rand_seed=ind.rand_seed,
+    #              player_idx=0,
+    #              slow_time=False)
+    # ind.fitness, ind.scores, ind.checkpoints, ind.player_workloads, ind.joint_actions, ind.concurr_active, ind.stuck_time = theApp.on_execute(
+    # )
 
-    print("Fitness: {}; Total sparse reward: {};".format(ind.fitness, ind.scores))
-    print("Checkpoints", ind.checkpoints)
-    print("Workloads:", ind.player_workloads, "; Concurrently active:", ind.concurr_active, "; Stuck time:", ind.stuck_time)
+    # print("Fitness: {}; Total sparse reward: {};".format(
+    #     ind.fitness, ind.scores))
+    # print("Checkpoints", ind.checkpoints)
+    # print("Workloads:", ind.player_workloads, "; Concurrently active:",
+    #       ind.concurr_active, "; Stuck time:", ind.stuck_time)
 
-    log_actions(ind, agent_configs[-1], log_dir, individuals, f1, f2, row_idx, col_idx, ind_id, log_file_name)
+    # log_actions(ind, agent_configs[-1], curr_exp_log_dir, individuals, f1, f2,
+    #             row_idx, col_idx, ind_id, log_file_name)
 
-    return
 
-    print("No individual found in the specified cell")
+def create_human_exp_dir(extreme_bcs_dir, bc_exps):
+    """ Create human_exp/<exp_id> under log_dir/extreme_bcs. <exp_id> would be
+        determined by the first digit that does not exist under the human_exp
+        directory.
+
+        Returns:
+            Directory path to the exp result log folder.
+    """
+    human_exp_dir = os.path.join(extreme_bcs_dir, "human_exp_results")
+    if not os.path.isdir(human_exp_dir):
+        os.mkdir(human_exp_dir)
+
+    # increment from 0 to find a directory name that does not exist yet.
+    exp_dir = 0
+    while os.path.isdir(os.path.join(human_exp_dir, str(exp_dir))):
+        exp_dir += 1
+    exp_dir = os.path.join(human_exp_dir, str(exp_dir))
+    os.mkdir(exp_dir)
+
+    # create sub_dirs to store results for different bcs
+    for bc_exp in bc_exps:
+        exp_sub_dir = os.path.join(exp_dir, bc_exp)
+        if not os.path.isdir(exp_sub_dir):
+            os.mkdir(exp_sub_dir)
+    return exp_dir
 
 
 if __name__ == "__main__":
@@ -305,27 +368,34 @@ if __name__ == "__main__":
                         help='number of levels to play for each category',
                         required=False,
                         type=int,
-                        choices=range(1,6),
+                        choices=range(1, 6),
                         default=3)
 
     opt = parser.parse_args()
 
     # read in experiment config
     log_dir = opt.log_dir
-    exp_bcs_config = toml.load(os.path.join(log_dir, "extreme_bcs/exp_bc_config.tml"))
+    exp_bcs_config = toml.load(
+        os.path.join(log_dir, "extreme_bcs/exp_bc_config.tml"))
 
     # read in individuals
     individuals = pd.read_csv(os.path.join(log_dir, "individuals_log.csv"))
+    print(individuals['lvl_str'])
 
     # read in configs
     _, _, elite_map_config, agent_configs = read_in_lsi_config(opt.config)
     bc_exps = exp_bcs_config["demo_bcs"]["bc_names"]
 
+    # write all results to here
+    extreme_bcs_dir = os.path.join(log_dir, "extreme_bcs")
+    exp_log_dir = create_human_exp_dir(extreme_bcs_dir, bc_exps)
+
     for bc_exp in bc_exps:
-        bc_exp_dir = os.path.join(log_dir, "extreme_bcs/"+bc_exp)
-        init_log(bc_exp_dir)
+        curr_exp_log_dir = os.path.join(exp_log_dir, bc_exp)
+        bc_exp_dir = os.path.join(extreme_bcs_dir, bc_exp)
+        init_log(curr_exp_log_dir)
         exp_names = []
-        for i,file in enumerate(os.listdir(bc_exp_dir)):
+        for i, file in enumerate(os.listdir(bc_exp_dir)):
             if file.endswith(".json"):
                 exp_names.append(os.path.basename(file)[:-5])
 
@@ -336,8 +406,7 @@ if __name__ == "__main__":
             row_idx = int(exp_config[6])
             col_idx = int(exp_config[7])
             ind_id = int(exp_config[8])
-
-            log_file_name = gen_log_file_name(agent_configs[-1], f1, f2, row_idx, col_idx, ind_id)
-            play(agent_configs, individuals, f1, f2, row_idx, col_idx, bc_exp_dir, ind_id, log_file_name)
-
-
+            log_file_name = gen_log_file_name(agent_configs[-1], f1, f2,
+                                              row_idx, col_idx, ind_id)
+            # play(agent_configs, individuals, f1, f2, row_idx, col_idx,
+            #      bc_exp_dir, curr_exp_log_dir, log_file_name, ind_id)
