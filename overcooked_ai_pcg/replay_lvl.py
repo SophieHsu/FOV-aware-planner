@@ -48,10 +48,11 @@ def log_actions(ind, agent_config, log_dir, f1, f2, row_idx, col_idx, ind_id):
         print("Joint actions saved")
 
 
+
 def play_ind_id(elite_map, agent_configs, individuals, f1, f2, row_idx, col_idx,
-         log_dir, ind_id):
+         log_dir, ind_id, num_sim=1):
     ind_id = int(ind_id)
-    ind_id_index = ind_id*51
+    ind_id_index = ind_id*num_sim
     lvl_str = individuals["lvl_str"][ind_id_index]
     print("Playing in individual %d" % ind_id)
     print(lvl_str)
@@ -66,6 +67,9 @@ def play_ind_id(elite_map, agent_configs, individuals, f1, f2, row_idx, col_idx,
         fitness, _, _, _, ind.joint_actions, _, _ = run_overcooked_game(ind, agent_config, render=True)
         print("Fitness:", fitness)
         log_actions(ind, agent_config, log_dir, f1, f2, row_idx, col_idx, ind_id)
+
+    visualize_lvl(lvl_str, log_dir,
+                    "rendered_level_"+str(f1)+"_"+str(f2)+"_"+str(row_idx)+"_"+str(col_idx)+"_"+str(ind_id)+".png")
     return
 
 def play(elite_map,
@@ -76,7 +80,8 @@ def play(elite_map,
          col_idx,
          mat_idx=None,
          is_3d=False,
-         mode="replay"):
+         mode="replay",
+         num_sim=1):
     """
     Find the individual in the specified cell in the elite map
     and run overcooked game with the specified agents
@@ -103,14 +108,15 @@ def play(elite_map,
         # print(curr_idx)
         if curr_idx == (row_idx, col_idx, mat_idx):
             ind_id = int(splited[num_features])
-            lvl_str = individuals["lvl_str"][ind_id]
-            print("Playing in individual %d" % ind_id)
+            ind_idx = ind_id*num_sim
+            lvl_str = individuals["lvl_str"][ind_idx]
+            print("Playing in individual %d" % ind_idx)
             print(lvl_str)
             ind = Individual()
             ind.level = lvl_str
-            ind.human_preference = individuals["human_preference"][ind_id]
-            ind.human_adaptiveness = individuals["human_adaptiveness"][ind_id]
-            ind.rand_seed = individuals["rand_seed"][ind_id]
+            ind.human_preference = individuals["human_preference"][ind_idx]
+            ind.human_adaptiveness = individuals["human_adaptiveness"][ind_idx]
+            ind.rand_seed = individuals["rand_seed"][ind_idx]
             if mode == "replay":
                 for agent_config in agent_configs:
                     fitness, _, _, _, ind.joint_actions, _, _ = run_overcooked_game(
@@ -165,6 +171,21 @@ if __name__ == "__main__":
                         help='id of the individual',
                         required=False,
                         default=1)
+    parser.add_argument('-f1',
+                        '--feature1_idx',
+                        help='index of the first feature to be used',
+                        required=False,
+                        default=0)
+    parser.add_argument('-f2',
+                        '--feature2_idx',
+                        help='index of the second feature to be used',
+                        required=False,
+                        default=1)
+    parser.add_argument('-sim',
+                        '--num_sim',
+                        help='Number of simulations done for one level',
+                        required=False,
+                        default=1)
 
     opt = parser.parse_args()
 
@@ -188,10 +209,10 @@ if __name__ == "__main__":
     # read in feature index
     features = elite_map_config['Map']['Features']
     num_features = len(features)
-    # f1 = int(opt.feature1_idx)
-    # f2 = int(opt.feature2_idx)
-    # assert (f1 < num_features)
-    # assert (f2 < num_features)
+    f1 = int(opt.feature1_idx)
+    f2 = int(opt.feature2_idx)
+    assert (f1 < num_features)
+    assert (f2 < num_features)
 
     # read in row/col index
     num_row = features[0]['resolution']
@@ -202,7 +223,12 @@ if __name__ == "__main__":
     assert (row_idx < num_row)
     assert (col_idx < num_col)
 
-    # play_ind_id(elite_map, agent_configs, individuals, f1, f2, row_idx, col_idx, log_dir, opt.ind_id)
+    # number of simulations for one level map to row number in log files
+    num_sim = 1
+    if opt.num_sim > 1:
+        num_sim = opt.num_sim + 1 # extra row for logging average/mode
+    
+    # play_ind_id(elite_map, agent_configs, individuals, f1, f2, row_idx, col_idx, log_dir, opt.ind_id, num_sim)
 
     if is_3d:
         mat_idx = int(opt.matrix_idx)
@@ -216,4 +242,5 @@ if __name__ == "__main__":
          col_idx,
          mat_idx,
          is_3d=is_3d,
-         mode=opt.mode)
+         mode=opt.mode, 
+         num_sim=num_sim)
