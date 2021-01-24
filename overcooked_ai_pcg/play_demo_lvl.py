@@ -14,17 +14,30 @@ from overcooked_ai_pcg.LSI.qd_algorithms import Individual
 from overcooked_ai_py.mdp.overcooked_mdp import Direction, Action
 from overcooked_ai_py.mdp.overcooked_env import OvercookedEnv
 
+from overcooked_ai_py.agents.agent import StayAgent, RandomAgent, AgentFromPolicy, GreedyHumanModel
+
+from overcooked_ai_py.mdp.overcooked_mdp import OvercookedGridworld, Direction, Action
+
 
 class App:
-    """Class to run an Overcooked Gridworld game, leaving one of the players as fixed.
-    Useful for debugging. Most of the code from http://pygametutorials.wikidot.com/tutorials-basic."""
-    def __init__(self, env, agent, agent2, rand_seed, player_idx, slow_time):
+    """Class to run an Overcooked Gridworld game, leaving one of the players as
+       fixed.
+       Useful for debugging. Most of the code from http://pygametutorials.wikidot.com/tutorials-basic.
+
+    Args:
+        env: Overcooked Environment.
+        agent: AI agent that the human plays game with.
+        rand_seed: random seed.
+        agent_idx: index of the AI agent.
+        slow_time (bool): whether the AI agent take multiple actions each time
+            the human take one action.
+    """
+    def __init__(self, env, agent, agent_idx, rand_seed, slow_time=False):
         self._running = True
         self._display_surf = None
         self.env = env
         self.agent = agent
-        self.agent2 = agent2
-        self.agent_idx = player_idx
+        self.agent_idx = agent_idx
         self.slow_time = slow_time
         self.total_sparse_reward = 0
         self.last_state = None
@@ -35,18 +48,14 @@ class App:
         self.cur_order = 0
         self.timestep = 0
         self.joint_actions = []
-        # print("Human player index:", player_idx)
 
     def on_init(self):
         pygame.init()
 
-        # Adding pre-trained agent as teammate
+        # Adding AI agent as teammate
         self.agent.set_agent_index(self.agent_idx)
         self.agent.set_mdp(self.env.mdp)
-        self.agent2.set_agent_index(self.agent_idx + 1)
-        self.agent2.set_mdp(self.env.mdp)
 
-        # print(self.env)
         self.env.render()
         self._running = True
         np.random.seed(self.rand_seed)
@@ -84,18 +93,16 @@ class App:
                             break
 
         if event.type == pygame.QUIT or done:
-            # print("TOT rew", self.env.cumulative_sparse_rewards)
             self._running = False
             self.last_state = next_state
 
     def step_env(self, my_action):
         agent_action = self.agent.action(self.env.state)[0]
-        agent2_action = self.agent2.action(self.env.state)[0]
 
-        if self.agent_idx == 0:
-            joint_action = (my_action, agent2_action)
+        if self.agent_idx == 1:
+            joint_action = (my_action, agent_action)
         else:
-            joint_action = (agent2_action, my_action)
+            joint_action = (agent_action, my_action)
 
         self.joint_actions.append(joint_action)
         next_state, timestep_sparse_reward, done, info = self.env.step(
@@ -107,11 +114,7 @@ class App:
 
         self.total_sparse_reward += timestep_sparse_reward
         self.timestep += 1
-
-        # print(self.env)
         self.env.render()
-        # print("Curr reward: (sparse)", timestep_sparse_reward, "\t(dense)", info["shaped_r_by_agent"])
-        # print(self.env.t)
         return done, next_state
 
     def on_loop(self):
@@ -233,9 +236,6 @@ def log_actions(ind, agent_config, log_dir, individuals, f1, f2, row_idx,
                 col_idx, ind_id, log_file_name):
 
     full_path = os.path.join(log_dir, log_file_name + '.json')
-    # if os.path.exists(full_path):
-    #     print("Joint actions logged before, skipping...")
-    #     return
 
     # log the joint actions if not logged before
     with open(full_path, "w") as f:
@@ -307,23 +307,24 @@ def play(agent_configs, individuals, f1, f2, row_idx, col_idx, bc_exp_dir,
         game_log.addData(["agent1", "agent2", "mdp"], [agent1, agent2, mdp])
         game_log.storeData()
 
-    # theApp = App(env,
-    #              agent1,
-    #              agent2,
-    #              rand_seed=ind.rand_seed,
-    #              player_idx=0,
-    #              slow_time=False)
-    # ind.fitness, ind.scores, ind.checkpoints, ind.player_workloads, ind.joint_actions, ind.concurr_active, ind.stuck_time = theApp.on_execute(
-    # )
+    # assert type(agent1) == 
 
-    # print("Fitness: {}; Total sparse reward: {};".format(
-    #     ind.fitness, ind.scores))
-    # print("Checkpoints", ind.checkpoints)
-    # print("Workloads:", ind.player_workloads, "; Concurrently active:",
-    #       ind.concurr_active, "; Stuck time:", ind.stuck_time)
+    theApp = App(env,
+                 agent1,
+                 rand_seed=ind.rand_seed,
+                 agent_idx=0,
+                 slow_time=False)
+    ind.fitness, ind.scores, ind.checkpoints, ind.player_workloads, ind.joint_actions, ind.concurr_active, ind.stuck_time = theApp.on_execute(
+    )
 
-    # log_actions(ind, agent_configs[-1], curr_exp_log_dir, individuals, f1, f2,
-    #             row_idx, col_idx, ind_id, log_file_name)
+    print("Fitness: {}; Total sparse reward: {};".format(
+        ind.fitness, ind.scores))
+    print("Checkpoints", ind.checkpoints)
+    print("Workloads:", ind.player_workloads, "; Concurrently active:",
+          ind.concurr_active, "; Stuck time:", ind.stuck_time)
+
+    log_actions(ind, agent_configs[-1], curr_exp_log_dir, individuals, f1, f2,
+                row_idx, col_idx, ind_id, log_file_name)
 
 
 def create_human_exp_dir(extreme_bcs_dir, bc_exps):

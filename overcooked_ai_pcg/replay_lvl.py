@@ -161,9 +161,7 @@ if __name__ == "__main__":
                         ',
                         required=False)
     parser.add_argument('-mode',
-                        help='index f3 in elite map. If this is passed in, the\
-                        script would attempt to get individual from 3D archive.\
-                        ',
+                        help="mode to replay or merely render the level.",
                         required=False,
                         default="replay")
     parser.add_argument('-id',
