@@ -7,7 +7,7 @@ from overcooked_ai_py import ASSETS_DIR, PCG_EXP_IMAGE_DIR
 from overcooked_ai_py.mdp.actions import Action, Direction
 pygame.init()
 
-INFO_PANEL_HEIGHT = 100  # height of the game info panel
+INFO_PANEL_HEIGHT = 60  # height of the game info panel
 INFO_PANEL_COLOR = (230, 180, 83)  # some sort of yellow
 SPRITE_LENGTH = 50  # length of each sprite square
 TERRAIN_DIR = 'terrain'
@@ -64,7 +64,7 @@ def get_curr_pos(x, y):
     Args:
         x, y: position of the terrain in the terrain matrix
     """
-    return pygame.Rect(x * SPRITE_LENGTH, y * SPRITE_LENGTH, SPRITE_LENGTH,
+    return pygame.Rect(x * SPRITE_LENGTH, y * SPRITE_LENGTH + INFO_PANEL_HEIGHT, SPRITE_LENGTH,
                        SPRITE_LENGTH)
 
 
@@ -256,7 +256,7 @@ def render_game_info_panel(window, game_window_size, num_orders_remaining,
     game_window_width, game_window_height = game_window_size
 
     # get panel rect
-    panel_rect = pygame.Rect(0, game_window_height, game_window_width,
+    panel_rect = pygame.Rect(0, 0, game_window_width,
                              INFO_PANEL_HEIGHT)
 
     # fill with background color
@@ -265,14 +265,15 @@ def render_game_info_panel(window, game_window_size, num_orders_remaining,
     # update num orders left
     if num_orders_remaining == np.inf:
         num_orders_remaining = "inf"
-    t_surface = get_text_sprite(
+    num_order_t_surface = get_text_sprite(
         f"Number of orders left: {num_orders_remaining}")
-    text_pos = t_surface.get_rect()
-    text_pos.topleft = panel_rect.topleft
-    window.blit(t_surface, text_pos)
+    num_order_text_pos = num_order_t_surface.get_rect()
+    num_order_text_pos.topleft = panel_rect.topleft
+    window.blit(num_order_t_surface, num_order_text_pos)
 
     # update time passed
-    t_surface = get_text_sprite("Time passed: %d s" % time_passed)
-    text_pos = t_surface.get_rect()
-    text_pos.y = panel_rect.centery
-    window.blit(t_surface, text_pos)
+    t_surface = get_text_sprite("Time passed: %3d s" % time_passed)
+    time_passed_text_pos = t_surface.get_rect()
+    _, num_order_txt_height = num_order_t_surface.get_size()
+    time_passed_text_pos.y = num_order_text_pos.y + num_order_txt_height
+    window.blit(t_surface, time_passed_text_pos)
