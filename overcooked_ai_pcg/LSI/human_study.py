@@ -135,7 +135,7 @@ class App:
         while (self._running):
             for event in pygame.event.get():
                 self.on_event(event)
-                self.on_render()
+            self.on_render()
             self.on_loop()
         self.on_cleanup()
         workloads = self.last_state.get_player_workload()
@@ -164,7 +164,7 @@ def human_play(
             found, it will be saved to there.
         ai_agent (Agent): Agent that human plays with. Default is QMDP agent.
     """
-    env = init_env(lvl_str, horizon=3)
+    env = init_env(lvl_str, horizon=150)
     if agent_save_path is not None:
         # agent saved before, load it.
         if os.path.exists(agent_save_path):
