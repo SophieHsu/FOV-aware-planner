@@ -1,11 +1,13 @@
 import pygame
 import os
 import csv
+import ast
 import time
 import toml
 import argparse
 import pickle
 import numpy as np
+import pandas as pd
 from pprint import pprint
 from overcooked_ai_pcg import (TEAM_FLUENCY_DIR, HIGH_TEAM_FLUENCY_DIR,
                                WORKLOADS_DIR, LOW_TEAM_FLUENCY_DIR,
@@ -15,8 +17,10 @@ from overcooked_ai_pcg.helper import init_env, init_qmdp_agent
 from overcooked_ai_py.agents.agent import HumanPlayer
 from overcooked_ai_py.mdp.overcooked_mdp import Direction, Action
 
+HUMAN_STUDY_ENV_HORIZON = 150
 
-class App:
+
+class OvercookedGame:
     """Class for human player to play an Overcooked game with given AI agent.
        Most of the code from http://pygametutorials.wikidot.com/tutorials-basic.
 
@@ -151,6 +155,40 @@ class App:
                 self.joint_actions, concurr_active, stuck_time)
 
 
+def load_qmdp_agent(env, agent_save_path):
+    ai_agent = None
+    if agent_save_path is not None:
+        # agent saved before, load it.
+        if os.path.exists(agent_save_path):
+            with open(agent_save_path, 'rb') as f:
+                ai_agent = pickle.load(f)
+
+    # agent not found, recreate it and save it if a path is given.
+    if ai_agent == None:
+        ai_agent = init_qmdp_agent(env.mdp)
+        if agent_save_path is not None:
+            with open(agent_save_path, 'wb') as f:
+                pickle.dump(ai_agent, f)
+    return ai_agent
+
+
+def replay_with_joint_actions(lvl_str, joint_actions, horizon=100):
+    """Replay a game play with given level and joint actions.
+
+    Args:
+        joint_actions (list of tuple of tuple): Joint actions.
+    """
+    env = init_env(lvl_str, horizon=HUMAN_STUDY_ENV_HORIZON)
+    done = False
+    i = 0
+    while not done:
+        env.render()
+        next_state, timestep_sparse_reward, done, info = env.step(
+            joint_actions[i])
+        i += 1
+        time.sleep(0.2)
+
+
 def human_play(
     lvl_str,
     ai_agent=None,
@@ -164,20 +202,9 @@ def human_play(
             found, it will be saved to there.
         ai_agent (Agent): Agent that human plays with. Default is QMDP agent.
     """
-    env = init_env(lvl_str, horizon=150)
-    if agent_save_path is not None:
-        # agent saved before, load it.
-        if os.path.exists(agent_save_path):
-            with open(agent_save_path, 'rb') as f:
-                ai_agent = pickle.load(f)
-
-    # agent not found, recreate it and save it if a path is given.
-    if ai_agent == None:
-        ai_agent = init_qmdp_agent(env.mdp)
-        if agent_save_path is not None:
-            with open(agent_save_path, 'wb') as f:
-                pickle.dump(ai_agent, f)
-    theApp = App(env, ai_agent, agent_idx=0, rand_seed=10)
+    env = init_env(lvl_str, horizon=HUMAN_STUDY_ENV_HORIZON)
+    ai_agent = load_qmdp_agent(env, agent_save_path)
+    theApp = OvercookedGame(env, ai_agent, agent_idx=0, rand_seed=10)
     return theApp.on_execute()
 
 
@@ -198,7 +225,7 @@ def write_row(csv_file, to_add):
         writer.writerow(to_add)
 
 
-def write_to_human_exp_log(human_log_csv, lvl_type_full, results, lvl_str):
+def write_to_human_exp_log(human_log_csv, lvl_type_full, results, lvl_config):
     """Write to human exp log.
 
     Args:
@@ -206,19 +233,19 @@ def write_to_human_exp_log(human_log_csv, lvl_type_full, results, lvl_str):
         lvl_type_full (str): Type of the level. Format {type}_{bc_type}-{idx}.
             e.g. low_team_fluency-2, even_workload-1
         results (tuple) all of the results returned from the human study.
-        lvl_str (str): Level string.
+        lvl_config (dic): toml config dic of the level.
     """
     assert os.path.exists(human_log_csv)
 
     to_write = [
         lvl_type_full,
-        None,  # ID
-        None,  # exp_log_dir
-        None,  # row index
-        None,  # column index
-        None,  # matrix index
+        lvl_config["ID"] if "ID" in lvl_config else None,
+        lvl_config["exp_log_dir"] if "exp_log_dir" in lvl_config else None,
+        lvl_config["row_index"] if "row_index" in lvl_config else None,
+        lvl_config["column_index"] if "column_index" in lvl_config else None,
+        lvl_config["matrix_index"] if "matrix_index" in lvl_config else None,
         *results,
-        lvl_str,
+        lvl_config["lvl_str"],
     ]
 
     write_row(human_log_csv, to_write)
@@ -247,9 +274,9 @@ def create_human_exp_log():
         "lvl_type",
         "ID",
         "exp_log_dir",  # exp log directory which determines elite map
-        "row index",
-        "column index",
-        "matrix index",  # could be None cuz elite map can be 2D or 3D
+        "row_index",
+        "column_index",
+        "matrix_index",  # could be None cuz elite map can be 2D or 3D
         "fitness",
         "total_sparse_reward",
         "checkpoints",
@@ -270,61 +297,102 @@ def questionaire():
 
 
 if __name__ == "__main__":
-    # initialize the result log files
-    human_log_csv = create_human_exp_log()
+    parser = argparse.ArgumentParser()
+    parser.add_argument('--replay',
+                        action='store_true',
+                        help='Whether use the replay mode',
+                        default=False)
+    parser.add_argument('-l',
+                        '--log_index',
+                        help='Integer: index of the study log',
+                        required=False,
+                        default=-1)
+    parser.add_argument('-id',
+                        help='Integer: ID of the game level.',
+                        required=False,
+                        default=-1)
+    opt = parser.parse_args()
 
-    # read in human study levels
-    study_lvls = {"workloads": {}, "team_fluency": {}, "trial": {}}
+    # not replay, run the study
+    if not opt.replay:
+        # initialize the result log files
+        human_log_csv = create_human_exp_log()
 
-    study_lvls["trial"]["trial"] = read_in_study_lvl(TRIAL_DIR)
-    study_lvls["workloads"]["even"] = read_in_study_lvl(EVEN_WORKLOADS_DIR)
-    study_lvls["workloads"]["uneven"] = read_in_study_lvl(UNEVEN_WORKLOADS_DIR)
-    study_lvls["team_fluency"]["low"] = read_in_study_lvl(LOW_TEAM_FLUENCY_DIR)
-    study_lvls["team_fluency"]["high"] = read_in_study_lvl(
-        HIGH_TEAM_FLUENCY_DIR)
+        # read in human study levels
+        study_lvls = {"workloads": {}, "team_fluency": {}, "trial": {}}
 
-    # construct the config file
-    study_configs = [
-        {
-            "lvl_types": ["trial"],
-            "exp_type": "trial",
-            "dir": TRIAL_DIR,
-        },
-        {
-            "lvl_types": ["even", "uneven"],
-            "exp_type": "workloads",
-            "dir": WORKLOADS_DIR,
-        },
-        {
-            "lvl_types": ["high", "low"],
-            "exp_type": "team_fluency",
-            "dir": TEAM_FLUENCY_DIR,
-        },
-    ]
+        study_lvls["trial"]["trial"] = read_in_study_lvl(TRIAL_DIR)
+        study_lvls["workloads"]["even"] = read_in_study_lvl(EVEN_WORKLOADS_DIR)
+        study_lvls["workloads"]["uneven"] = read_in_study_lvl(
+            UNEVEN_WORKLOADS_DIR)
+        study_lvls["team_fluency"]["low"] = read_in_study_lvl(
+            LOW_TEAM_FLUENCY_DIR)
+        study_lvls["team_fluency"]["high"] = read_in_study_lvl(
+            HIGH_TEAM_FLUENCY_DIR)
 
-    # semi-randomize the order
-    # this shuffles each 'lvl_types' array in place. Note that it would shuffle
-    # the array in place so we don't have to assign it again.
-    [np.random.shuffle(x["lvl_types"]) for x in study_configs]
+        # construct the config file
+        study_configs = [
+            {
+                "lvl_types": ["trial"],
+                "exp_type": "trial",
+                "dir": TRIAL_DIR,
+            },
+            {
+                "lvl_types": ["even", "uneven"],
+                "exp_type": "workloads",
+                "dir": WORKLOADS_DIR,
+            },
+            {
+                "lvl_types": ["high", "low"],
+                "exp_type": "team_fluency",
+                "dir": TEAM_FLUENCY_DIR,
+            },
+        ]
 
-    for study_config in study_configs:
-        lvl_types = study_config["lvl_types"]
-        exp_type = study_config["exp_type"]
-        _dir = study_config["dir"]
-        for lvl_type in lvl_types:
-            # all levels to play
-            to_plays = study_lvls[exp_type][lvl_type]
-            for i in range(len(to_plays)):
-                lvl_str = to_plays[i]["lvl_str"]
-                # let the human play the level
-                results = human_play(lvl_str,
-                                     agent_save_path=os.path.join(
-                                         os.path.join(_dir, lvl_type),
-                                         f"agent{i}.pkl"))
-                lvl_type_full = f"{lvl_type}_{exp_type}-{i}"
-                # write the results
-                write_to_human_exp_log(human_log_csv, lvl_type_full, results,
-                                       lvl_str)
+        # semi-randomize the order
+        # this shuffles each 'lvl_types' array in place. Note that it would shuffle
+        # the array in place so we don't have to assign it again.
+        [np.random.shuffle(x["lvl_types"]) for x in study_configs]
 
-            # TODO: implement questionaire after each type of level is finished
-            questionaire()
+        for study_config in study_configs:
+            lvl_types = study_config["lvl_types"]
+            exp_type = study_config["exp_type"]
+            _dir = study_config["dir"]
+            for lvl_type in lvl_types:
+                # all levels to play
+                to_plays = study_lvls[exp_type][lvl_type]
+                for i in range(len(to_plays)):
+                    lvl_str = to_plays[i]["lvl_str"]
+                    # let the human play the level
+                    agent_save_path = os.path.join(
+                        os.path.join(_dir, lvl_type), f"agent{i}.pkl")
+                    results = human_play(lvl_str,
+                                         agent_save_path=agent_save_path)
+                    lvl_type_full = f"{lvl_type}_{exp_type}-{i}"
+                    # write the results
+                    if exp_type != "trial":
+                        write_to_human_exp_log(human_log_csv, lvl_type_full,
+                                               results, to_plays[i],
+                                               agent_save_path)
+
+                # TODO: implement questionaire after each type of level is finished
+                questionaire()
+
+    else:
+        log_index = opt.log_index
+        lvl_id = int(opt.id)
+        assert int(log_index) >= 0
+        assert lvl_id >= 0
+
+        # get level string and logged joint actions from log file
+        human_log_csv = os.path.join(LSI_HUMAN_STUDY_RESULT_DIR, log_index,
+                                     "human_log.csv")
+        human_log_data = pd.read_csv(human_log_csv)
+        lvl_str = human_log_data[human_log_data["ID"] == lvl_id]["lvl_str"][0]
+        joint_actions = ast.literal_eval(
+            human_log_data[human_log_data["ID"] == lvl_id]["joint_actions"][0])
+
+        # replay the game
+        replay_with_joint_actions(lvl_str,
+                                  joint_actions,
+                                  horizon=HUMAN_STUDY_ENV_HORIZON)
