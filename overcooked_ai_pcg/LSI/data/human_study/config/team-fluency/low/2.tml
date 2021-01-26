@@ -1,0 +1,12 @@
+lvl_str="""
+XXXXXXXXXXXXXXX
+O 2XX         X
+X XXXX XXXXX  X
+O XXX     XX  X
+X XXX      X  X
+D XX1  X  XX  X
+X XXX  X   X  X
+S XXXX XXXXX  X
+X             X
+XXXXXXXXXXXXXPX
+"""

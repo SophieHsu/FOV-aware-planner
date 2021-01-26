@@ -478,6 +478,23 @@ def init_env_and_agent(ind, agent_config, worker_id=0):
 
     return agent1, agent2, env, mdp
 
+def init_env(lvl_str, horizon=100):
+    grid = lvl_str2grid(lvl_str)
+    print(lvl_str)
+    mdp = OvercookedGridworld.from_grid(grid, CONFIG)
+    env = OvercookedEnv.from_mdp(mdp, info_level=0, horizon=horizon)
+    return env
+
+def init_qmdp_agent(mdp):
+    qmdp_planner = HumanSubtaskQMDPPlanner.from_pickle_or_compute(
+            mdp, BASE_PARAMS, force_compute_all=True)
+
+    agent = MediumQMdpPlanningAgent(
+        qmdp_planner,
+        greedy=False,
+        auto_unstuck=True)
+
+    return agent
 
 def gen_int_rnd_lvl(size):
     """
