@@ -10,3 +10,7 @@ X X1XX X XXX  X
 X             X
 XXXXXXXXXXXXOXX
 """
+exp_log_dir="2021-01-18_02-16-19_CMAME-workloads-diff-mdp-greedy-vs-qmdp-slurm"
+row_index=0
+column_index=0
+matrix_index=0
