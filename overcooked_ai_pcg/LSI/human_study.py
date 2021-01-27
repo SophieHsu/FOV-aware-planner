@@ -399,7 +399,7 @@ if __name__ == "__main__":
                 for i in range(len(to_plays)):
                     lvl_str = to_plays[i]["lvl_str"]
                     # path to which the agent pkl is stored
-                    if lvl_type == "trial":
+                    if exp_type == "trial":
                         agent_save_path = os.path.join(_dir, f"agent{i}.pkl")
                     else:
                         agent_save_path = os.path.join(
