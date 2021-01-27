@@ -299,10 +299,6 @@ def create_human_exp_log():
     return human_log_csv
 
 
-def questionaire():
-    pass
-
-
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument(
@@ -412,10 +408,6 @@ if __name__ == "__main__":
                     if exp_type != "trial":
                         write_to_human_exp_log(human_log_csv, lvl_type_full,
                                                results, to_plays[i])
-
-                # TODO: implement questionaire after each type of level is
-                # finished
-                questionaire()
 
     # replay the specified study
     else:
