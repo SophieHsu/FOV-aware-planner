@@ -304,7 +304,7 @@ if __name__ == "__main__":
     parser.add_argument(
         '--study',
         help=
-        "Which set of study to run. Should be one of 'even-workloads', 'uneven-workloads', 'high-team_fluency', 'low-team_fluency' and 'all'.",
+        "Which set of study to run. Should be one of 'trial', 'even-workloads', 'uneven-workloads', 'high-team_fluency', 'low-team_fluency' and 'all'.",
         default=False)
 
     parser.add_argument('--replay',
@@ -324,9 +324,6 @@ if __name__ == "__main__":
 
     # not replay, run the study
     if not opt.replay:
-        # initialize the result log files
-        human_log_csv = create_human_exp_log()
-
         # read in human study levels
         study_lvls = {"workloads": {}, "team_fluency": {}, "trial": {}}
 
@@ -340,15 +337,8 @@ if __name__ == "__main__":
             HIGH_TEAM_FLUENCY_DIR)
 
         # construct the config file based on study mode
-        study_configs = [
-            {
-                "lvl_types": ["trial"],
-                "exp_type": "trial",
-                "dir": TRIAL_DIR,
-            },
-        ]
         if opt.study == "all":
-            study_configs += [
+            study_configs = [
                 {
                     "lvl_types": ["even", "uneven"],
                     "exp_type": "workloads",
@@ -364,6 +354,14 @@ if __name__ == "__main__":
             # this shuffles each 'lvl_types' array in place. Note that it would
             # shuffle the array in place so we don't have to assign it again.
             [np.random.shuffle(x["lvl_types"]) for x in study_configs]
+        elif opt.study == "trial":
+            study_configs = [
+                {
+                    "lvl_types": ["trial"],
+                    "exp_type": "trial",
+                    "dir": TRIAL_DIR,
+                },
+            ]
         elif opt.study in ALL_STUDY_TYPES:
             # get level type (high/low, even/uneven)
             # and experiment type workloads/team_fluency
@@ -373,7 +371,7 @@ if __name__ == "__main__":
             elif exp_type == 'workloads':
                 _dir = WORKLOADS_DIR
 
-            study_configs += [
+            study_configs = [
                 {
                     "lvl_types": [lvl_type],
                     "exp_type": exp_type,
@@ -383,6 +381,10 @@ if __name__ == "__main__":
         else:
             print("Study type not supported.")
             exit(1)
+
+        if opt.study != "trial":
+            # initialize the result log files
+            human_log_csv = create_human_exp_log()
 
         # run the study
         for study_config in study_configs:
