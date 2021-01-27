@@ -19,6 +19,13 @@ from overcooked_ai_py.mdp.overcooked_mdp import Direction, Action
 
 HUMAN_STUDY_ENV_HORIZON = 150
 
+ALL_STUDY_TYPES = [
+    'even-workloads',
+    'uneven-workloads',
+    'high-team_fluency',
+    'low-team_fluency',
+]
+
 
 class OvercookedGame:
     """Class for human player to play an Overcooked game with given AI agent.
@@ -298,6 +305,12 @@ def questionaire():
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
+    parser.add_argument(
+        '--study',
+        help=
+        "Which set of study to run. Should be one of 'even-workloads', 'uneven-workloads', 'high-team_fluency', 'low-team_fluency' and 'all'.",
+        default=False)
+
     parser.add_argument('--replay',
                         action='store_true',
                         help='Whether use the replay mode',
@@ -330,30 +343,52 @@ if __name__ == "__main__":
         study_lvls["team_fluency"]["high"] = read_in_study_lvl(
             HIGH_TEAM_FLUENCY_DIR)
 
-        # construct the config file
+        # construct the config file based on study mode
         study_configs = [
             {
                 "lvl_types": ["trial"],
                 "exp_type": "trial",
                 "dir": TRIAL_DIR,
             },
-            {
-                "lvl_types": ["even", "uneven"],
-                "exp_type": "workloads",
-                "dir": WORKLOADS_DIR,
-            },
-            {
-                "lvl_types": ["high", "low"],
-                "exp_type": "team_fluency",
-                "dir": TEAM_FLUENCY_DIR,
-            },
         ]
+        if opt.study == "all":
+            study_configs += [
+                {
+                    "lvl_types": ["even", "uneven"],
+                    "exp_type": "workloads",
+                    "dir": WORKLOADS_DIR,
+                },
+                {
+                    "lvl_types": ["high", "low"],
+                    "exp_type": "team_fluency",
+                    "dir": TEAM_FLUENCY_DIR,
+                },
+            ]
+            # while playing all levels, semi-randomize the order
+            # this shuffles each 'lvl_types' array in place. Note that it would
+            # shuffle the array in place so we don't have to assign it again.
+            [np.random.shuffle(x["lvl_types"]) for x in study_configs]
+        elif opt.study in ALL_STUDY_TYPES:
+            # get level type (high/low, even/uneven)
+            # and experiment type workloads/team_fluency
+            lvl_type, exp_type = opt.study.split('-')
+            if exp_type == 'team_fluency':
+                _dir = TEAM_FLUENCY_DIR
+            elif exp_type == 'workloads':
+                _dir = WORKLOADS_DIR
 
-        # semi-randomize the order
-        # this shuffles each 'lvl_types' array in place. Note that it would shuffle
-        # the array in place so we don't have to assign it again.
-        [np.random.shuffle(x["lvl_types"]) for x in study_configs]
+            study_configs += [
+                {
+                    "lvl_types": [lvl_type],
+                    "exp_type": exp_type,
+                    "dir": _dir,
+                },
+            ]
+        else:
+            print("Study type not supported.")
+            exit(1)
 
+        # run the study
         for study_config in study_configs:
             lvl_types = study_config["lvl_types"]
             exp_type = study_config["exp_type"]
@@ -363,21 +398,26 @@ if __name__ == "__main__":
                 to_plays = study_lvls[exp_type][lvl_type]
                 for i in range(len(to_plays)):
                     lvl_str = to_plays[i]["lvl_str"]
+                    # path to which the agent pkl is stored
+                    if lvl_type == "trial":
+                        agent_save_path = os.path.join(_dir, f"agent{i}.pkl")
+                    else:
+                        agent_save_path = os.path.join(
+                            os.path.join(_dir, lvl_type), f"agent{i}.pkl")
                     # let the human play the level
-                    agent_save_path = os.path.join(
-                        os.path.join(_dir, lvl_type), f"agent{i}.pkl")
                     results = human_play(lvl_str,
                                          agent_save_path=agent_save_path)
                     lvl_type_full = f"{lvl_type}_{exp_type}-{i}"
                     # write the results
                     if exp_type != "trial":
                         write_to_human_exp_log(human_log_csv, lvl_type_full,
-                                               results, to_plays[i],
-                                               agent_save_path)
+                                               results, to_plays[i])
 
-                # TODO: implement questionaire after each type of level is finished
+                # TODO: implement questionaire after each type of level is
+                # finished
                 questionaire()
 
+    # replay the specified study
     else:
         log_index = opt.log_index
         lvl_id = int(opt.id)
