@@ -14,7 +14,7 @@ def render_level(layout_name):
 
 def setup_env(layout_name):
     mdp = OvercookedGridworld.from_layout_name(layout_name)
-    env = OvercookedEnv.from_mdp(mdp, info_level = 0)
+    env = OvercookedEnv.from_mdp(mdp, info_level = 0, horizon=100)
     agent1 = RandomAgent(all_actions=True)
     agent2 = RandomAgent(all_actions=True)
     agent1.set_agent_index(0)
@@ -30,4 +30,4 @@ while not done:
     env.render()
     joint_action = (agent1.action(env.state)[0], agent2.action(env.state)[0])
     next_state, timestep_sparse_reward, done, info = env.step(joint_action)
-    time.sleep(0.5)
+    time.sleep(0.1)

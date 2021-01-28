@@ -7,6 +7,8 @@ from overcooked_ai_py import ASSETS_DIR, PCG_EXP_IMAGE_DIR
 from overcooked_ai_py.mdp.actions import Action, Direction
 pygame.init()
 
+INFO_PANEL_HEIGHT = 60  # height of the game info panel
+INFO_PANEL_COLOR = (230, 180, 83)  # some sort of yellow
 SPRITE_LENGTH = 50  # length of each sprite square
 TERRAIN_DIR = 'terrain'
 CHEF_DIR = 'chefs'
@@ -32,60 +34,28 @@ PLAYER_HAT_COLOR = {
 
 PLAYER_ARROW_COLOR = {0: (0, 255, 0, 128), 1: (0, 0, 255, 128)}
 
-# PLAYER_ARROW_ORIENTATION = {
-#     Direction.DIRECTION_TO_STRING[Direction.NORTH]:
-#     ((125, 300), (175, 300), (175, 100), (225, 100),
-#      (150, 0), (75, 100), (125, 100)),
-
-#     Direction.DIRECTION_TO_STRING[Direction.SOUTH]:
-#     ((125, 0), (175, 0), (175, 200), (225, 200),
-#      (150, 300), (75, 200), (125, 200)),
-
-#     Direction.DIRECTION_TO_STRING[Direction.EAST]:
-#     ((0, 125), (0, 175), (200, 175), (200, 225),
-#      (300, 150), (200, 75), (200, 125)),
-
-#     Direction.DIRECTION_TO_STRING[Direction.WEST]:
-#     ((300, 125), (300, 175), (100, 175), (100, 225),
-#      (0, 150), (100, 75), (100, 125)),
-# }
-
-
 PLAYER_ARROW_ORIENTATION = {
     Direction.DIRECTION_TO_STRING[Direction.NORTH]:
-    ((15, 300), (35, 300), (35, 100), (50, 100),
-     (25, 0), (0, 100), (15, 100)),
-
+    ((15, 300), (35, 300), (35, 100), (50, 100), (25, 0), (0, 100), (15, 100)),
     Direction.DIRECTION_TO_STRING[Direction.SOUTH]:
-    ((15, 0), (35, 0), (35, 200), (50, 200),
-     (25, 300), (0, 200), (15, 200)),
-
+    ((15, 0), (35, 0), (35, 200), (50, 200), (25, 300), (0, 200), (15, 200)),
     Direction.DIRECTION_TO_STRING[Direction.EAST]:
-    ((0, 15), (0, 35), (200, 35), (200, 50),
-     (300, 25), (200, 0), (200, 15)),
-
+    ((0, 15), (0, 35), (200, 35), (200, 50), (300, 25), (200, 0), (200, 15)),
     Direction.DIRECTION_TO_STRING[Direction.WEST]:
-    ((300, 15), (300, 35), (100, 35), (100, 50),
-     (0, 25), (100, 0), (100, 15)),
+    ((300, 15), (300, 35), (100, 35), (100, 50), (0, 25), (100, 0), (100, 15)),
 }
 
 PLAYER_ARROW_POS_SHIFT = {
     Direction.DIRECTION_TO_STRING[Direction.NORTH]:
-    ((1, 0), (1, 0), (1, 0), (1, 0),
-     (1, 0), (1, 0), (1, 0)),
-
+    ((1, 0), (1, 0), (1, 0), (1, 0), (1, 0), (1, 0), (1, 0)),
     Direction.DIRECTION_TO_STRING[Direction.SOUTH]:
-    ((1, 0), (1, 0), (1, 0), (1, 0),
-     (1, 0), (1, 0), (1, 0)),
-
+    ((1, 0), (1, 0), (1, 0), (1, 0), (1, 0), (1, 0), (1, 0)),
     Direction.DIRECTION_TO_STRING[Direction.EAST]:
-    ((0, 1), (0, 1), (0, 1), (0, 1),
-     (0, 1), (0, 1), (0, 1)),
-
+    ((0, 1), (0, 1), (0, 1), (0, 1), (0, 1), (0, 1), (0, 1)),
     Direction.DIRECTION_TO_STRING[Direction.WEST]:
-    ((0, 1), (0, 1), (0, 1), (0, 1),
-     (0, 1), (0, 1), (0, 1)),
+    ((0, 1), (0, 1), (0, 1), (0, 1), (0, 1), (0, 1), (0, 1)),
 }
+
 
 def get_curr_pos(x, y):
     """
@@ -94,7 +64,7 @@ def get_curr_pos(x, y):
     Args:
         x, y: position of the terrain in the terrain matrix
     """
-    return pygame.Rect(x * SPRITE_LENGTH, y * SPRITE_LENGTH, SPRITE_LENGTH,
+    return pygame.Rect(x * SPRITE_LENGTH, y * SPRITE_LENGTH + INFO_PANEL_HEIGHT, SPRITE_LENGTH,
                        SPRITE_LENGTH)
 
 
@@ -176,8 +146,7 @@ def get_player_sprite(player, player_index):
         player_img_path = os.path.join(ASSETS_DIR, CHEF_DIR,
                                        '%s.png' % orientation_str)
 
-    return load_image(player_img_path), load_image(
-        hat_img_path)
+    return load_image(player_img_path), load_image(hat_img_path)
 
 
 def get_object_sprite(obj, on_pot=False):
@@ -213,8 +182,10 @@ def draw_arrow(window, player, player_index, pos, time_left):
     shift = 10.0
     orientation_str = get_orientation_str(player)
     arrow_orientation = PLAYER_ARROW_ORIENTATION[orientation_str]
-    arrow_position = [[j*shift*time_left for j in i] for i in PLAYER_ARROW_POS_SHIFT[orientation_str]]
-    arrow_orientation = np.add(np.array(arrow_orientation), arrow_position).tolist()
+    arrow_position = [[j * shift * time_left for j in i]
+                      for i in PLAYER_ARROW_POS_SHIFT[orientation_str]]
+    arrow_orientation = np.add(np.array(arrow_orientation),
+                               arrow_position).tolist()
     arrow_color = PLAYER_ARROW_COLOR[player_index]
 
     arrow = pygame.Surface((300, 300)).convert()
@@ -246,18 +217,20 @@ def render_from_grid(lvl_grid, log_dir, filename):
     """
     width = len(lvl_grid[0])
     height = len(lvl_grid)
-    window_size = width*SPRITE_LENGTH, height*SPRITE_LENGTH
+    window_size = width * SPRITE_LENGTH, height * SPRITE_LENGTH
     viewer = pygame.display.set_mode(window_size)
-    viewer.fill((255,255,255))
+    viewer.fill((255, 255, 255))
     for y, terrain_row in enumerate(lvl_grid):
         for x, terrain in enumerate(terrain_row):
             curr_pos = get_curr_pos(x, y)
 
             # render player
             if str.isdigit(terrain):
-                player = overcooked_ai_py.mdp.overcooked_mdp.PlayerState((x, y), Direction.SOUTH)
+                player = overcooked_ai_py.mdp.overcooked_mdp.PlayerState(
+                    (x, y), Direction.SOUTH)
                 player_idx = int(terrain)
-                player_pgobj, player_hat_pgobj = get_player_sprite(player, player_idx-1)
+                player_pgobj, player_hat_pgobj = get_player_sprite(
+                    player, player_idx - 1)
 
                 # render floor as background
                 terrain_pgobj = load_image(TERRAIN_TO_IMG[" "])
@@ -276,3 +249,31 @@ def render_from_grid(lvl_grid, log_dir, filename):
 
     # save image
     pygame.image.save(viewer, os.path.join(log_dir, filename))
+
+
+def render_game_info_panel(window, game_window_size, num_orders_remaining,
+                           time_passed):
+    game_window_width, game_window_height = game_window_size
+
+    # get panel rect
+    panel_rect = pygame.Rect(0, 0, game_window_width,
+                             INFO_PANEL_HEIGHT)
+
+    # fill with background color
+    window.fill(INFO_PANEL_COLOR, rect=panel_rect)
+
+    # update num orders left
+    if num_orders_remaining == np.inf:
+        num_orders_remaining = "inf"
+    num_order_t_surface = get_text_sprite(
+        f"Number of orders left: {num_orders_remaining}")
+    num_order_text_pos = num_order_t_surface.get_rect()
+    num_order_text_pos.topleft = panel_rect.topleft
+    window.blit(num_order_t_surface, num_order_text_pos)
+
+    # update time passed
+    t_surface = get_text_sprite("Time passed: %3d s" % time_passed)
+    time_passed_text_pos = t_surface.get_rect()
+    _, num_order_txt_height = num_order_t_surface.get_size()
+    time_passed_text_pos.y = num_order_text_pos.y + num_order_txt_height
+    window.blit(t_surface, time_passed_text_pos)
