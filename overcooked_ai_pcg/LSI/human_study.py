@@ -127,7 +127,7 @@ class OvercookedGame:
 
         self.total_sparse_reward += timestep_sparse_reward
         self.timestep += 1
-        print("Timestep:", self.timestep)
+        # print("Timestep:", self.timestep)
         return done, next_state
 
     def on_loop(self):
