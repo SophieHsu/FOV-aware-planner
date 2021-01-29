@@ -1,0 +1,17 @@
+lvl_str="""
+XXXXXXXXXXXXXXX
+XX1X   X      X
+XX  2  X      X
+XX     X      O
+XXXXX         X
+XXXXXX X XXXX X
+XXX    X    X X
+X   X  XXXXX  X
+X      X      X
+XXXPXXXXXPSDOXX
+"""
+exp_log_dir="2021-01-18_02-16-19_CMAME-workloads-diff-mdp-greedy-vs-qmdp-slurm"
+row_index=1
+column_index=0
+matrix_index=1
+ID=2514

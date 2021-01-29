@@ -184,7 +184,7 @@ if __name__ == "__main__" :
     env = OvercookedEnv.from_mdp(scenario_1_mdp, horizon = 100)
     while not done:
         if t >= 0 and t <= len(s_t):
-            # env.render("blur", time_left=t)
+            # env.render("blur")
             env.render()
             time.sleep(0.1)
         agent1_action = s_t[t][1][0]

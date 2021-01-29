@@ -1,0 +1,16 @@
+lvl_str="""
+XXXXXXXXXXXXXXX
+O 2XX         X
+X XXXX XXXXX  X
+O XXX     XX  X
+X XXX      X  X
+D XX1  X  XX  X
+X XXX  X   X  X
+S XXXX XXXXX  X
+X             X
+XXXXXXXXXXXXXPX
+"""
+exp_log_dir="2021-01-22_20-21-56_CMAME-team-fluency-qmdp-w-greedy-slurm"
+row_index=13
+column_index=20
+ID=9766
