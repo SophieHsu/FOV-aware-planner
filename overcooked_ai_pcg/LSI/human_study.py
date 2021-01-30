@@ -9,21 +9,28 @@ import pickle
 import numpy as np
 import pandas as pd
 from pprint import pprint
-from overcooked_ai_pcg import (TEAM_FLUENCY_DIR, HIGH_TEAM_FLUENCY_DIR,
-                               WORKLOADS_DIR, LOW_TEAM_FLUENCY_DIR,
-                               EVEN_WORKLOADS_DIR, UNEVEN_WORKLOADS_DIR,
-                               TRIAL_DIR, LSI_HUMAN_STUDY_RESULT_DIR)
+from overcooked_ai_pcg import (LSI_HUMAN_STUDY_RESULT_DIR,
+                               LSI_HUMAN_STUDY_CONFIG_DIR,
+                               LSI_HUMAN_STUDY_AGENT_DIR)
 from overcooked_ai_pcg.helper import init_env, init_qmdp_agent
 from overcooked_ai_py.agents.agent import HumanPlayer
 from overcooked_ai_py.mdp.overcooked_mdp import Direction, Action
 
 HUMAN_STUDY_ENV_HORIZON = 150
 
+SUB_STUDY_TYPES = [
+    'even_workloads',
+    'uneven_workloads',
+    'high_team_fluency',
+    'low_team_fluency',
+]
+
+DETAILED_STUDY_TYPES = [f"{x}-{i}" for x in SUB_STUDY_TYPES for i in range(3)]
+
 ALL_STUDY_TYPES = [
-    'even-workloads',
-    'uneven-workloads',
-    'high-team_fluency',
-    'low-team_fluency',
+    'all',
+    'trial',
+    *SUB_STUDY_TYPES,
 ]
 
 
@@ -179,6 +186,16 @@ def load_qmdp_agent(env, agent_save_path):
     return ai_agent
 
 
+def load_human_log_data(log_index):
+    human_log_csv = os.path.join(LSI_HUMAN_STUDY_RESULT_DIR, log_index,
+                                 "human_log.csv")
+    if not os.path.exists(human_log_csv):
+        print("Log dir does not exit.")
+        exit(1)
+    human_log_data = pd.read_csv(human_log_csv)
+    return human_log_csv, human_log_data
+
+
 def replay_with_joint_actions(lvl_str, joint_actions, horizon=100):
     """Replay a game play with given level and joint actions.
 
@@ -232,20 +249,18 @@ def write_row(csv_file, to_add):
         writer.writerow(to_add)
 
 
-def write_to_human_exp_log(human_log_csv, lvl_type_full, results, lvl_config):
+def write_to_human_exp_log(lvl_type_full, results, lvl_config):
     """Write to human exp log.
 
     Args:
         human_log_csv (str): Path to the human_log.csv file.
-        lvl_type_full (str): Type of the level. Format {type}_{bc_type}-{idx}.
-            e.g. low_team_fluency-2, even_workload-1
         results (tuple) all of the results returned from the human study.
         lvl_config (dic): toml config dic of the level.
     """
     assert os.path.exists(human_log_csv)
 
     to_write = [
-        lvl_type_full,
+        lvl_config["lvl_type"] if "lvl_type" in lvl_config else None,
         lvl_config["ID"] if "ID" in lvl_config else None,
         lvl_config["exp_log_dir"] if "exp_log_dir" in lvl_config else None,
         lvl_config["row_index"] if "row_index" in lvl_config else None,
@@ -299,132 +314,114 @@ def create_human_exp_log():
     return human_log_csv
 
 
+def correct_study_type(study_type, lvl_type):
+    if study_type == "all":
+        return True
+    else:
+        return lvl_type.startswith(study_type)
+
+
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument(
         '--study',
         help=
-        "Which set of study to run. Should be one of 'trial', 'even-workloads', 'uneven-workloads', 'high-team_fluency', 'low-team_fluency' and 'all'.",
+        "Which set of study to run. Should be one of 'trial', 'even_workloads', 'uneven_workloads', 'high_team_fluency', 'low_team_fluency' and 'all'.",
         default=False)
 
     parser.add_argument('--replay',
                         action='store_true',
                         help='Whether use the replay mode',
                         default=False)
+    parser.add_argument('--reload_study',
+                        action='store_true',
+                        help='Whether to continue running a previous study',
+                        default=False)
     parser.add_argument('-l',
                         '--log_index',
                         help='Integer: index of the study log',
                         required=False,
                         default=-1)
-    parser.add_argument('-id',
-                        help='Integer: ID of the game level.',
+    parser.add_argument('-type',
+                        help='Integer: type of the game level.',
                         required=False,
-                        default=-1)
+                        default=None)
     opt = parser.parse_args()
 
     # not replay, run the study
     if not opt.replay:
         # read in human study levels
-        study_lvls = {"workloads": {}, "team_fluency": {}, "trial": {}}
+        study_lvls = pd.read_csv(
+            os.path.join(LSI_HUMAN_STUDY_CONFIG_DIR, "study_lvls.csv"))
 
-        study_lvls["trial"]["trial"] = read_in_study_lvl(TRIAL_DIR)
-        study_lvls["workloads"]["even"] = read_in_study_lvl(EVEN_WORKLOADS_DIR)
-        study_lvls["workloads"]["uneven"] = read_in_study_lvl(
-            UNEVEN_WORKLOADS_DIR)
-        study_lvls["team_fluency"]["low"] = read_in_study_lvl(
-            LOW_TEAM_FLUENCY_DIR)
-        study_lvls["team_fluency"]["high"] = read_in_study_lvl(
-            HIGH_TEAM_FLUENCY_DIR)
+        # running a new study
+        if not opt.reload_study:
+            # quite if study type not recognized
+            if opt.study not in ALL_STUDY_TYPES:
+                print(
+                    "Study type not supported. Must be one of the following:",
+                    ", ".join(ALL_STUDY_TYPES))
+                exit(1)
 
-        # construct the config file based on study mode
-        if opt.study == "all":
-            study_configs = [
-                {
-                    "lvl_types": ["even", "uneven"],
-                    "exp_type": "workloads",
-                    "dir": WORKLOADS_DIR,
-                },
-                {
-                    "lvl_types": ["high", "low"],
-                    "exp_type": "team_fluency",
-                    "dir": TEAM_FLUENCY_DIR,
-                },
-            ]
-            # while playing all levels, semi-randomize the order
-            # this shuffles each 'lvl_types' array in place. Note that it would
-            # shuffle the array in place so we don't have to assign it again.
-            [np.random.shuffle(x["lvl_types"]) for x in study_configs]
-        elif opt.study == "trial":
-            study_configs = [
-                {
-                    "lvl_types": ["trial"],
-                    "exp_type": "trial",
-                    "dir": TRIAL_DIR,
-                },
-            ]
-        elif opt.study in ALL_STUDY_TYPES:
-            # get level type (high/low, even/uneven)
-            # and experiment type workloads/team_fluency
-            lvl_type, exp_type = opt.study.split('-')
-            if exp_type == 'team_fluency':
-                _dir = TEAM_FLUENCY_DIR
-            elif exp_type == 'workloads':
-                _dir = WORKLOADS_DIR
+            # no logging if running trial level
+            if opt.study != "trial":
+                # initialize the result log files
+                human_log_csv = create_human_exp_log()
 
-            study_configs = [
-                {
-                    "lvl_types": [lvl_type],
-                    "exp_type": exp_type,
-                    "dir": _dir,
-                },
-            ]
+            # shuffle the order if playing all
+            if opt.study == "all":
+                study_lvls = study_lvls.sample(frac=1)
+
+            # play all of the levels
+            for index, lvl_config in study_lvls.iterrows():
+                # check study type:
+                if correct_study_type(opt.study, lvl_config["lvl_type"]):
+                    agent_save_path = os.path.join(
+                        LSI_HUMAN_STUDY_AGENT_DIR, "{lvl_type}.pkl".format(
+                            lvl_type=lvl_config["lvl_type"]))
+                    results = human_play(lvl_config["lvl_str"],
+                                         agent_save_path=agent_save_path)
+                    # write the results
+                    if lvl_config["lvl_type"] != "trial":
+                        write_to_human_exp_log(human_log_csv, results,
+                                               lvl_config)
+
+        # loading an existing study and continue running it.
         else:
-            print("Study type not supported.")
-            exit(1)
+            log_index = opt.log_index
+            assert int(log_index) >= 0
+            human_log_csv, human_log_data = load_human_log_data(log_index)
 
-        if opt.study != "trial":
-            # initialize the result log files
-            human_log_csv = create_human_exp_log()
-
-        # run the study
-        for study_config in study_configs:
-            lvl_types = study_config["lvl_types"]
-            exp_type = study_config["exp_type"]
-            _dir = study_config["dir"]
-            for lvl_type in lvl_types:
-                # all levels to play
-                to_plays = study_lvls[exp_type][lvl_type]
-                for i in range(len(to_plays)):
-                    lvl_str = to_plays[i]["lvl_str"]
-                    # path to which the agent pkl is stored
-                    if exp_type == "trial":
-                        agent_save_path = os.path.join(_dir, f"agent{i}.pkl")
-                    else:
-                        agent_save_path = os.path.join(
-                            os.path.join(_dir, lvl_type), f"agent{i}.pkl")
-                    # let the human play the level
+            # find levels need to run and play them
+            for lvl_type in DETAILED_STUDY_TYPES:
+                if lvl_type not in human_log_data["lvl_type"].to_list():
+                    lvl_config = study_lvls[study_lvls["lvl_type"] ==
+                                            lvl_type].iloc[0]
+                    lvl_str = lvl_config["lvl_str"]
+                    print(lvl_str)
+                    agent_save_path = os.path.join(
+                        LSI_HUMAN_STUDY_AGENT_DIR,
+                        "{lvl_type}.pkl".format(lvl_type=lvl_type))
                     results = human_play(lvl_str,
                                          agent_save_path=agent_save_path)
-                    lvl_type_full = f"{lvl_type}_{exp_type}-{i}"
+
                     # write the results
-                    if exp_type != "trial":
-                        write_to_human_exp_log(human_log_csv, lvl_type_full,
-                                               results, to_plays[i])
+                    if lvl_config["lvl_type"] != "trial":
+                        write_to_human_exp_log(human_log_csv, results,
+                                               lvl_config)
 
     # replay the specified study
     else:
         log_index = opt.log_index
-        lvl_id = int(opt.id)
+        lvl_type = opt.type
         assert int(log_index) >= 0
-        assert lvl_id >= 0
 
         # get level string and logged joint actions from log file
-        human_log_csv = os.path.join(LSI_HUMAN_STUDY_RESULT_DIR, log_index,
-                                     "human_log.csv")
-        human_log_data = pd.read_csv(human_log_csv)
-        lvl_str = human_log_data[human_log_data["ID"] == lvl_id]["lvl_str"][0]
-        joint_actions = ast.literal_eval(
-            human_log_data[human_log_data["ID"] == lvl_id]["joint_actions"][0])
+        _, human_log_data = load_human_log_data(log_index)
+        lvl_str = human_log_data[human_log_data["lvl_type"] ==
+                                 lvl_type]["lvl_str"][0]
+        joint_actions = ast.literal_eval(human_log_data[
+            human_log_data["lvl_type"] == lvl_type]["joint_actions"][0])
 
         # replay the game
         replay_with_joint_actions(lvl_str,
