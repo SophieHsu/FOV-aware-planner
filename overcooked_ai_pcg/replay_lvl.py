@@ -99,7 +99,6 @@ def play(elite_map,
             for "render": the script merely render the level
             for "replay": the script rerun the game
     """
-    print(is_3d)
     for elite in elite_map:
         splited = elite.split(":")
         curr_row_idx = int(splited[0])
@@ -121,11 +120,8 @@ def play(elite_map,
             if mode == "replay":
                 for agent_config in agent_configs:
                     fitness, _, _, _, ind.joint_actions, _, _ = run_overcooked_game(
-                        ind.level,
+                        ind,
                         agent_config,
-                        ind.human_preference,
-                        ind.human_adaptiveness,
-                        ind.rand_seed,
                         render=True,
                     )
                     print("Fitness: %d" % fitness)
@@ -165,9 +161,7 @@ if __name__ == "__main__":
                         ',
                         required=False)
     parser.add_argument('-mode',
-                        help='index f3 in elite map. If this is passed in, the\
-                        script would attempt to get individual from 3D archive.\
-                        ',
+                        help="mode to replay or merely render the level.",
                         required=False,
                         default="replay")
     parser.add_argument('-id',
@@ -196,7 +190,6 @@ if __name__ == "__main__":
     is_3d = True
     if opt.matrix_idx is None:
         is_3d = False
-    print(is_3d)
     # read in full elite map
     log_dir = opt.log_dir
     elite_map_log_file = os.path.join(log_dir, "elite_map.csv")

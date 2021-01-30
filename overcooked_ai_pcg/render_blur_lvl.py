@@ -19,7 +19,7 @@ def render_blur(joint_action_log, log_dir, lb, ub):
     t = 0
     while not done:
         if t >= lb and t <= ub:
-            # env.render("blur", time_left=t)
+            # env.render("blur")
             env.render()
             time.sleep(0.1)
         agent1_action = joint_actions[t][0]
