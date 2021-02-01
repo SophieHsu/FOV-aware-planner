@@ -230,7 +230,7 @@ if __name__ == "__main__":
     mat_idx = None
     if is_3d:
         mat_idx = int(opt.matrix_idx)
-        assert (mat_idx < num_mat)
+        # assert (mat_idx < num_mat)
 
     play(elite_map,
          agent_configs,
