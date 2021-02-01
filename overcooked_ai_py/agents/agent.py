@@ -1262,3 +1262,28 @@ class QMDPAgent(Agent):
         imm_costs = [] # R value
         search_problem = SearchTree(succ_states[4][1], goal_fn, expand_fn, heuristic_fn)
         ml_plan, cost = search_problem.A_star_graph_search(info=True)
+
+class HumanPlayer(Agent):
+    """Agent to be controlled by human player.
+    """
+    def __init__(self,):
+        self.prev_state = None
+
+    def update_logs(self, state, action):
+        """Update necessary logs for calculating bcs."""
+        if action == Action.STAY:
+            state.players[self.agent_index].active_log += [0]
+        else:
+            state.players[self.agent_index].active_log += [1]
+
+        # get stuck if the players position and orientations do not change.
+        if self.prev_state is not None and state.players_pos_and_or == self.prev_state.players_pos_and_or:
+            state.players[self.agent_index].stuck_log += [1]
+        else:
+            state.players[self.agent_index].stuck_log += [0]
+
+        self.prev_state = state
+
+    def reset(self):
+        super().reset()
+        self.prev_state = None

@@ -119,7 +119,11 @@ def play(elite_map,
             ind.rand_seed = individuals["rand_seed"][ind_idx]
             if mode == "replay":
                 for agent_config in agent_configs:
-                    fitness, _, _, _, ind.joint_actions, _, _ = run_overcooked_game(ind, agent_config, render=True)
+                    fitness, _, _, _, ind.joint_actions, _, _ = run_overcooked_game(
+                        ind,
+                        agent_config,
+                        render=True,
+                    )
                     print("Fitness: %d" % fitness)
             elif mode == "render":
                 visualize_lvl(
@@ -157,8 +161,7 @@ if __name__ == "__main__":
                         ',
                         required=False)
     parser.add_argument('-mode',
-                        help='render or replay the level\
-                        ',
+                        help="mode to replay or merely render the level.",
                         required=False,
                         default="replay")
     parser.add_argument('-id',
@@ -187,7 +190,6 @@ if __name__ == "__main__":
     is_3d = True
     if opt.matrix_idx is None:
         is_3d = False
-    print(is_3d)
     # read in full elite map
     log_dir = opt.log_dir
     elite_map_log_file = os.path.join(log_dir, "elite_map.csv")
