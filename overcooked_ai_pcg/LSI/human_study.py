@@ -17,7 +17,7 @@ from overcooked_ai_py.agents.agent import HumanPlayer, StayAgent
 from overcooked_ai_py.mdp.overcooked_mdp import Direction, Action
 from overcooked_ai_py.mdp.overcooked_env import MAX_HORIZON
 
-HUMAN_STUDY_ENV_HORIZON = 3
+HUMAN_STUDY_ENV_HORIZON = 150
 
 SUB_STUDY_TYPES = [
     'even_workloads',
