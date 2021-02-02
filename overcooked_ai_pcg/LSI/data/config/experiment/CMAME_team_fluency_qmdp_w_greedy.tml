@@ -1,6 +1,6 @@
 visualize=false
-num_cores=60
+num_cores=80
 num_simulations=10000
 algorithm_config="cma_me.tml"
-elite_map_config="workloads_diff.tml"
+elite_map_config="team_fluency.tml"
 agent_config=["qmdp_agent_w_greedy_agent.tml"]

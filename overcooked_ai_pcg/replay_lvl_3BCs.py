@@ -121,6 +121,7 @@ def play(elite_map, agent_configs, individuals, row_idx, col_idx, mat_idx, log_d
 
         ind_id = int(splited[3])
 
+ 
         if curr_row_idx == row_idx and curr_col_idx == col_idx and curr_mat_idx == mat_idx:
 
 
@@ -128,6 +129,9 @@ def play(elite_map, agent_configs, individuals, row_idx, col_idx, mat_idx, log_d
             lvl_str = individuals["lvl_str"][ind_id]
             print("Playing in individual %d" % ind_id)
             print(lvl_str)
+
+            from IPython import embed
+            embed()
 
 
             ind = Individual()
@@ -227,15 +231,17 @@ if __name__ == "__main__":
     assert (col_idx < num_col)
     assert (mat_idx < num_mat)
 
+    play(elite_map, agent_configs, individuals, row_idx, col_idx, mat_idx, log_dir)
+ 
+    exit()
 
     IDs, individuals  = retrieve_k_individuals(experiment_config, elite_map_config, agent_configs, individuals, row_idx, col_idx, mat_idx, log_dir,3)
-
-    from IPython import embed
-    embed()
-    
     for individual in individuals:
       play_individual(individual, agent_configs)
 
+    #from IPython import embed
+    #embed()
+    
 
 
-    #play(elite_map, agent_configs, individuals, row_idx, col_idx, mat_idx, log_dir)
+

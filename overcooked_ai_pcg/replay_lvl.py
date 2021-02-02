@@ -18,11 +18,11 @@ def log_actions(ind, agent_config, log_dir, f1, f2, row_idx, col_idx, ind_id):
 
     if agent1_config["name"] == "fixed_plan_agent" and agent2_config[
             "name"] == "fixed_plan_agent":
-        log_file = "fixed_plan"
+        log_file = "fixed_plan_"
 
     elif agent1_config["name"] == "preferenced_human" and agent2_config[
             "name"] == "human_aware_agent":
-        log_file = "human_aware"
+        log_file = "human_aware_"
 
     elif agent1_config["name"] == "mdp_agent" and agent2_config[
             "name"] == "greedy_agent":
@@ -32,7 +32,7 @@ def log_actions(ind, agent_config, log_dir, f1, f2, row_idx, col_idx, ind_id):
             "name"] == "greedy_agent":
         log_file = "qmdp_"
 
-    log_file += ("_joint_actions_"+str(f1)+"_"+str(f2)+"_"+str(row_idx)+"_"+str(col_idx)+"_"+str(ind_id)+".json")
+    log_file += ("joint_actions_"+str(f1)+"_"+str(f2)+"_"+str(row_idx)+"_"+str(col_idx)+"_"+str(ind_id)+".json")
 
     full_path = os.path.join(log_dir, log_file)
     if os.path.exists(full_path):
@@ -110,13 +110,14 @@ def play(elite_map,
             ind_id = int(splited[num_features])
             ind_idx = ind_id*num_sim
             lvl_str = individuals["lvl_str"][ind_idx]
-            print("Playing in individual %d" % ind_idx)
+            print("Playing in individual %d" % ind_id)
             print(lvl_str)
             ind = Individual()
             ind.level = lvl_str
             ind.human_preference = individuals["human_preference"][ind_idx]
             ind.human_adaptiveness = individuals["human_adaptiveness"][ind_idx]
-            ind.rand_seed = individuals["rand_seed"][ind_idx]
+            ind.rand_seed = int(individuals["rand_seed"][ind_idx])
+
             if mode == "replay":
                 for agent_config in agent_configs:
                     fitness, _, _, _, ind.joint_actions, _, _ = run_overcooked_game(
@@ -124,11 +125,15 @@ def play(elite_map,
                         agent_config,
                         render=True,
                     )
-                    print("Fitness: %d" % fitness)
+                    print("Fitness: ", fitness)
+                    log_actions(ind, agent_config, log_dir, f1, f2, row_idx, col_idx, ind_id)
+
+                visualize_lvl(lvl_str, log_dir,
+                    "rendered_level_"+str(row_idx)+"_"+str(col_idx)+"_"+str(mat_idx)+"_"+str(ind_id)+".png")
             elif mode == "render":
                 visualize_lvl(
                     lvl_str, log_dir,
-                    f"rendered_level_{row_idx}_{col_idx}_{mat_idx}.png")
+                    f"rendered_level_{row_idx}_{col_idx}_{ind_id}.png")
                 # log_actions(ind, agent_config, log_dir, row_idx,
                 #             col_idx, ind_id)
             return
@@ -213,24 +218,24 @@ if __name__ == "__main__":
     assert (f2 < num_features)
 
     # read in row/col index
-    num_row = features[0]['resolution']
-    num_col = features[1]['resolution']
-    num_mat = features[2]['resolution']
+    # num_row = features[0]['resolution']
+    # num_col = features[1]['resolution']
+    # num_mat = features[2]['resolution']
     row_idx = int(opt.row_idx)
     col_idx = int(opt.col_idx)
-    assert (row_idx < num_row)
-    assert (col_idx < num_col)
+    # assert (row_idx < num_row)
+    # assert (col_idx < num_col)
 
     # number of simulations for one level map to row number in log files
     num_sim = 1
-    if opt.num_sim > 1:
-        num_sim = opt.num_sim + 1 # extra row for logging average/mode
+    if int(opt.num_sim) > 1:
+        num_sim = int(opt.num_sim) + 1 # extra row for logging average/mode
     
     # play_ind_id(elite_map, agent_configs, individuals, f1, f2, row_idx, col_idx, log_dir, opt.ind_id, num_sim)
-
+    mat_idx = None
     if is_3d:
         mat_idx = int(opt.matrix_idx)
-        assert (mat_idx < num_mat)
+        # assert (mat_idx < num_mat)
 
     play(elite_map,
          agent_configs,
@@ -238,7 +243,7 @@ if __name__ == "__main__":
          log_dir,
          row_idx,
          col_idx,
-         mat_idx,
+         mat_idx=mat_idx,
          is_3d=is_3d,
          mode=opt.mode, 
          num_sim=num_sim)
