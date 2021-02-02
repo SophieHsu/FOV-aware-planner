@@ -73,7 +73,7 @@ class OvercookedGame:
         self.human_player.set_agent_index(1 - self.agent_idx)
         self.human_player.set_mdp(self.env.mdp)
 
-        self.env.render()
+        self.env.render("full")
         self._running = True
         np.random.seed(self.rand_seed)
 
@@ -141,7 +141,7 @@ class OvercookedGame:
         pass
 
     def on_render(self):
-        self.env.render()
+        self.env.render(mode="full")
 
     def on_cleanup(self):
         pygame.quit()

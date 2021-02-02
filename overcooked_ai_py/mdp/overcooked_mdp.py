@@ -1425,16 +1425,21 @@ class OvercookedGridworld(object):
         Args:
             state(OvercookedState): state to render
             mode (string): mode of rendering
-                           For "human", render normally
-                           For "blur", render trajectory of both players
+                           For "human", render the game without a info panel
+                           For "blur", render the game with trajectory of both
+                               players
+                           For "full", render the game with a info panel
             time_step_left(int): timestep left for the game
         """
         players_dict = {player.position: player for player in state.players}
         objects_pos = []  # list of positions of the objects
 
         # set window size; SPRITE_LENGTH is the length of each squared sprite, which could be tuned in graphics.py
-        window_size = self.width*SPRITE_LENGTH,\
-                      self.height*SPRITE_LENGTH + INFO_PANEL_HEIGHT
+        if mode == "full":
+            window_size = self.width*SPRITE_LENGTH,\
+                          self.height*SPRITE_LENGTH + INFO_PANEL_HEIGHT
+        else:
+            window_size = self.width*SPRITE_LENGTH, self.height*SPRITE_LENGTH
 
         if self.viewer == None:
             # create viewer
@@ -1444,20 +1449,18 @@ class OvercookedGridworld(object):
             # render the terrain
             for y, terrain_row in enumerate(self.terrain_mtx):
                 for x, terrain in enumerate(terrain_row):
-                    curr_pos = get_curr_pos(x, y)
-                    terrain_pgobj = load_image(TERRAIN_TO_IMG[terrain])
-                    self.viewer.blit(terrain_pgobj, curr_pos)
+                    blit_terrain(x, y, self.terrain_mtx, self.viewer, mode)
 
         # remove the objects on the counters and pots
         if self.pre_objects_pos is not None:
             for pos in self.pre_objects_pos:
                 x, y = pos
-                blit_terrain(x, y, self.terrain_mtx, self.viewer)
+                blit_terrain(x, y, self.terrain_mtx, self.viewer, mode)
 
         # render objects at the new locations
         for y, terrain_row in enumerate(self.terrain_mtx):
             for x, terrain in enumerate(terrain_row):
-                curr_pos = get_curr_pos(x, y)
+                curr_pos = get_curr_pos(x, y, mode)
                 # there is object on a counter
                 if terrain == "X" and state.has_object((x, y)):
                     state_obj = state.get_object((x, y))
@@ -1489,17 +1492,17 @@ class OvercookedGridworld(object):
                         text_pos.midbottom = curr_pos.midbottom
                         self.viewer.blit(cook_time_text_surface, text_pos)
 
-        if mode == "human":
+        if mode == "human" or mode == "full":
             # remove chefs from last state
             if self.pre_players_pos is not None:
                 for pos in self.pre_players_pos:
                     x, y = pos
-                    blit_terrain(x, y, self.terrain_mtx, self.viewer)
+                    blit_terrain(x, y, self.terrain_mtx, self.viewer, mode)
 
         # render the chefs at new location
         for pos, player in players_dict.items():
             x, y = pos
-            curr_pos = get_curr_pos(x, y)
+            curr_pos = get_curr_pos(x, y, mode)
 
             # check player position conflicts
             player_idx_lst = [
@@ -1528,10 +1531,11 @@ class OvercookedGridworld(object):
             self.pre_objects_pos = None
 
         # render the game info panel
-        render_game_info_panel(
-            self.viewer,
-            (self.width * SPRITE_LENGTH, self.height * SPRITE_LENGTH),
-            state.num_orders_remaining, time_passed)
+        if mode == "full":
+            render_game_info_panel(
+                self.viewer,
+                (self.width * SPRITE_LENGTH, self.height * SPRITE_LENGTH),
+                state.num_orders_remaining, time_passed)
 
         # update display
         pygame.display.update()
