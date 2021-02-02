@@ -13,16 +13,22 @@ from overcooked_ai_pcg import (LSI_HUMAN_STUDY_RESULT_DIR,
                                LSI_HUMAN_STUDY_CONFIG_DIR,
                                LSI_HUMAN_STUDY_AGENT_DIR)
 from overcooked_ai_pcg.helper import init_env, init_qmdp_agent
-from overcooked_ai_py.agents.agent import HumanPlayer
+from overcooked_ai_py.agents.agent import HumanPlayer, StayAgent
 from overcooked_ai_py.mdp.overcooked_mdp import Direction, Action
+from overcooked_ai_py.mdp.overcooked_env import MAX_HORIZON
 
-HUMAN_STUDY_ENV_HORIZON = 150
+HUMAN_STUDY_ENV_HORIZON = 3
 
 SUB_STUDY_TYPES = [
     'even_workloads',
     'uneven_workloads',
     'high_team_fluency',
     'low_team_fluency',
+]
+
+NON_TRIAL_STUDY_TYPES = [
+    'all',
+    *SUB_STUDY_TYPES,
 ]
 
 DETAILED_STUDY_TYPES = [f"{x}-{i}" for x in SUB_STUDY_TYPES for i in range(3)]
@@ -217,17 +223,20 @@ def human_play(
     lvl_str,
     ai_agent=None,
     agent_save_path=None,
+    horizon=HUMAN_STUDY_ENV_HORIZON,
 ):
     """Function that allows human to play with an ai_agent.
 
     Args:
         lvl_str (str): Level string.
+        ai_agent (Agent): Agent that human plays with. Default is QMDP agent.
         agent_save_path (str): Path to the pre-saved ai agent. If nothing is
             found, it will be saved to there.
-        ai_agent (Agent): Agent that human plays with. Default is QMDP agent.
+        horizon (int): max number of timesteps to play.
     """
-    env = init_env(lvl_str, horizon=HUMAN_STUDY_ENV_HORIZON)
-    ai_agent = load_qmdp_agent(env, agent_save_path)
+    env = init_env(lvl_str, horizon=horizon)
+    if ai_agent is None:
+        ai_agent = load_qmdp_agent(env, agent_save_path)
     theApp = OvercookedGame(env, ai_agent, agent_idx=0, rand_seed=10)
     return theApp.on_execute()
 
@@ -315,7 +324,7 @@ def create_human_exp_log():
 
 
 def correct_study_type(study_type, lvl_type):
-    if study_type == "all":
+    if study_type == "all" and lvl_type != "trial":
         return True
     else:
         return lvl_type.startswith(study_type)
@@ -363,28 +372,49 @@ if __name__ == "__main__":
                     ", ".join(ALL_STUDY_TYPES))
                 exit(1)
 
-            # no logging if running trial level
-            if opt.study != "trial":
+            if opt.study == 'trial':
+                study_lvls = study_lvls[study_lvls["lvl_type"] == 'trial']
+                lvl_config = study_lvls.iloc[0]
+                agent_save_path = os.path.join(
+                    LSI_HUMAN_STUDY_AGENT_DIR,
+                    "{lvl_type}.pkl".format(lvl_type=lvl_config["lvl_type"]))
+
+                # play 3 times
+                # first 2 times with stay agent and infinite horizon
+                for _ in range(2):
+                    human_play(
+                        lvl_config["lvl_str"],
+                        ai_agent=StayAgent(),
+                        agent_save_path=agent_save_path,
+                        horizon=MAX_HORIZON,
+                    )
+                # thrid time with qmdp agent with finite horizon
+                human_play(
+                    lvl_config["lvl_str"],
+                    agent_save_path=agent_save_path,
+                )
+
+            elif opt.study in NON_TRIAL_STUDY_TYPES:
                 # initialize the result log files
                 human_log_csv = create_human_exp_log()
 
-            # shuffle the order if playing all
-            if opt.study == "all":
-                study_lvls = study_lvls.sample(frac=1)
+                # shuffle the order if playing all
+                if opt.study == 'all':
+                    study_lvls = study_lvls.sample(frac=1)
 
-            # play all of the levels
-            for index, lvl_config in study_lvls.iterrows():
-                # check study type:
-                if correct_study_type(opt.study, lvl_config["lvl_type"]):
-                    agent_save_path = os.path.join(
-                        LSI_HUMAN_STUDY_AGENT_DIR, "{lvl_type}.pkl".format(
-                            lvl_type=lvl_config["lvl_type"]))
-                    results = human_play(lvl_config["lvl_str"],
-                                         agent_save_path=agent_save_path)
-                    # write the results
-                    if lvl_config["lvl_type"] != "trial":
-                        write_to_human_exp_log(human_log_csv, results,
-                                               lvl_config)
+                # play all of the levels
+                for index, lvl_config in study_lvls.iterrows():
+                    # check study type:
+                    if correct_study_type(opt.study, lvl_config["lvl_type"]):
+                        agent_save_path = os.path.join(
+                            LSI_HUMAN_STUDY_AGENT_DIR, "{lvl_type}.pkl".format(
+                                lvl_type=lvl_config["lvl_type"]))
+                        results = human_play(lvl_config["lvl_str"],
+                                             agent_save_path=agent_save_path)
+                        # write the results
+                        if lvl_config["lvl_type"] != "trial":
+                            write_to_human_exp_log(human_log_csv, results,
+                                                   lvl_config)
 
         # loading an existing study and continue running it.
         else:
