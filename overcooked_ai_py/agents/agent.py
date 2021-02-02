@@ -376,6 +376,7 @@ class GreedyHumanModel(Agent):
         # Whether to automatically take an action to get the agent unstuck if it's in the same
         # state as the previous turn. If false, the agent is history-less, while if true it has history.
         self.auto_unstuck = auto_unstuck
+
         self.reset()
 
     def reset(self):
@@ -390,11 +391,13 @@ class GreedyHumanModel(Agent):
             actions_and_infos_n.append(self.action(state))
         return actions_and_infos_n
 
-    def action(self, state):
+    def action(self, state, eps = 0):
         possible_motion_goals = self.ml_action(state)
 
         #from IPython import embed
         #embed()
+
+
 
         # Once we have identified the motion goals for the medium
         # level action we want to perform, select the one with lowest cost
@@ -428,9 +431,6 @@ class GreedyHumanModel(Agent):
                     chosen_action = Action.STAY
                 action_probs = self.a_probs_from_action(chosen_action)
 
-                #from IPython import embed
-                #embed()
-
                 state.players[self.agent_index].stuck_log += [1]
             else:
                 state.players[self.agent_index].stuck_log += [0]
@@ -438,10 +438,18 @@ class GreedyHumanModel(Agent):
             # NOTE: Assumes that calls to the action method are sequential
             self.prev_state = state
 
+        #eps-greedy
+        if random.random() < eps:
+          chosen_action = (Action.ALL_ACTIONS[np.random.randint(6)],{})[0]
+
+
+
         if chosen_action == Action.STAY:
             state.players[self.agent_index].active_log += [0]
         else:
             state.players[self.agent_index].active_log += [1]
+
+
 
         return chosen_action, {"action_probs": action_probs}
 

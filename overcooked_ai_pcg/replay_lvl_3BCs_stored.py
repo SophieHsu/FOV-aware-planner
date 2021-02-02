@@ -153,7 +153,7 @@ def run_overcooked_local(agent1, agent2, env, mdp, render=True, worker_id=0, num
         while not done:
             if render:
                 env.render()
-                time.sleep(0.5)
+                time.sleep(1.0)
             joint_action = (agent1.action(env.state)[0],
                             agent2.action(env.state)[0])
             # print(joint_action)
