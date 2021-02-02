@@ -48,9 +48,9 @@ WORKLOAD_DIFFS_HIGH = np.array([6, 2, 2])
 
 # Maps the raw feature names to a more human-readable name.
 FEATURE_NAME = {
-    "diff_num_ingre_held": "# ingredients held (human - robot)",
-    "diff_num_plate_held": "# plates held (human - robot)",
-    "diff_num_dish_served": "# soups served (human - robot)",
+    "diff_num_ingre_held": "# ingredients held (H - R)",
+    "diff_num_plate_held": "# plates held (H - R)",
+    "diff_num_dish_served": "# soups served (H - R)",
     "cc_active": "# time steps concurrent motion",
     "stuck_time": "# time steps stuck",
 }

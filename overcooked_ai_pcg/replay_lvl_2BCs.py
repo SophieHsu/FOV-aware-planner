@@ -49,7 +49,7 @@ def retrieve_k_individuals(experiment_config, elite_map_config, agent_configs, i
     #feature2_name = features[2]["name"]
 
 
-    num_individuals = num_simulations * 52
+    num_individuals = num_simulations * 51
     relevant_individuals = []
     for indx in range(num_individuals):
         individual = individuals.iloc[indx]
@@ -423,7 +423,7 @@ if __name__ == "__main__":
  
     exit()
 
-    IDs, individuals  = retrieve_k_individuals(experiment_config, elite_map_config, agent_configs, individuals, row_idx, col_idx, log_dir,3)
+    IDs, individuals  = retrieve_k_individuals(experiment_config, elite_map_config, agent_configs, individuals, row_idx, col_idx, log_dir, 3)
     for individual in individuals:
       play_individual(individual, agent_configs)
 
