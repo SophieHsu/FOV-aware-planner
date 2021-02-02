@@ -57,15 +57,29 @@ PLAYER_ARROW_POS_SHIFT = {
 }
 
 
-def get_curr_pos(x, y):
+def get_curr_pos(x, y, mode="human"):
     """
     Returns pygame.Rect object that specifies the position
 
     Args:
         x, y: position of the terrain in the terrain matrix
+        mode: mode of rendering
     """
-    return pygame.Rect(x * SPRITE_LENGTH, y * SPRITE_LENGTH + INFO_PANEL_HEIGHT, SPRITE_LENGTH,
-                       SPRITE_LENGTH)
+    if mode == "full":
+        return pygame.Rect(
+            x * SPRITE_LENGTH,
+            y * SPRITE_LENGTH + INFO_PANEL_HEIGHT,
+            SPRITE_LENGTH,
+            SPRITE_LENGTH,
+        )
+
+    else:
+        return pygame.Rect(
+            x * SPRITE_LENGTH,
+            y * SPRITE_LENGTH,
+            SPRITE_LENGTH,
+            SPRITE_LENGTH,
+        )
 
 
 def get_text_sprite(show_str):
@@ -92,7 +106,7 @@ def load_image(path):
     return pygame.transform.scale(obj, (SPRITE_LENGTH, SPRITE_LENGTH))
 
 
-def blit_terrain(x, y, terrain_mtx, viewer):
+def blit_terrain(x, y, terrain_mtx, viewer, mode="human"):
     """
     Helper function to blit given position to specified terrain
 
@@ -101,7 +115,7 @@ def blit_terrain(x, y, terrain_mtx, viewer):
         terrain_mtx: terrain matrix
         viewer: pygame surface that displays the game
     """
-    curr_pos = get_curr_pos(x, y)
+    curr_pos = get_curr_pos(x, y, mode)
     # render the terrain
     terrain = terrain_mtx[y][x]
     terrain_pgobj = load_image(TERRAIN_TO_IMG[terrain])
@@ -256,8 +270,7 @@ def render_game_info_panel(window, game_window_size, num_orders_remaining,
     game_window_width, game_window_height = game_window_size
 
     # get panel rect
-    panel_rect = pygame.Rect(0, 0, game_window_width,
-                             INFO_PANEL_HEIGHT)
+    panel_rect = pygame.Rect(0, 0, game_window_width, INFO_PANEL_HEIGHT)
 
     # fill with background color
     window.fill(INFO_PANEL_COLOR, rect=panel_rect)

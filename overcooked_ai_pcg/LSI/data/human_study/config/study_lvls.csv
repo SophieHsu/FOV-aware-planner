@@ -76,16 +76,16 @@ XX XXX XXPXXX X
 XX            D
 XXXXXXXXXXXXXXX
 "
-low_team_fluency-1,4347,2021-01-22_20-21-56_CMAME-team-fluency-qmdp-w-greedy-slurm,11,22,,"XXXXXXXXXXXXXXX
-XXXXXX    XXXXX
-XXXXXX  2 XX  X
-XXXXX   X XXX X
-XPXX       X  D
-O  XO     XX  X
-XX      1 XX  X
-XXXXXX XX XXX X
-XXX           X
-XXXXXXXXXXXXXSX
+low_team_fluency-1,5820,2021-01-22_20-21-56_CMAME-team-fluency-qmdp-w-greedy-slurm,12,21,,"XXXXXXXXXXXXXXX
+O 2XX         X
+X XXX     XX  X
+S XXX  X   X  X
+X XXX  X   X  X
+O XX1  X   X  X
+X XXX  X   X  X
+D XXXX X XXX  X
+X             X
+XXXXXXXXXXXXPXX
 "
 low_team_fluency-2,9766,2021-01-22_20-21-56_CMAME-team-fluency-qmdp-w-greedy-slurm,13,20,,"XXXXXXXXXXXXXXX
 O 2XX         X
