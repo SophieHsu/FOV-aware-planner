@@ -31,57 +31,57 @@ from overcooked_ai_py.mdp.overcooked_env import OvercookedEnv
 #     return experiment_config, algorithm_config, elite_map_config, agent_configs
 
 
-def retrieve_k_individuals(experiment_config, elite_map_config, agent_configs, individuals, row_idx, col_idx, mat_idx, log_dir, k):
+# def retrieve_k_individuals(experiment_config, elite_map_config, agent_configs, individuals, row_idx, col_idx, mat_idx, log_dir, k):
 
-    #from IPython import embed
-    #embed()
+#     #from IPython import embed
+#     #embed()
 
-    num_simulations = experiment_config["num_simulations"
-    ]
-    feature_map = FeatureMap(
-        num_simulations,
-        feature_ranges=[(bc["low"], bc["high"])
-                        for bc in elite_map_config["Map"]["Features"]],
-        resolutions=[
-            bc["resolution"] for bc in elite_map_config["Map"]["Features"]
-        ],
-    )
-    feature0_name = features[0]["name"]
-    feature1_name = features[1]["name"]
-    feature2_name = features[2]["name"]
+#     num_simulations = experiment_config["num_simulations"
+#     ]
+#     feature_map = FeatureMap(
+#         num_simulations,
+#         feature_ranges=[(bc["low"], bc["high"])
+#                         for bc in elite_map_config["Map"]["Features"]],
+#         resolutions=[
+#             bc["resolution"] for bc in elite_map_config["Map"]["Features"]
+#         ],
+#     )
+#     feature0_name = features[0]["name"]
+#     feature1_name = features[1]["name"]
+#     feature2_name = features[2]["name"]
 
 
-    num_individuals = num_simulations * 52
-    relevant_individuals = []
-    for indx in range(num_individuals):
-        individual = individuals.iloc[indx]
-        if indx % 1000== 0:
-          print(indx)
+#     num_individuals = num_simulations * 52
+#     relevant_individuals = []
+#     for indx in range(num_individuals):
+#         individual = individuals.iloc[indx]
+#         if indx % 1000== 0:
+#           print(indx)
 
-        if (np.isnan(individual["ID"])==False): 
-             feature0 = individual[feature0_name]
-             feature1 = individual[feature1_name]
-             feature2 = individual[feature2_name]
-             ind = Individual()
-             ind.features = ([feature0], [feature1], [feature2])
-             #from IPython import embed
-             #em3bed()
+#         if (np.isnan(individual["ID"])==False): 
+#              feature0 = individual[feature0_name]
+#              feature1 = individual[feature1_name]
+#              feature2 = individual[feature2_name]
+#              ind = Individual()
+#              ind.features = ([feature0], [feature1], [feature2])
+#              #from IPython import embed
+#              #em3bed()
 
-             ind.fitness = individual["fitness"]
-             index = feature_map.get_index(ind)
+#              ind.fitness = individual["fitness"]
+#              index = feature_map.get_index(ind)
 
-             if index[0] == row_idx and index[1] == col_idx and index[2] == mat_idx: 
-                relevant_individuals.append(individual)
+#              if index[0] == row_idx and index[1] == col_idx and index[2] == mat_idx: 
+#                 relevant_individuals.append(individual)
 
-    sorted_individuals = sorted(relevant_individuals, key=lambda x: x.fitness)[::-1]
-    sorted_individuals = sorted_individuals[:k]
+#     sorted_individuals = sorted(relevant_individuals, key=lambda x: x.fitness)[::-1]
+#     sorted_individuals = sorted_individuals[:k]
 
-    IDs = []
-    for dd in range(k):
-      IDs.append(sorted_individuals[dd]["ID"])
+#     IDs = []
+#     for dd in range(k):
+#       IDs.append(sorted_individuals[dd]["ID"])
 
     
-    return IDs, sorted_individuals
+#     return IDs, sorted_individuals
 
 
 def play_individual(individual, agent_configs):
