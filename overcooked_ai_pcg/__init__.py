@@ -36,15 +36,6 @@ LSI_CONFIG_AGENT_DIR = os.path.join(LSI_CONFIG_DIR, "agents")
 # human study
 LSI_HUMAN_STUDY_DIR = os.path.join(LSI_DATA_DIR, "human_study")
 LSI_HUMAN_STUDY_CONFIG_DIR = os.path.join(LSI_HUMAN_STUDY_DIR, "config")
-
-TEAM_FLUENCY_DIR = os.path.join(LSI_HUMAN_STUDY_CONFIG_DIR, "team-fluency")
-HIGH_TEAM_FLUENCY_DIR = os.path.join(TEAM_FLUENCY_DIR, "high")
-LOW_TEAM_FLUENCY_DIR = os.path.join(TEAM_FLUENCY_DIR, "low")
-
-WORKLOADS_DIR = os.path.join(LSI_HUMAN_STUDY_CONFIG_DIR, "workload")
-EVEN_WORKLOADS_DIR = os.path.join(WORKLOADS_DIR, "even")
-UNEVEN_WORKLOADS_DIR = os.path.join(WORKLOADS_DIR, "uneven")
-
-TRIAL_DIR = os.path.join(LSI_HUMAN_STUDY_CONFIG_DIR, "trial")
+LSI_HUMAN_STUDY_AGENT_DIR = os.path.join(LSI_HUMAN_STUDY_CONFIG_DIR, "agents")
 
 LSI_HUMAN_STUDY_RESULT_DIR = os.path.join(LSI_HUMAN_STUDY_DIR, "result")

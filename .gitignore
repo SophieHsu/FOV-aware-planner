@@ -138,6 +138,8 @@ overcooked_ai_pcg/GAN_training/data/
 overcooked_ai_pcg/LSI/data/log/
 overcooked_ai_pcg/LSI/data/images/
 overcooked_ai_pcg/LSI/data/human_study/result/
+overcooked_ai_pcg/LSI/data/human_study/config/agents/
+
 agent*.pkl
 
 # pycharm related
