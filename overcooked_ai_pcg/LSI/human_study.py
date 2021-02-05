@@ -409,6 +409,7 @@ if __name__ == "__main__":
                         agent_save_path = os.path.join(
                             LSI_HUMAN_STUDY_AGENT_DIR, "{lvl_type}.pkl".format(
                                 lvl_type=lvl_config["lvl_type"]))
+                        print(lvl_config["lvl_type"])
                         results = human_play(lvl_config["lvl_str"],
                                              agent_save_path=agent_save_path)
                         # write the results
@@ -432,6 +433,7 @@ if __name__ == "__main__":
                     agent_save_path = os.path.join(
                         LSI_HUMAN_STUDY_AGENT_DIR,
                         "{lvl_type}.pkl".format(lvl_type=lvl_type))
+                    print(lvl_config["lvl_type"])
                     results = human_play(lvl_str,
                                          agent_save_path=agent_save_path)
 
