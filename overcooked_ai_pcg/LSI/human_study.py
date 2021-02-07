@@ -449,9 +449,9 @@ if __name__ == "__main__":
         # get level string and logged joint actions from log file
         _, human_log_data = load_human_log_data(log_index)
         lvl_str = human_log_data[human_log_data["lvl_type"] ==
-                                 lvl_type]["lvl_str"][0]
+                                 lvl_type]["lvl_str"].iloc[0]
         joint_actions = ast.literal_eval(human_log_data[
-            human_log_data["lvl_type"] == lvl_type]["joint_actions"][0])
+            human_log_data["lvl_type"] == lvl_type]["joint_actions"].iloc[0])
 
         # replay the game
         replay_with_joint_actions(lvl_str,
