@@ -220,6 +220,10 @@ def replay_with_joint_actions(lvl_str, joint_actions, plot=True):
     player.set_mdp(env.mdp)
     i = 0
     last_state = None
+    total_sparse_reward = 0
+    checkpoints = [env.horizon - 1] * env.num_orders
+    cur_order = 0
+
     while not done:
         if plot:
             env.render()
@@ -228,6 +232,11 @@ def replay_with_joint_actions(lvl_str, joint_actions, plot=True):
         player.update_logs(env.state, joint_actions[i][1])
         next_state, timestep_sparse_reward, done, info = env.step(
             joint_actions[i])
+        total_sparse_reward += timestep_sparse_reward
+
+        if timestep_sparse_reward > 0:
+            checkpoints[cur_order] = i
+            cur_order += 1
         # print(joint_actions[i])
         last_state = next_state
         i += 1
@@ -236,7 +245,7 @@ def replay_with_joint_actions(lvl_str, joint_actions, plot=True):
     workloads = next_state.get_player_workload()
     concurr_active = next_state.cal_concurrent_active_sum()
     stuck_time = next_state.cal_total_stuck_time()
-    return workloads, concurr_active, stuck_time
+    return workloads, concurr_active, stuck_time, checkpoints
 
 
 def human_play(

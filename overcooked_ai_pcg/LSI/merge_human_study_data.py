@@ -46,7 +46,7 @@ for i, log_index in enumerate(sorted(os.listdir(LSI_HUMAN_STUDY_RESULT_DIR))):
         lvl_str = row["lvl_str"]
         joint_actions = ast.literal_eval(row["joint_actions"])
 
-        workloads, concurr_active, stuck_time = replay_with_joint_actions(
+        workloads, concurr_active, stuck_time, checkpoints = replay_with_joint_actions(
             lvl_str, joint_actions, plot=False)
 
         if DEBUG:
@@ -61,6 +61,11 @@ for i, log_index in enumerate(sorted(os.listdir(LSI_HUMAN_STUDY_RESULT_DIR))):
             print("replayed workloads", workloads)
             print("original workloads", row["workloads"])
             print()
+
+            print("replayed checkpoints", checkpoints)
+            print("original checkpoints", row["checkpoints"])
+            print()
+
 
         # raise a warning while the results are different.
         if ast.literal_eval(row["workloads"]) != workloads:
@@ -78,6 +83,11 @@ for i, log_index in enumerate(sorted(os.listdir(LSI_HUMAN_STUDY_RESULT_DIR))):
             human_log_data.at[index, "stuck_time"] = stuck_time
             warnings.warn(
                 "Stuck time are different for replayed and original level!")
+
+        if checkpoints != row["checkpoints"]:
+            human_log_data.at[index, "checkpoints"] = checkpoints
+            warnings.warn(
+                "Checkpoints are different for replayed and original level!")
 
     human_data_logs.append((log_index, human_log_data))
 
