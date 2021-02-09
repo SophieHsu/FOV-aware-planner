@@ -5,6 +5,7 @@ import matplotlib
 import matplotlib.pyplot as plt
 import numpy as np
 import argparse
+# from ss_plotting.make_plots import plot_bar_graph
 from overcooked_ai_pcg import LSI_HUMAN_STUDY_RESULT_DIR
 
 from overcooked_ai_pcg.LSI.human_study import (DETAILED_STUDY_TYPES,
@@ -44,14 +45,14 @@ def log_bc_plot(lvl_types, bc_name, human_data, normalize_data=[]):
             order_idx = (value[0]['num_served'] - value[1]['num_served'] + ingd_offset)
             workloads[category_idx%2, 2, order_idx] += 1
             
-        elif bc_name == "concurr_active":
+        elif bc_name == "concurr_active" and category_idx >= 2:
             team_fluency[category_idx%2, 0, min(int((value/normalize_data[i])*100), 100)] += 1
         
-        elif bc_name == "stuck_time":
+        elif bc_name == "stuck_time" and category_idx >= 2:
             team_fluency[category_idx%2, 1, min(int((value/normalize_data[i])*100), 100)] += 1
         
         else:
-            assert 'no bc name matching'
+            pass
 
 
 def autolabel(ax, rects):
@@ -78,7 +79,7 @@ def plot_bcs(num_idx, human_study_log_dir):
             rects_order = ax.bar(label_loc+bar_width, workloads[i, 2], bar_width, label="diff_order")
 
             # Add some text for labels, title and custom x-axis tick labels, etc.
-            ax.set_ylabel('Number of people')
+            ax.set_ylabel('Number of levels')
             ax.set_ylim([0,num_idx])
             ax.set_title(category.replace("_", " ").capitalize())
             ax.set_xlabel('Workload differences')
@@ -86,16 +87,18 @@ def plot_bcs(num_idx, human_study_log_dir):
             ax.set_xticklabels(list(np.arange(-6,7,1)))
             ax.legend()
 
-            # autolabel(ax, rects_ingd)
-            # autolabel(ax, rects_plate)
-            # autolabel(ax, rects_order)
+            autolabel(ax, rects_ingd)
+            autolabel(ax, rects_plate)
+            autolabel(ax, rects_order)
+
+            # plot_bar_graph([workloads[i, 0], workloads[i, 1], workloads[i, 2]], ["blue", "green", "orange"],series_labels=["diff_ingredient", "diff_plate", "diff_order"], plot_ylabel='Number of people', plot_title=category.replace("_", " ").capitalize())
 
         else:
             label_loc = np.arange(team_fluency.shape[2])
             rects_concurr = ax.bar(label_loc-bar_width/2, team_fluency[i%2, 0], bar_width, label="concurr_active")
             rects_stuck = ax.bar(label_loc+bar_width/2, team_fluency[i%2, 1], bar_width, label="time_stuck")
 
-            ax.set_ylabel('Number of people')
+            ax.set_ylabel('Number of levels')
             ax.set_ylim([0,num_idx])
             ax.set_title(category.replace("_", " ").capitalize())
             ax.set_xlabel('Team fluency BCs(%)')
@@ -103,8 +106,8 @@ def plot_bcs(num_idx, human_study_log_dir):
             # ax.set_xticklabels(labels)
             ax.legend()
             
-            # autolabel(ax, rects_concurr)
-            # autolabel(ax, rects_stuck)
+            autolabel(ax, rects_concurr)
+            autolabel(ax, rects_stuck)
 
         fig.tight_layout()
         # plt.show()
