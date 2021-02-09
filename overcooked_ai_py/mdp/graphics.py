@@ -57,15 +57,29 @@ PLAYER_ARROW_POS_SHIFT = {
 }
 
 
-def get_curr_pos(x, y):
+def get_curr_pos(x, y, mode="human"):
     """
     Returns pygame.Rect object that specifies the position
 
     Args:
         x, y: position of the terrain in the terrain matrix
+        mode: mode of rendering
     """
-    return pygame.Rect(x * SPRITE_LENGTH, y * SPRITE_LENGTH + INFO_PANEL_HEIGHT, SPRITE_LENGTH,
-                       SPRITE_LENGTH)
+    if mode == "full":
+        return pygame.Rect(
+            x * SPRITE_LENGTH,
+            y * SPRITE_LENGTH + INFO_PANEL_HEIGHT,
+            SPRITE_LENGTH,
+            SPRITE_LENGTH,
+        )
+
+    else:
+        return pygame.Rect(
+            x * SPRITE_LENGTH,
+            y * SPRITE_LENGTH,
+            SPRITE_LENGTH,
+            SPRITE_LENGTH,
+        )
 
 
 def get_text_sprite(show_str):
@@ -92,7 +106,7 @@ def load_image(path):
     return pygame.transform.scale(obj, (SPRITE_LENGTH, SPRITE_LENGTH))
 
 
-def blit_terrain(x, y, terrain_mtx, viewer):
+def blit_terrain(x, y, terrain_mtx, viewer, mode="human"):
     """
     Helper function to blit given position to specified terrain
 
@@ -101,7 +115,7 @@ def blit_terrain(x, y, terrain_mtx, viewer):
         terrain_mtx: terrain matrix
         viewer: pygame surface that displays the game
     """
-    curr_pos = get_curr_pos(x, y)
+    curr_pos = get_curr_pos(x, y, mode)
     # render the terrain
     terrain = terrain_mtx[y][x]
     terrain_pgobj = load_image(TERRAIN_TO_IMG[terrain])
@@ -253,7 +267,8 @@ def render_from_grid(lvl_grid, log_dir, filename):
 
 def render_game_info_panel(window, game_window_size, num_orders_remaining,
                            time_passed):
-    pass
+#<<<<<<< HEAD
+#    pass
     # game_window_width, game_window_height = game_window_size
 
     # # get panel rect
@@ -278,3 +293,28 @@ def render_game_info_panel(window, game_window_size, num_orders_remaining,
     # _, num_order_txt_height = num_order_t_surface.get_size()
     # time_passed_text_pos.y = num_order_text_pos.y + num_order_txt_height
     # window.blit(t_surface, time_passed_text_pos)
+#=======
+    game_window_width, game_window_height = game_window_size
+
+    # get panel rect
+    panel_rect = pygame.Rect(0, 0, game_window_width, INFO_PANEL_HEIGHT)
+
+    # fill with background color
+    window.fill(INFO_PANEL_COLOR, rect=panel_rect)
+
+    # update num orders left
+    if num_orders_remaining == np.inf:
+        num_orders_remaining = "inf"
+    num_order_t_surface = get_text_sprite(
+        f"Number of orders left: {num_orders_remaining}")
+    num_order_text_pos = num_order_t_surface.get_rect()
+    num_order_text_pos.topleft = panel_rect.topleft
+    window.blit(num_order_t_surface, num_order_text_pos)
+
+    # update time passed
+    t_surface = get_text_sprite("Time passed: %3d s" % time_passed)
+    time_passed_text_pos = t_surface.get_rect()
+    _, num_order_txt_height = num_order_t_surface.get_size()
+    time_passed_text_pos.y = num_order_text_pos.y + num_order_txt_height
+    window.blit(t_surface, time_passed_text_pos)
+#>>>>>>> bce3ff4b5f40e334f942ddc27276ace0cdea63ea
