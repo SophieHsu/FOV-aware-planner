@@ -177,9 +177,11 @@ def main(config, lvl_size, gan_pth_path):
         visualize_lvl(lvl_unrepaired, log_dir, "gan_only_unrepaired.png")
         visualize_lvl(lvl_str, log_dir, "gan_milp_repaired.png")
 
+        #from IPython import embed
+        #embed()
         # generate randomly then using milp to repair
-        lvl_str = generate_rnd_lvl(lvl_size)
-        visualize_lvl(lvl_str, log_dir, "milp_only.png")
+        #lvl_str = generate_rnd_lvl(lvl_size)
+        #visualize_lvl(lvl_str, log_dir, "milp_only.png")
 
     # lvl_str = """XXPXX
     #              T  2T

@@ -12,7 +12,7 @@ import pickle
 from overcooked_ai_pcg import LSI_CONFIG_EXP_DIR, LSI_LOG_DIR, LSI_CONFIG_ALGO_DIR, LSI_CONFIG_MAP_DIR, LSI_CONFIG_AGENT_DIR
 from overcooked_ai_pcg.helper import run_overcooked_game, read_in_lsi_config
 from overcooked_ai_pcg.LSI.qd_algorithms import Individual, FeatureMap
-from overcooked_ai_pcg.helper import read_in_lsi_config, init_env_and_agent
+from overcooked_ai_pcg.helper import read_in_lsi_config, init_env_and_agent, visualize_lvl
 from overcooked_ai_py.mdp.overcooked_env import OvercookedEnv
 
 # def read_in_lsi_config(exp_config_file):
@@ -215,7 +215,7 @@ class GameConfigLog:
         return os.path.exists(self.full_path)
 
 
-def play(elite_map, agent_configs, individuals, row_idx, col_idx, log_dir, load_data, agent_config_idx):
+def play(elite_map, agent_configs, individuals, row_idx, col_idx, log_dir, load_data, agent_config_idx, mode):
     """
     Find the individual in the specified cell in the elite map
     and run overcooked game with the specified agents
@@ -264,36 +264,39 @@ def play(elite_map, agent_configs, individuals, row_idx, col_idx, log_dir, load_
             load_data_dir = os.path.join(log_dir, "stored_data/")
             game_log = GameConfigLog(load_data_dir, log_file_name)
 
-           #from IPython import embed
-           #embed()
-            if load_data == 0: 
-                agent1, agent2, env, mdp = init_env_and_agent(ind, agent_configs[agent_config_idx])
-                game_log.addData(["agent1", "agent2", "mdp"], [agent1, agent2, mdp])
-                game_log.storeData()
+            if mode == "render":
+              visualize_lvl(lvl_str, log_dir,f"rendered_level_{row_idx}_{col_idx}_{ind_id}.png")
             else:
-                agent1, agent2, mdp = game_log.loadData()
-                env = OvercookedEnv.from_mdp(mdp, info_level=0, horizon=100)
+               #from IPython import embed
+               #embed()
+                if load_data == 0: 
+                    agent1, agent2, env, mdp = init_env_and_agent(ind, agent_configs[agent_config_idx])
+                    game_log.addData(["agent1", "agent2", "mdp"], [agent1, agent2, mdp])
+                    game_log.storeData()
+                else:
+                    agent1, agent2, mdp = game_log.loadData()
+                    env = OvercookedEnv.from_mdp(mdp, info_level=0, horizon=100)
 
 
                #game_log = GameConfigLog(load_data_dir, log_file_name)
 
 
-            #theApp = App(env, agent1, agent2, rand_seed=ind.rand_seed, player_idx=0, slow_time=False)
-            #ind.fitness, ind.scores, ind.checkpoints, ind.player_workloads, ind.joint_actions, ind.concurr_active, ind.stuck_time = theApp.on_execute()
-            for agent_config in agent_configs:
-                ind.fitness, ind.scores, ind.checkpoints, ind.player_workloads, ind.joint_actions, ind.concurr_active, ind.stuck_time  = run_overcooked_local(agent1, agent2, env, mdp, render=True)
-                print("Fitness: {}".format(ind.fitness))
-                print("Concurrently active:", ind.concurr_active, "; Stuck time:", ind.stuck_time)                #from IPython import embed
-                #embed()
-                #print("Fitness: %d" % fitness[0])
-                #log_actions(ind, agent_config, log_dir, f1, f2, row_idx, col_idx, ind_id)
-            #return
+                    #theApp = App(env, agent1, agent2, rand_seed=ind.rand_seed, player_idx=0, slow_time=False)
+                    #ind.fitness, ind.scores, ind.checkpoints, ind.player_workloads, ind.joint_actions, ind.concurr_active, ind.stuck_time = theApp.on_execute()
+                    for agent_config in agent_configs:
+                        ind.fitness, ind.scores, ind.checkpoints, ind.player_workloads, ind.joint_actions, ind.concurr_active, ind.stuck_time  = run_overcooked_local(agent1, agent2, env, mdp, render=True)
+                        print("Fitness: {}".format(ind.fitness))
+                        print("Concurrently active:", ind.concurr_active, "; Stuck time:", ind.stuck_time)                #from IPython import embed
+                        #embed()
+                        #print("Fitness: %d" % fitness[0])
+                        #log_actions(ind, agent_config, log_dir, f1, f2, row_idx, col_idx, ind_id)
+                    #return
 
-            #print("Fitness: {}; Total sparse reward: {};".format(ind.fitness, ind.scores))
-            #print("Checkpoints", ind.checkpoints)
-            #print("Workloads:", ind.player_workloads, "; Concurrently active:", ind.concurr_active, "; Stuck time:", ind.stuck_time)
+                    #print("Fitness: {}; Total sparse reward: {};".format(ind.fitness, ind.scores))
+                    #print("Checkpoints", ind.checkpoints)
+                    #print("Workloads:", ind.player_workloads, "; Concurrently active:", ind.concurr_active, "; Stuck time:", ind.stuck_time)
 
-            #log_actions(ind, agent_configs[-1], log_dir, f1, f2, row_idx, col_idx, ind_id)
+                    #log_actions(ind, agent_configs[-1], log_dir, f1, f2, row_idx, col_idx, ind_id)
 
             return
 
@@ -338,6 +341,13 @@ if __name__ == "__main__":
                          required = False,
                          default = -1)
 
+
+    parser.add_argument('-mode', '--mode',
+                        help="mode to replay or merely render the level.",
+                        required=False,
+                        default="replay")
+
+
     opt = parser.parse_args()
 
     # read in full elite map
@@ -351,6 +361,7 @@ if __name__ == "__main__":
 
     load_data = int(opt.load_data)
 
+    mode = opt.mode
 
     # read in individuals
     individuals = pd.read_csv(os.path.join(log_dir, "individuals_log.csv"))
@@ -379,7 +390,7 @@ if __name__ == "__main__":
     assert (row_idx < num_row)
     assert (col_idx < num_col)
 
-    play(elite_map, agent_configs, individuals, row_idx, col_idx, log_dir, load_data, agent_config_idx)
+    play(elite_map, agent_configs, individuals, row_idx, col_idx, log_dir, load_data, agent_config_idx, mode = mode)
  
     exit()
 
