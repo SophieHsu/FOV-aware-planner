@@ -28,21 +28,22 @@ team_fluency = np.zeros((2,2,101), dtype=int) # low, high
 
 def log_bc_plot(lvl_types, bc_name, human_data, normalize_data=[]):
     ingd_offset = 6
-    plate_offset = 2
-    order_offset = 2
 
     for i, value in human_data.iteritems():
         category_idx = categories.index(lvl_types[i].split("-")[0])
 
         if bc_name == "workloads" and category_idx<2:
             value = ast.literal_eval(value)
+
             ingd_idx = (value[0]['num_ingre_held'] - value[1]['num_ingre_held'] + ingd_offset)
             workloads[category_idx%2, 0, ingd_idx] += 1
-            plate_idx = (value[0]['num_plate_held'] - value[1]['num_plate_held'] + plate_offset)
+            
+            plate_idx = (value[0]['num_plate_held'] - value[1]['num_plate_held'] + ingd_offset)
             workloads[category_idx%2, 1, plate_idx] += 1
-            order_idx = (value[0]['num_served'] - value[1]['num_served'] + order_offset)
+            
+            order_idx = (value[0]['num_served'] - value[1]['num_served'] + ingd_offset)
             workloads[category_idx%2, 2, order_idx] += 1
-        
+            
         elif bc_name == "concurr_active":
             team_fluency[category_idx%2, 0, min(int((value/normalize_data[i])*100), 100)] += 1
         
