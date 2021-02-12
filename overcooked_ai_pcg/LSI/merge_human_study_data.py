@@ -16,6 +16,7 @@ DEBUG = False
 bc_column_names = [
     "total_sparse_reward",
     "checkpoints",
+    "total_time_step",
     "workloads",
     "concurr_active",
     "stuck_time",
@@ -25,6 +26,7 @@ direct_mean_column_names = [
     "total_sparse_reward",
     "concurr_active",
     "stuck_time",
+    "total_time_step",
 ]
 
 diff = []
@@ -36,6 +38,9 @@ for i, log_index in enumerate(sorted(os.listdir(LSI_HUMAN_STUDY_RESULT_DIR))):
     human_log_data = human_log_data.sort_values(by=["lvl_type"]).reset_index(
         drop=True)
 
+    # add a total timestep column
+    total_time_steps = []
+
     # Rerun the level.
     # Due to some tricky bug that we cannot discover, we rerun the level
     # to make sure that the bc it is correct. If the value is different, we
@@ -46,8 +51,9 @@ for i, log_index in enumerate(sorted(os.listdir(LSI_HUMAN_STUDY_RESULT_DIR))):
         lvl_str = row["lvl_str"]
         joint_actions = ast.literal_eval(row["joint_actions"])
 
-        workloads, concurr_active, stuck_time, checkpoints = replay_with_joint_actions(
+        workloads, concurr_active, stuck_time, checkpoints, total_time_step = replay_with_joint_actions(
             lvl_str, joint_actions, plot=False)
+        total_time_steps.append(total_time_step)
 
         if DEBUG:
             print(f"Replaying {log_index}, {lvl_type}")
@@ -88,6 +94,9 @@ for i, log_index in enumerate(sorted(os.listdir(LSI_HUMAN_STUDY_RESULT_DIR))):
             human_log_data.at[index, "checkpoints"] = checkpoints
             warnings.warn(
                 "Checkpoints are different for replayed and original level!")
+
+    # add total time step column
+    human_log_data["total_time_step"] = total_time_steps
 
     human_data_logs.append((log_index, human_log_data))
 

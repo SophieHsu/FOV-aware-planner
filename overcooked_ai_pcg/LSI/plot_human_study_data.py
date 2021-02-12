@@ -128,7 +128,7 @@ def human_log_correction(human_log_data):
         lvl_str = row["lvl_str"]
         joint_actions = ast.literal_eval(row["joint_actions"])
 
-        workloads, concurr_active, stuck_time, checkpoints = replay_with_joint_actions(
+        workloads, concurr_active, stuck_time, checkpoints, _ = replay_with_joint_actions(
             lvl_str, joint_actions, plot=False)
 
         if DEBUG:

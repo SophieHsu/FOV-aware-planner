@@ -245,7 +245,7 @@ def replay_with_joint_actions(lvl_str, joint_actions, plot=True):
     workloads = next_state.get_player_workload()
     concurr_active = next_state.cal_concurrent_active_sum()
     stuck_time = next_state.cal_total_stuck_time()
-    return workloads, concurr_active, stuck_time, checkpoints
+    return workloads, concurr_active, stuck_time, checkpoints, i
 
 
 def human_play(
@@ -479,7 +479,6 @@ if __name__ == "__main__":
     else:
         log_index = opt.log_index
         lvl_type = opt.type
-        assert int(log_index) >= 0
 
         # get level string and logged joint actions from log file
         _, human_log_data = load_human_log_data(log_index)
