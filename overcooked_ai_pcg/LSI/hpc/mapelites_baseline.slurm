@@ -49,7 +49,7 @@ echo
 echo "========== Starting Dask Python script =========="
 
 # The "-u" option removes buffers from stdin and stdout.
-python -u run_search.py --config data/config/experiment/MAPELITES-BASE_workloads_diff_fixed_plan.tml -s "large"
+python -u run_search.py --config data/config/experiment/MAPELITES-BASE_workloads_diff_fixed_plan_slurm.tml -s "large"
 
 echo
 echo "========== Done =========="
