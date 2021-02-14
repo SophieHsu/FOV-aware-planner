@@ -97,7 +97,7 @@ class FeatureMap:
 
     def add_to_map(self, to_add):
         index = self.get_index(to_add)
-        if len(to_add.fitness) > 1:
+        if isinstance(to_add.fitness, list) and len(to_add.fitness) > 1:
             replaced_elite = False
             if index not in self.elite_map:
                 self.elite_indices.append(index)
@@ -194,8 +194,8 @@ class QDAlgorithmBase(ABC):
         """
         if self.is_running():
             self.return_evaluated_individual(ind)
-            # self.running_individual_log.log_individual(ind)
-            self.running_individual_log.log_individual_multi_row(ind)
+            self.running_individual_log.log_individual(ind)
+            # self.running_individual_log.log_individual_multi_row(ind)
             self.frequent_map_log.log_map(self.feature_map)
             self.map_summary_log.log_summary(self.feature_map,
                                              self.individuals_evaluated)

@@ -141,7 +141,8 @@ def run_overcooked_eval(ind, visualize, elite_map_config, agent_configs,
     ind.joint_actions = tuple(joint_actions)
     ind.concurr_actives = tuple(concurr_actives)
     ind.stuck_times = tuple(stuck_times)
-
+    print("fitness:")
+    print(ind.fitnesses)
     # for unnormalized version, fitness is scale
     if len(agent_configs) == 1:
         ind.fitness = ind.fitnesses[0]
@@ -150,8 +151,8 @@ def run_overcooked_eval(ind, visualize, elite_map_config, agent_configs,
         if len(ind.fitnesses[0]) > 1:
             ind.fitnesses = np.array(ind.fitnesses)
             ind.fitness = ind.fitnesses[0,:] - ind.fitnesses[1,:]
-        else:    
-            ind.fitness = ind.fitnesses[0] - ind.fitnesses[1]
+        else:
+            ind.fitness = ind.fitnesses[0][0] - ind.fitnesses[1][0]
 
     print("The fitness of the individual is: " + str(ind.fitness))
 
