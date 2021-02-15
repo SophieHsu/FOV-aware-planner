@@ -209,7 +209,7 @@ def draw_arrow(window, player, player_index, pos, time_left):
 
     arrow = pygame.transform.scale(arrow, (SPRITE_LENGTH, SPRITE_LENGTH))
     window.blit(arrow, pos)
-    tmp = input()
+    # tmp = input()
 
 
 def get_orientation_str(player):

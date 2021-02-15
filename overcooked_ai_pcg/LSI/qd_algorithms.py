@@ -194,8 +194,8 @@ class QDAlgorithmBase(ABC):
         """
         if self.is_running():
             self.return_evaluated_individual(ind)
-            # self.running_individual_log.log_individual(ind)
-            self.running_individual_log.log_individual_multi_row(ind)
+            self.running_individual_log.log_individual(ind)
+            # self.running_individual_log.log_individual_multi_row(ind)
             self.frequent_map_log.log_map(self.feature_map)
             self.map_summary_log.log_summary(self.feature_map,
                                              self.individuals_evaluated)

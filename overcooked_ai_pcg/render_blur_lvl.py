@@ -7,9 +7,9 @@ from overcooked_ai_pcg.helper import lvl_str2grid, CONFIG
 from overcooked_ai_py.mdp.overcooked_mdp import OvercookedGridworld
 from overcooked_ai_py.mdp.overcooked_env import OvercookedEnv
 
-def render_blur(joint_action_log, log_dir, lb, ub):
+def render_blur(joint_action_log, log_dir, log_name, lb, ub):
     grid = lvl_str2grid(joint_action_log["lvl_str"])
-    joint_actions = joint_action_log["joint_actions"]
+    joint_actions = joint_action_log["joint_actions"][0]
 
     # need to set up and run game mannully because
     mdp = OvercookedGridworld.from_grid(grid, CONFIG)
@@ -19,8 +19,8 @@ def render_blur(joint_action_log, log_dir, lb, ub):
     t = 0
     while not done:
         if t >= lb and t <= ub:
-            # env.render("blur")
-            env.render()
+            env.render("blur")
+            # env.render()
             time.sleep(0.1)
         agent1_action = joint_actions[t][0]
         agent2_action = joint_actions[t][1]
@@ -29,22 +29,22 @@ def render_blur(joint_action_log, log_dir, lb, ub):
                         if isinstance(agent2_action, list) else agent2_action)
         next_state, timestep_sparse_reward, done, info = env.step(joint_action)
         t += 1
-        # print(t)
-        tmp = input()
+        print(t)
+        # tmp = input()
 
     # save the rendered blur image
     pygame.image.save(
         env.mdp.viewer,
-        os.path.join(log_dir, "blurred_play_%sto%s.png" % (str(lb), str(ub))))
+        os.path.join(log_dir, log_name+"_blurred_%sto%s.png" % (str(lb), str(ub))))
 
 
-    print("fitness =", joint_action_log["fitness"])
-    print("score =", joint_action_log["score"])
-    print("checkpoints =", joint_action_log["checkpoints"])
-    print("player_workloads =", joint_action_log["player_workloads"])
-    print("concurr_active =", joint_action_log["concurr_active"])
-    print("stuck_time =", joint_action_log["stuck_time"])
-    print("rand_seed =", joint_action_log["rand_seed"])
+    # print("fitness =", joint_action_log["fitness"])
+    # print("score =", joint_action_log["score"])
+    # print("checkpoints =", joint_action_log["checkpoints"])
+    # print("player_workloads =", joint_action_log["player_workloads"])
+    # print("concurr_active =", joint_action_log["concurr_active"])
+    # print("stuck_time =", joint_action_log["stuck_time"])
+    # print("rand_seed =", joint_action_log["rand_seed"])
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
@@ -63,10 +63,12 @@ if __name__ == '__main__':
     opt = parser.parse_args()
     with open(opt.log_file, 'r') as f:
         joint_action_log = json.load(f)
-    log_dir = os.path.split(opt.log_file)[0]
+
+    log_dir, log_json_file = os.path.split(opt.log_file)
+    log_name = log_json_file.split('.')[0]
 
     # get upper and lower bounds
     lb = int(opt.lower_bound)
     ub = int(opt.upper_bound)
     assert (lb <= ub)
-    render_blur(joint_action_log, log_dir, lb, ub)
+    render_blur(joint_action_log, log_dir, log_name, lb, ub)

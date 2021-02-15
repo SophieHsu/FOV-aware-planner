@@ -744,10 +744,10 @@ class OvercookedGridworld(object):
         assert not self.is_terminal(
             state), "Trying to find successor of a terminal state: {}".format(
                 state)
-        for action, action_set in zip(joint_action, self.get_actions(state)):
-            if action not in action_set:
-                raise ValueError("Illegal action %s in state %s" %
-                                 (action, state))
+        # for action, action_set in zip(joint_action, self.get_actions(state)):
+        #     if action not in action_set:
+        #         raise ValueError("Illegal action %s in state %s" %
+        #                          (action, state))
 
         new_state = state.deepcopy()
 
@@ -1528,10 +1528,12 @@ class OvercookedGridworld(object):
                 player, player_idx_lst[0])
 
             if mode == "blur":
-                player_pgobj.set_alpha(150)
-                player_hat_pgobj.set_alpha(150)
-                draw_arrow(self.viewer, player, player_idx_lst[0], curr_pos,
-                           time_step_left)
+                transparent = (105-time_step_left+1)*5
+                # print(transparent)
+                player_pgobj.set_alpha(transparent)
+                player_hat_pgobj.set_alpha(transparent)
+                # draw_arrow(self.viewer, player, player_idx_lst[0], curr_pos,
+                           # time_step_left)
 
             self.viewer.blit(player_pgobj, curr_pos)
             self.viewer.blit(player_hat_pgobj, curr_pos)

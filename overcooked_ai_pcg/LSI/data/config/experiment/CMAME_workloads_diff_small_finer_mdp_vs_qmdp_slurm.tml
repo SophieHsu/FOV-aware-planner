@@ -4,7 +4,6 @@ algorithm_config="cma_me.tml"
 elite_map_config="small_workloads_diff_finer.tml"
 agent_config=["mdp_agent_w_greedy_agent.tml", "qmdp_agent_w_greedy_agent.tml"]
 
-
 slurm=true
 num_cores=120
 num_cores_per_slurm_worker=8
