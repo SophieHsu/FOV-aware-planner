@@ -166,8 +166,8 @@ class OvercookedGame:
         concurr_active = self.last_state.cal_concurrent_active_sum()
         stuck_time = self.last_state.cal_total_stuck_time()
 
-        from IPython import embed
-        embed()
+        # from IPython import embed
+        # embed()
 
         fitness = self.total_sparse_reward + 1
         for checked_time in reversed(self.checkpoints):
