@@ -95,7 +95,7 @@ def init_dask(experiment_config, log_dir):
                 f"--output {output_file}",
                 f"--error {output_file}",
             ],
-            death_timeout=600,
+            death_timeout=3600,
         )
 
         print("### SLURM Job script ###")
