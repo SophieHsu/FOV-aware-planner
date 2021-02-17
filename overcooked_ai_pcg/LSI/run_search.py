@@ -287,7 +287,7 @@ def search(dask_client, num_simulations, algorithm_config, elite_map_config,
 
             if evaluated_ind is None:
                 print("Received a failed evaluation.")
-                algorithm.individuals_disbatched -= 1
+                # algorithm.individuals_disbatched -= 1
             elif (evaluated_ind is not None and
                   algorithm.insert_if_still_running(evaluated_ind)):
                 cur_time = time.time()
@@ -307,7 +307,7 @@ def search(dask_client, num_simulations, algorithm_config, elite_map_config,
                   "-------------------------------------------")
             # avoid not sending out more evaluations while evaluating initial
             # populations
-            algorithm.individuals_disbatched -= 1
+            # algorithm.individuals_disbatched -= 1
             continue
 
         del completion  # clean up
