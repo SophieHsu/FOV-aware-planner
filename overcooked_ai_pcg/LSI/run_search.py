@@ -305,6 +305,9 @@ def search(dask_client, num_simulations, algorithm_config, elite_map_config,
                   "-------------------------------------------\n"
                   f"{err}\n"
                   "-------------------------------------------")
+            # avoid not sending out more evaluations while evaluating initial
+            # populations
+            algorithm.individuals_disbatched -= 1
             continue
 
         del completion  # clean up
