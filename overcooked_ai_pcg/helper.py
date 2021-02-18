@@ -480,7 +480,6 @@ def init_env_and_agent(ind, agent_config, worker_id=0):
 
 def init_env(lvl_str, horizon=100):
     grid = lvl_str2grid(lvl_str)
-    print(lvl_str)
     mdp = OvercookedGridworld.from_grid(grid, CONFIG)
     env = OvercookedEnv.from_mdp(mdp, info_level=0, horizon=horizon)
     return env
