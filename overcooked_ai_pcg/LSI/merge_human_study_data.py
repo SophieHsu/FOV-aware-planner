@@ -120,7 +120,7 @@ for bc_column_name in bc_column_names:
         if bc_column_name == "workloads":
             workloads_dict = {}
             for index, item in human_log_data["workloads"].iteritems():
-                curr_workloads = ast.literal_eval(item)
+                curr_workloads = ast.literal_eval(str(item))
                 for agent_i, agent_w in enumerate(curr_workloads):
                     for key in agent_w:
                         new_key = f"{key}-{agent_i}"
