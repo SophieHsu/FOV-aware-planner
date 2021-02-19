@@ -10,6 +10,7 @@ from overcooked_ai_pcg.helper import (run_overcooked_game, read_in_lsi_config,
                                       visualize_lvl)
 from overcooked_ai_pcg.LSI.qd_algorithms import Individual
 
+
 def log_actions(ind, agent_config, log_dir, f1, f2, row_idx, col_idx, ind_id):
     agent1_config = agent_config["Agent1"]
     agent2_config = agent_config["Agent2"]
@@ -32,7 +33,9 @@ def log_actions(ind, agent_config, log_dir, f1, f2, row_idx, col_idx, ind_id):
             "name"] == "greedy_agent":
         log_file = "qmdp_"
 
-    log_file += ("joint_actions_"+str(f1)+"_"+str(f2)+"_"+str(row_idx)+"_"+str(col_idx)+"_"+str(ind_id)+".json")
+    log_file += ("joint_actions_" + str(f1) + "_" + str(f2) + "_" +
+                 str(row_idx) + "_" + str(col_idx) + "_" + str(ind_id) +
+                 ".json")
 
     full_path = os.path.join(log_dir, log_file)
     if os.path.exists(full_path):
@@ -48,11 +51,18 @@ def log_actions(ind, agent_config, log_dir, f1, f2, row_idx, col_idx, ind_id):
         print("Joint actions saved")
 
 
-
-def play_ind_id(elite_map, agent_configs, individuals, f1, f2, row_idx, col_idx,
-         log_dir, ind_id, num_sim=1):
+def play_ind_id(elite_map,
+                agent_configs,
+                individuals,
+                f1,
+                f2,
+                row_idx,
+                col_idx,
+                log_dir,
+                ind_id,
+                num_sim=1):
     ind_id = int(ind_id)
-    ind_id_index = ind_id*num_sim
+    ind_id_index = ind_id * num_sim
     lvl_str = individuals["lvl_str"][ind_id_index]
     print("Playing in individual %d" % ind_id)
     print(lvl_str)
@@ -64,13 +74,17 @@ def play_ind_id(elite_map, agent_configs, individuals, f1, f2, row_idx, col_idx,
     print(ind.rand_seed)
     for agent_config in agent_configs:
         print(agent_config["Agent1"], agent_config["Agent2"])
-        fitness, _, _, _, ind.joint_actions, _, _ = run_overcooked_game(ind, agent_config, render=True)
+        fitness, _, _, _, ind.joint_actions, _, _ = run_overcooked_game(
+            ind, agent_config, render=True)
         print("Fitness:", fitness)
-        log_actions(ind, agent_config, log_dir, f1, f2, row_idx, col_idx, ind_id)
+        log_actions(ind, agent_config, log_dir, f1, f2, row_idx, col_idx,
+                    ind_id)
 
-    visualize_lvl(lvl_str, log_dir,
-                    "rendered_level_"+str(f1)+"_"+str(f2)+"_"+str(row_idx)+"_"+str(col_idx)+"_"+str(ind_id)+".png")
+    visualize_lvl(
+        lvl_str, log_dir, "rendered_level_" + str(f1) + "_" + str(f2) + "_" +
+        str(row_idx) + "_" + str(col_idx) + "_" + str(ind_id) + ".png")
     return
+
 
 def play(elite_map,
          agent_configs,
@@ -108,8 +122,9 @@ def play(elite_map,
         # print(curr_idx)
         if curr_idx == (row_idx, col_idx, mat_idx):
             ind_id = int(splited[num_features])
-            ind_idx = ind_id*num_sim
-            lvl_str = individuals["lvl_str"][ind_idx]
+            ind_idx = ind_id * num_sim
+            lvl_str = individuals[individuals["ID"] ==
+                                  ind_id]["lvl_str"].iloc[0]
             print("Playing in individual %d" % ind_id)
             print(lvl_str)
             ind = Individual()
@@ -126,10 +141,13 @@ def play(elite_map,
                         render=True,
                     )
                     print("Fitness: ", fitness)
-                    log_actions(ind, agent_config, log_dir, f1, f2, row_idx, col_idx, ind_id)
+                    log_actions(ind, agent_config, log_dir, f1, f2, row_idx,
+                                col_idx, ind_id)
 
-                visualize_lvl(lvl_str, log_dir,
-                    "rendered_level_"+str(row_idx)+"_"+str(col_idx)+"_"+str(mat_idx)+"_"+str(ind_id)+".png")
+                visualize_lvl(
+                    lvl_str, log_dir,
+                    "rendered_level_" + str(row_idx) + "_" + str(col_idx) +
+                    "_" + str(mat_idx) + "_" + str(ind_id) + ".png")
             elif mode == "render":
                 visualize_lvl(
                     lvl_str, log_dir,
@@ -229,8 +247,8 @@ if __name__ == "__main__":
     # number of simulations for one level map to row number in log files
     num_sim = 1
     if int(opt.num_sim) > 1:
-        num_sim = int(opt.num_sim) + 1 # extra row for logging average/mode
-    
+        num_sim = int(opt.num_sim) + 1  # extra row for logging average/mode
+
     # play_ind_id(elite_map, agent_configs, individuals, f1, f2, row_idx, col_idx, log_dir, opt.ind_id, num_sim)
     mat_idx = None
     if is_3d:
@@ -245,5 +263,5 @@ if __name__ == "__main__":
          col_idx,
          mat_idx=mat_idx,
          is_3d=is_3d,
-         mode=opt.mode, 
+         mode=opt.mode,
          num_sim=num_sim)
