@@ -2,6 +2,7 @@
 num_param=34
 type="human"
 num_iter=1
+multi_iter=false
 
 [Agent1]
 name="preferenced_human"

@@ -95,6 +95,7 @@ def init_dask(experiment_config, log_dir):
                 f"--output {output_file}",
                 f"--error {output_file}",
             ],
+            death_timeout=3600,
         )
 
         print("### SLURM Job script ###")
@@ -286,6 +287,7 @@ def search(dask_client, num_simulations, algorithm_config, elite_map_config,
 
             if evaluated_ind is None:
                 print("Received a failed evaluation.")
+                # algorithm.individuals_disbatched -= 1
             elif (evaluated_ind is not None and
                   algorithm.insert_if_still_running(evaluated_ind)):
                 cur_time = time.time()
@@ -303,6 +305,9 @@ def search(dask_client, num_simulations, algorithm_config, elite_map_config,
                   "-------------------------------------------\n"
                   f"{err}\n"
                   "-------------------------------------------")
+            # avoid not sending out more evaluations while evaluating initial
+            # populations
+            # algorithm.individuals_disbatched -= 1
             continue
 
         del completion  # clean up

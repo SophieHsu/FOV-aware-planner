@@ -78,6 +78,7 @@ def diff_num_ingre_held(ind):
 
         return workload_diff
     else:
+        workloads = workloads[0]
         return workloads[0]["num_ingre_held"] - workloads[1]["num_ingre_held"]
 
 def diff_num_plate_held(ind):
@@ -93,6 +94,7 @@ def diff_num_plate_held(ind):
         workload_diff[-1] = round(median_diff)
         return workload_diff
     else:
+        workloads = workloads[0]
         return workloads[0]["num_plate_held"] - workloads[1]["num_plate_held"]
 
 def diff_num_dish_served(ind):
@@ -109,6 +111,7 @@ def diff_num_dish_served(ind):
 
         return workload_diff
     else:
+        workloads = workloads[0]
         return workloads[0]["num_served"] - workloads[1]["num_served"]
 
 # bc for human awared mdp agent
