@@ -390,12 +390,21 @@ class OvercookedState(object):
 
     def cal_concurrent_active_sum(self, ):
         concurrent_active_log = self.cal_concurrent_active_log()
-        return np.sum(concurrent_active_log)
+        #res = np.sum(concurrent_active_log)
+        res = 0
+        if len(concurrent_active_log) > 0:
+            res = round(np.sum(concurrent_active_log)/len(concurrent_active_log)*100)
+
+        return res
 
     def cal_concurrent_active_log(self, ):
         active_logs = self.get_player_active_log()
         if len(active_logs[0]) == 0:
             return []
+
+        # from IPython import embed
+        # embed()
+
         return np.array(active_logs[0]) & np.array(active_logs[1])
 
     def get_player_active_log(self, ):
@@ -406,7 +415,11 @@ class OvercookedState(object):
 
     def cal_total_stuck_time(self, ):
         stuck_logs = self.get_player_stuck_log()
-        return sum(stuck_logs[0])
+        #res = sum(stuck_logs[0])
+        res = 0
+        if len(stuck_logs[0]) > 0:
+            res = round(sum(stuck_logs[0])/len(stuck_logs[0])*100)
+        return res
 
     def get_player_stuck_log(self, ):
         stuck_log = []
