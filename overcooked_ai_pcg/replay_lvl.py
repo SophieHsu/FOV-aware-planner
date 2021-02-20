@@ -1,12 +1,27 @@
-import os
-import csv
-import time
-import json
-import toml
+"""Replays an Overcooked level.
+
+Images showing frames of the level are saved in the logdir in a directory called
+`replay_...` (the rest of the name includes the parameters of the replay). To
+compose these frames into a video, use `ffmpeg` within that directory, such as:
+
+    ffmpeg -r 6 -i "%*.png" video.mp4
+
+The 6 above is the frame rate (6 fps).
+"""
 import argparse
+import csv
+import json
+import os
+import shutil
+import time
+
 import pandas as pd
-from overcooked_ai_pcg import LSI_CONFIG_EXP_DIR, LSI_LOG_DIR, LSI_CONFIG_ALGO_DIR, LSI_CONFIG_MAP_DIR, LSI_CONFIG_AGENT_DIR
-from overcooked_ai_pcg.helper import (run_overcooked_game, read_in_lsi_config,
+import toml
+
+from overcooked_ai_pcg import (LSI_CONFIG_AGENT_DIR, LSI_CONFIG_ALGO_DIR,
+                               LSI_CONFIG_EXP_DIR, LSI_CONFIG_MAP_DIR,
+                               LSI_LOG_DIR)
+from overcooked_ai_pcg.helper import (read_in_lsi_config, run_overcooked_game,
                                       visualize_lvl)
 from overcooked_ai_pcg.LSI.qd_algorithms import Individual
 
@@ -96,9 +111,8 @@ def play(elite_map,
          is_3d=False,
          mode="replay",
          num_sim=1):
-    """
-    Find the individual in the specified cell in the elite map
-    and run overcooked game with the specified agents
+    """Find the individual in the specified cell in the elite map and run
+    overcooked game with the specified agents.
 
     Args:
         elite_map (list): list of logged cell strings.
@@ -134,11 +148,22 @@ def play(elite_map,
             ind.rand_seed = int(individuals["rand_seed"][ind_idx])
 
             if mode == "replay":
-                for agent_config in agent_configs:
+                for agent_idx, agent_config in enumerate(agent_configs):
+                    # Create image directory -- removes existing one.
+                    img_dir = os.path.join(
+                        log_dir, (f"replay_f1{f1}_f2{f2}_row{row_idx}_"
+                                  f"col{col_idx}_ind{ind_id}_agent{agent_idx}"))
+                    if os.path.exists(img_dir):
+                        shutil.rmtree(img_dir)
+                    os.mkdir(img_dir)
+                    print(f"Saving video frames in {img_dir}")
+
                     fitness, _, _, _, ind.joint_actions, _, _ = run_overcooked_game(
                         ind,
                         agent_config,
                         render=True,
+                        img_name=(
+                            lambda timestep: f"{img_dir}/{timestep:05d}.png"),
                     )
                     print("Fitness: ", fitness)
                     log_actions(ind, agent_config, log_dir, f1, f2, row_idx,
