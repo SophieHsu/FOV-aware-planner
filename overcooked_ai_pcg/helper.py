@@ -329,7 +329,8 @@ def visualize_lvl(lvl_str, log_dir, filename):
     """
     Render and save the level without running game
     """
-    grid = lvl_str2grid(lvl_str)
+    grid = [layout_row for layout_row in lvl_str.split("\n")][:-1]
+    assert len(set([len(layout_row) for layout_row in grid])) == 1
     render_from_grid(grid, log_dir, filename)
 
 
