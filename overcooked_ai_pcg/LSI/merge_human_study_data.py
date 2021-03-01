@@ -29,6 +29,16 @@ direct_mean_column_names = [
     "total_time_step",
 ]
 
+column_names_to_keep = [
+    "lvl_type",
+    "workloads",
+    "total_time_step",
+    "concurr_active",
+    "stuck_time",
+    "joint_actions",
+    "lvl_str",
+]
+
 diff = []
 human_data_logs = []
 for i, log_index in enumerate(sorted(os.listdir(LSI_HUMAN_STUDY_RESULT_DIR))):
@@ -72,7 +82,6 @@ for i, log_index in enumerate(sorted(os.listdir(LSI_HUMAN_STUDY_RESULT_DIR))):
             print("original checkpoints", row["checkpoints"])
             print()
 
-
         # raise a warning while the results are different.
         if ast.literal_eval(row["workloads"]) != workloads:
             human_log_data.at[index, "workloads"] = workloads
@@ -97,6 +106,10 @@ for i, log_index in enumerate(sorted(os.listdir(LSI_HUMAN_STUDY_RESULT_DIR))):
 
     # add total time step column
     human_log_data["total_time_step"] = total_time_steps
+
+    human_log_data[column_names_to_keep].to_csv(os.path.join(
+        LSI_HUMAN_STUDY_RESULT_DIR, log_index, "human_log_refined.csv"),
+                                                index=False)
 
     human_data_logs.append((log_index, human_log_data))
 

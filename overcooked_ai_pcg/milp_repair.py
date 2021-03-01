@@ -249,16 +249,10 @@ def repair_lvl(np_lvl):
 
         # reachability
         source_labels = "1"
-        sink_labels = "ODPS "
-        blocking_labels = "XODPS2"
+        sink_labels = "ODPS2 "
+        blocking_labels = "XODPS"
         add_reachability_helper(source_labels, sink_labels, blocking_labels,
                                 mdl, adj, objs, 0)
-
-        source_labels = "2"
-        sink_labels = "ODPS "
-        blocking_labels = "XODPS1"
-        add_reachability_helper(source_labels, sink_labels, blocking_labels,
-                                mdl, adj, objs, 1)
 
         # add edit distance objective
         objects = []
