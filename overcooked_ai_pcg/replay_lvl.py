@@ -124,6 +124,7 @@ def play(elite_map,
                         ind,
                         agent_config,
                         render=True,
+                        track_belief=True,
                     )
                     print("Fitness: ", fitness)
                     log_actions(ind, agent_config, log_dir, f1, f2, row_idx, col_idx, ind_id)

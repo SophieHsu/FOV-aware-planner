@@ -1143,6 +1143,10 @@ class MediumMdpPlanningAgent(Agent):
 
 class MediumQMdpPlanningAgent(Agent):
     def __init__(self, mdp_planner, greedy=False, other_agent=None, delivery_horizon=1, logging_level=0, auto_unstuck=False):
+        '''
+        AI agent index is 0. Human index is 1.
+        '''
+
         # self.other_agent = other_agent
         self.delivery_horizon = delivery_horizon
         self.mdp_planner = mdp_planner
@@ -1155,6 +1159,7 @@ class MediumQMdpPlanningAgent(Agent):
     def reset(self):
         super().reset()
         self.prev_state = None
+        self.track_belief = []
         self.prev_dist_to_feature = {}
         self.belief = np.full((len(self.mdp_planner.subtask_dict)), 1.0/len(self.mdp_planner.subtask_dict), dtype=float)
 
@@ -1180,7 +1185,7 @@ class MediumQMdpPlanningAgent(Agent):
                             action = action_plan[0]
         return action
 
-    def action(self, state):
+    def action(self, state, track_belief=False):
         LOW_LEVEL_ACTION = False
         num_item_in_pot = 0; pot_pos = []
         if state.objects is not None and len(state.objects) > 0:
@@ -1192,7 +1197,7 @@ class MediumQMdpPlanningAgent(Agent):
 
         self.belief, self.prev_dist_to_feature = self.mdp_planner.belief_update(state, state.players[0], num_item_in_pot, state.players[1], self.belief, self.prev_dist_to_feature, greedy=self.greedy_known)
         mdp_state_keys = self.mdp_planner.world_to_state_keys(state, state.players[0], num_item_in_pot, state.players[1], self.belief)
-        action, action_object_pair, LOW_LEVEL_ACTION = self.mdp_planner.step(state, mdp_state_keys, self.belief, self.agent_index, low_level_action=True)
+        action, action_object_pair, LOW_LEVEL_ACTION = self.mdp_planner.step(state, mdp_state_keys, self.belief, self.agent_index, low_level_action=LOW_LEVEL_ACTION)
 
         if not LOW_LEVEL_ACTION:
             action = self.mdp_action_to_low_level_action(state, mdp_state_keys, action_object_pair)
@@ -1213,13 +1218,15 @@ class MediumQMdpPlanningAgent(Agent):
         # print('Belief =', self.belief)
         # print('Max belief =', list(self.mdp_planner.subtask_dict.keys())[np.argmax(self.belief)])
         # print('Action =', action, '\n')
+        if track_belief:
+            self.track_belief.append(self.belief)
 
         return action, {"action_probs": action_probs}
 
     def resolve_stuck(self, state, chosen_action, action_probs):
-        # HACK: if two agents get stuck, select an action at random that would
+        # HACK: if two agents get stuck and neither performing a pick or drop action, select an action at random that would
         # change the player positions if the other player were to move
-        if self.prev_state is not None and state.players_pos_and_or == self.prev_state.players_pos_and_or:
+        if self.prev_state is not None and state.players_pos_and_or == self.prev_state.players_pos_and_or and state.players[0].held_object == self.prev_state.players[0].held_object and state.players[1].held_object == self.prev_state.players[1].held_object:
             joint_actions = list(itertools.product(Action.MOTION_ACTIONS, Action.MOTION_ACTIONS))
             unblocking_joint_actions = []
             for j_a in joint_actions:

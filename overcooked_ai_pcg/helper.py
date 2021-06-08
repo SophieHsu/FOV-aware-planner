@@ -333,7 +333,8 @@ def run_overcooked_game(ind,
                         agent_config,
                         render=True,
                         worker_id=0,
-                        num_iters=1):
+                        num_iters=1, 
+                        track_belief=False):
     """
     Run one turn of overcooked game and return the sparse reward as fitness
     """
@@ -367,7 +368,13 @@ def run_overcooked_game(ind,
             if render:
                 env.render()
                 time.sleep(0.5)
-            joint_action = (agent1.action(env.state)[0],
+
+            if agent_config["Agent1"]["name"] == "qmdp_agent" and track_belief:
+                joint_action = (agent1.action(env.state, track_belief)[0],
+                            agent2.action(env.state)[0])
+
+            else:
+                joint_action = (agent1.action(env.state)[0],
                             agent2.action(env.state)[0])
             # print(joint_action)
             joint_actions.append(joint_action)
@@ -381,6 +388,24 @@ def run_overcooked_game(ind,
 
             last_state = next_state
             timestep += 1
+            # tmp = input()
+
+        if agent_config["Agent1"]["name"] == "qmdp_agent" and track_belief:
+            # print(agent1.mdp_planner.subtask_dict.items())
+            agent1.track_belief=np.array(agent1.track_belief)
+
+            fig = plt.figure()
+
+            for i, subtask in enumerate(agent1.mdp_planner.subtask_dict.items()):
+                plt.plot(agent1.track_belief[:,i], label=subtask[0])
+
+            plt.xlabel('Time step')
+            plt.ylabel('Belief')
+            plt.title('Belief distribution over human subtasks')
+            plt.grid()
+            plt.legend()
+            fig.savefig('Belief_tracking_'+agent_config["Agent1"]["name"]+'_'+agent_config["Agent2"]["name"]+'.png')
+            # plt.show()
 
         workloads = last_state.get_player_workload()
         concurr_active = last_state.cal_concurrent_active_sum()
