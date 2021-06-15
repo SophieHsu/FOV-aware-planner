@@ -137,8 +137,10 @@ dmypy.json
 overcooked_ai_pcg/GAN_training/data/
 overcooked_ai_pcg/LSI/data/log/
 overcooked_ai_pcg/LSI/data/images/
+overcooked_ai_pcg/LSI/data/lvl_dist/
 overcooked_ai_pcg/LSI/data/human_study/result/
 overcooked_ai_pcg/LSI/data/human_study/config/agents/
+overcooked_ai_py/images/pcg_exp
 
 agent*.pkl
 

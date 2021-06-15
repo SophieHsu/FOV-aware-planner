@@ -90,7 +90,7 @@ def lvl_number2str(np_lvl):
     lvl_str = ""
     for lvl_row in np_lvl:
         for tile_int in lvl_row:
-            lvl_str += obj_types[tile_int]
+            lvl_str += obj_types[int(tile_int)]
         lvl_str += "\n"
     return lvl_str
 
