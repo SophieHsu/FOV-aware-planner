@@ -202,7 +202,7 @@ def repair_lvl(np_lvl):
             border_nodes.append(i)
 
     context = Context.make_default_context()
-    context.cplex_parameters.threads = 1
+    # context.cplex_parameters.threads = 1
     with Model(context=context) as mdl:
 
         objs = []

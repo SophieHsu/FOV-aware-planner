@@ -37,6 +37,8 @@ def shortest_dist(terrain1, terrain2, lvl_str):
     lvl_grid = lvl_str2grid(lvl_str)
     m = len(lvl_grid)
     n = len(lvl_grid[0])
+    block_types = ['X', 'P', 'O', 'S', 'D']
+    block_types.remove(terrain2)
     for i, row in enumerate(lvl_grid):
         for j, terrain in enumerate(row):
             if terrain == terrain1:
@@ -58,7 +60,7 @@ def shortest_dist(terrain1, terrain2, lvl_str):
                         n_y = y + dy
                         if n_x < m and n_x >= 0 and \
                            n_y < n and n_y >= 0 and \
-                           lvl_grid[n_x][n_y] != 'X':
+                           lvl_grid[n_x][n_y] not in block_types:
                             q.put((n_x, n_y))
                             dist_matrix[n_x, n_y] = dist_matrix[x, y] + 1
     return shortest

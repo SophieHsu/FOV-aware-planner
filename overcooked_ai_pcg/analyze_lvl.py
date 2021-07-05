@@ -14,8 +14,8 @@ from overcooked_ai_pcg.helper import run_overcooked_game, read_in_lsi_config
 from overcooked_ai_pcg.LSI.qd_algorithms import Individual, FeatureMap
 from overcooked_ai_pcg.helper import read_in_lsi_config, init_env_and_agent
  
-def search_extreme_cells(elite_map, features)
-    feature_combs = combinations(range(0,len(features)), 2):
+def search_extreme_cells(elite_map, features):
+    feature_combs = combinations(range(0,len(features)), 2)
     f_extreme_bound = []
     for i in range(len(feature_combs)):
         f_extreme_bound.append([[np.inf, np.inf], [np.inf, -np.inf], [-np.inf, np.inf], [-np.inf, -np.inf]]) # four extreme corners [(0,0), (0, max), (max, 0), (max, max)]
