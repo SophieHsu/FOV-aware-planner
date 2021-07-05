@@ -206,6 +206,11 @@ class MotionPlanner(object):
     def _graph_action_cost(self, action):
         """Returns cost of a single-agent action"""
         assert action in Action.ALL_ACTIONS
+        
+        # penalize plans that have the action stay to avoid stopping and waiting in joint plans
+        if action == Action.STAY:
+            return 2
+
         return 1
 
     def _get_valid_successor_motion_states(self, start_motion_state):
@@ -2548,6 +2553,8 @@ class HumanSubtaskQMDPPlanner(MediumLevelMdpPlanner):
                         self.state_dict[new_key] = new_obj # update value
                         self.state_idx_dict[new_key] = len(self.state_idx_dict)
 
+        # print('subtask dict =', self.subtask_dict)
+
     def init_transition(self, transition_matrix=None):
         """
         This transition matrix needs to include subtask tranistion for both robot and human. Humans' state transition is conditioned on the subtask.
@@ -3030,6 +3037,10 @@ class HumanSubtaskQMDPPlanner(MediumLevelMdpPlanner):
         Compute plan cost that starts from the next qmdp state defined as next_state_v().
         Compute the action cost of excuting a step towards the next qmdp state based on the
         current low level state information.
+
+        next_state_v: shape(len(belief), len(action_idx)). If the low_level_action is True, 
+            the action_dix will be representing the 6 low level action index (north, south...).
+            If the low_level_action is False, it will be the action_dict (pickup_onion, pickup_soup...).
         """
         start_time = time.time()
         next_state_v = np.zeros((len(belief), len(self.action_dict)), dtype=float)
@@ -3046,7 +3057,6 @@ class HumanSubtaskQMDPPlanner(MediumLevelMdpPlanner):
             if mdp_state_idx is not None:
                 agent_action_idx_arr, next_mdp_state_idx_arr = np.where(self.transition_matrix[:, mdp_state_idx] > 0.000001) # returns array(action idx), array(next_state_idx)
                 nxt_possible_mdp_state.append([agent_action_idx_arr, next_mdp_state_idx_arr])
-                # print('nxt_possible_mdp_state =', nxt_possible_mdp_state)
                 for j, action_idx in enumerate(agent_action_idx_arr):
                     # print('action_idx =', action_idx)
                     next_state_idx = next_mdp_state_idx_arr[j]
@@ -3084,6 +3094,7 @@ class HumanSubtaskQMDPPlanner(MediumLevelMdpPlanner):
     def belief_update(self, world_state, agent_player, soup_finish, human_player, belief_vector, prev_dist_to_feature, greedy=False):
         """
         Update belief based on both human player's game logic and also it's current position and action.
+        Belief shape is an array with size equal the length of subtask_dict.
         """
         start_time = time.time()
 
@@ -3167,6 +3178,8 @@ class HumanSubtaskQMDPPlanner(MediumLevelMdpPlanner):
         # print('b =', b)
         # print('v =', v)
         # print('c =', c)
+
+        # tmp=input()
         return b@(v+c)
 
     def get_best_action(self, q):

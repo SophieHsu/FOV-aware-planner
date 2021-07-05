@@ -1004,6 +1004,7 @@ class biasHumanModel(oneGoalHumanModel):
 
         return env_pref
 
+
 class MdpPlanningAgent(Agent):
 
     def __init__(self, other_agent, mdp_planner, env, delivery_horizon=1, logging_level=0):
@@ -1024,6 +1025,7 @@ class MdpPlanningAgent(Agent):
             action = Action.INDEX_TO_ACTION[action_idx]
 
         return action, {}
+
 
 class MediumMdpPlanningAgent(Agent):
 
@@ -1186,7 +1188,7 @@ class MediumQMdpPlanningAgent(Agent):
         return action
 
     def action(self, state, track_belief=False):
-        LOW_LEVEL_ACTION = True
+        LOW_LEVEL_ACTION = False
         num_item_in_pot = 0; pot_pos = []
         if state.objects is not None and len(state.objects) > 0:
             for obj_pos, obj_state in state.objects.items():
