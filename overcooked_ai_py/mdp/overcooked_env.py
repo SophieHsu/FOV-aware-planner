@@ -1,6 +1,7 @@
 import gym, tqdm
 import numpy as np
 import time
+import akro
 from overcooked_ai_py.utils import mean_and_std_err, append_dictionaries
 from overcooked_ai_py.mdp.actions import Action
 from overcooked_ai_py.mdp.overcooked_mdp import OvercookedGridworld, EVENT_TYPES
@@ -509,14 +510,15 @@ class OvercookedEnv(object):
     ###################
     def render(self, mode="human"):
         time_step_left = self.horizon - self.t if self.horizon != MAX_HORIZON else None
-        time_passed = time.time() - self.start_time if self.start_time is not None else 0
+        time_passed = time.time(
+        ) - self.start_time if self.start_time is not None else 0
         self.mdp.render(self.state,
                         mode,
                         time_step_left=time_step_left,
                         time_passed=time_passed)
 
 
-class Overcooked(gym.Env):
+class OvercookedV0(gym.Env):
     """
     Wrapper for the Env class above that is SOMEWHAT compatible with the
     standard gym API.
@@ -642,3 +644,78 @@ class Overcooked(gym.Env):
 
     def render(self, mode='human', close=False):
         pass
+
+
+class OvercookedV1(gym.Env):
+    """
+    Wrapper of the Overcooked environment that is compatible with garage.
+
+    This wrapper(v1) is different from v0 in several different ways:
+    1. This environment assumes that only one agent is being trained. i.e. this
+       is essentially a "single-agent" environment with the second agent being
+       a part of the environment.
+    1. The `reset()` and `step()` functions will only return observations of the
+       AI agent to be trained.
+    2. The `step()` function only takes in the action of the AI agent.
+    3. This version does not randomize the agent index at reset.
+    4. This version works with garage rl library.
+    """
+    def __init__(self, ai_agent, human_agent, base_env, featurize_fn):
+        super(OvercookedV1, self).__init__()
+
+        self.ai_agent = ai_agent
+        self.human_agent = human_agent
+        self.base_env = base_env
+        self.featurize_fn = featurize_fn
+        self.observation_space = self._setup_observation_space()
+        self.action_space = akro.Discrete(len(Action.ALL_ACTIONS))
+        self.reset()
+
+    def _setup_observation_space(self):
+        dummy_mdp = self.base_env.mdp
+        dummy_state = dummy_mdp.get_standard_start_state()
+        obs_shape = self.featurize_fn(dummy_mdp, dummy_state)[0].shape
+        high = np.ones(obs_shape) * max(dummy_mdp.soup_cooking_time,
+                                        dummy_mdp.num_items_for_soup, 5)
+        return akro.Box(np.float32(high * 0),
+                        np.float32(high),
+                        dtype=np.float32)
+
+    def step(self, action):
+        """
+        Args:
+            action: action of the AI agent. Assumed to be action logits with
+                dimension the same as the action space.
+
+        returns:
+            next_observation, reward, done, info
+        """
+        assert len(action) == self.action_space.flat_dim
+        action_idx = np.argmax(action)
+        ai_agent_action = Action.INDEX_TO_ACTION[action_idx]
+        human_agent_action, _ = self.human_agent.action(self.base_env.state)
+
+        joint_action = (ai_agent_action, human_agent_action)
+
+        next_state, reward, done, info = self.base_env.step(joint_action)
+        ai_next_obs, human_next_obs = self.featurize_fn(self.mdp, next_state)
+        both_agents_ob = (ai_next_obs, human_next_obs)
+        info["human_next_obs"] = human_next_obs
+        info["overcooked_state"] = self.base_env.state
+
+        return ai_next_obs, reward, done, info
+
+    def reset(self):
+        """
+        Reset the environment. Unlike v0, this version does not randomize the
+        agent index. i.e. all agent starts at the location where they are
+        specified in the layout string.
+        """
+        self.base_env.reset()
+        self.mdp = self.base_env.mdp
+        self.ai_agent_idx = 0  # the first agent (green hat) is always the robot
+        ai_obs, _ = self.featurize_fn(self.mdp, self.base_env.state)
+        return ai_obs
+
+    def render(self, mode="human"):
+        self.base_env.render(mode)
