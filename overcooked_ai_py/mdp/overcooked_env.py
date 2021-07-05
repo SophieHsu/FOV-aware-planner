@@ -660,6 +660,8 @@ class OvercookedV1(gym.Env):
     3. This version does not randomize the agent index at reset.
     4. This version works with garage rl library.
     """
+    metadata = {'render.modes': ['human']}
+
     def __init__(self, ai_agent, human_agent, base_env, featurize_fn):
         super(OvercookedV1, self).__init__()
 
@@ -684,19 +686,30 @@ class OvercookedV1(gym.Env):
     def step(self, action):
         """
         Args:
-            action: action of the AI agent. Assumed to be action logits with
-                dimension the same as the action space.
+            action: action of the AI agent. Can be either:
+                1. (np.ndarray) action logits with dimension the same as the
+                   action space.
+                2. (int) index of the action.
 
         returns:
             next_observation, reward, done, info
         """
-        assert len(action) == self.action_space.flat_dim
-        action_idx = np.argmax(action)
+        # get AI agent action
+        if isinstance(action, np.ndarray):
+            assert len(action) == self.action_space.flat_dim
+            action_idx = np.argmax(action)
+        elif isinstance(action, np.integer):
+            action_idx = action
+        else:
+            raise ValueError(f"Type of action {type(action)} not supported.")
         ai_agent_action = Action.INDEX_TO_ACTION[action_idx]
+
+        # get human action
         human_agent_action, _ = self.human_agent.action(self.base_env.state)
 
         joint_action = (ai_agent_action, human_agent_action)
 
+        # step the env
         next_state, reward, done, info = self.base_env.step(joint_action)
         ai_next_obs, human_next_obs = self.featurize_fn(self.mdp, next_state)
         both_agents_ob = (ai_next_obs, human_next_obs)
