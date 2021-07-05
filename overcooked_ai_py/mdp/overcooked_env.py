@@ -518,7 +518,8 @@ class OvercookedEnv(object):
 
 class Overcooked(gym.Env):
     """
-    Wrapper for the Env class above that is SOMEWHAT compatible with the standard gym API.
+    Wrapper for the Env class above that is SOMEWHAT compatible with the
+    standard gym API.
 
     NOTE: Observations returned are in a dictionary format with various
     information that is necessary to be able to handle the multi-agent nature
@@ -577,10 +578,12 @@ class Overcooked(gym.Env):
         """
         action:
             (agent with index self.agent_idx action, other agent action)
-            is a tuple with the joint action of the primary and secondary agents in index format
+                is a tuple with the joint action of the primary and secondary
+                agents in index format
 
         returns:
-            observation: formatted to be standard input for self.agent_idx's policy
+            observation: formatted to be standard input for self.agent_idx's
+                policy
         """
         assert all(self.action_space.contains(a)
                    for a in action), "%r (%s) invalid" % (action, type(action))
