@@ -520,18 +520,22 @@ class Overcooked(gym.Env):
     """
     Wrapper for the Env class above that is SOMEWHAT compatible with the standard gym API.
 
-    NOTE: Observations returned are in a dictionary format with various information that is
-    necessary to be able to handle the multi-agent nature of the environment. There are probably
-    better ways to handle this, but we found this to work with minor modifications to OpenAI Baselines.
-    
-    NOTE: The index of the main agent in the mdp is randomized at each reset of the environment, and 
-    is kept track of by the self.agent_idx attribute. This means that it is necessary to pass on this 
-    information in the output to know for which agent index featurizations should be made for other agents.
-    
-    For example, say one is training A0 paired with A1, and A1 takes a custom state featurization.
-    Then in the runner.py loop in OpenAI Baselines, we will get the lossless encodings of the state,
-    and the true Overcooked state. When we encode the true state to feed to A1, we also need to know
-    what agent index it has in the environment (as encodings will be index dependent).
+    NOTE: Observations returned are in a dictionary format with various
+    information that is necessary to be able to handle the multi-agent nature
+    of the environment. There are probably better ways to handle this, but we
+    found this to work with minor modifications to OpenAI Baselines.
+
+    NOTE: The index of the main agent in the mdp is randomized at each reset of
+    the environment, and is kept track of by the self.agent_idx attribute. This
+    means that it is necessary to pass on this information in the output to
+    know for which agent index featurizations should be made for other agents.
+
+    For example, say one is training A0 paired with A1, and A1 takes a custom
+    state featurization. Then in the runner.py loop in OpenAI Baselines, we
+    will get the lossless encodings of the state, and the true Overcooked
+    state. When we encode the true state to feed to A1, we also need to know
+    what agent index it has in the environment (as encodings will be index
+    dependent).
     """
     env_name = "Overcooked-v0"
 
@@ -571,10 +575,10 @@ class Overcooked(gym.Env):
 
     def step(self, action):
         """
-        action: 
+        action:
             (agent with index self.agent_idx action, other agent action)
             is a tuple with the joint action of the primary and secondary agents in index format
-        
+
         returns:
             observation: formatted to be standard input for self.agent_idx's policy
         """
@@ -610,12 +614,13 @@ class Overcooked(gym.Env):
 
     def reset(self):
         """
-        When training on individual maps, we want to randomize which agent is assigned to which
-        starting location, in order to make sure that the agents are trained to be able to 
-        complete the task starting at either of the hardcoded positions.
+        When training on individual maps, we want to randomize which agent is
+        assigned to which starting location, in order to make sure that the
+        agents are trained to be able to complete the task starting at either
+        of the hardcoded positions.
 
-        NOTE: a nicer way to do this would be to just randomize starting positions, and not
-        have to deal with randomizing indices.
+        NOTE: a nicer way to do this would be to just randomize starting
+        positions, and not have to deal with randomizing indices.
         """
         self.base_env.reset()
         self.mdp = self.base_env.mdp
