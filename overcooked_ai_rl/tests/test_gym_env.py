@@ -5,9 +5,11 @@ from overcooked_ai_py.mdp.overcooked_mdp import OvercookedGridworld
 from overcooked_ai_py.mdp.overcooked_env import OvercookedEnv, OvercookedV1
 from overcooked_ai_py.agents.agent import *
 from overcooked_ai_rl.featurize_fn import *
+from overcooked_ai_rl.value_functions import GaussianCNNMLPValueFunction
+from overcooked_ai_rl.policies import CategoricalCNNPolicy
 
 from garage import wrap_experiment
-from garage.torch.policies import CategoricalCNNPolicy
+# from garage.torch.policies import CategoricalCNNPolicy
 from garage.torch.algos import PPO
 from garage.torch.optimizers import OptimizerWrapper
 from garage.envs import GymEnv
@@ -50,6 +52,15 @@ policy = CategoricalCNNPolicy(
 
 print(policy)
 
+vf = GaussianCNNMLPValueFunction(
+    env.spec,
+    image_format="NHWC",
+    kernel_sizes=(5, 3, 3),
+    hidden_channels=(25, 25, 25),
+)
+
+print(vf)
+
 # done = False
 # while not done:
 #     env.render()
@@ -66,3 +77,5 @@ while not done:
     ai_action, _ = policy.get_action(torch.Tensor(next_obs))
     next_obs, reward, done, info = overcooked_v1.step(ai_action)
     time.sleep(0.1)
+    print(vf.forward(torch.Tensor(next_obs)))
+    print(vf.compute_loss(torch.Tensor(next_obs), torch.Tensor([reward])))

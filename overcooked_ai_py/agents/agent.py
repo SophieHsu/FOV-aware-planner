@@ -1287,3 +1287,14 @@ class HumanPlayer(Agent):
     def reset(self):
         super().reset()
         self.prev_state = None
+
+
+class RLTrainingAgent(Agent):
+    """
+    Placeholder Agent used for RL training.
+    """
+    def __init__(self):
+        pass
+
+    def reset(self):
+        super().reset()

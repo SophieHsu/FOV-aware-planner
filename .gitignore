@@ -142,6 +142,10 @@ overcooked_ai_pcg/LSI/data/human_study/result/
 overcooked_ai_pcg/LSI/data/human_study/config/agents/
 overcooked_ai_py/images/pcg_exp
 
+# overcooked_ai_rl related
+overcooked_ai_rl/data
+overcooked_ai_rl/__pycache__
+
 agent*.pkl
 
 # pycharm related

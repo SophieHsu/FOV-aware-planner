@@ -198,7 +198,7 @@ class OvercookedEnv(object):
                                        reward_shaping_by_agent,
                                        sparse_reward_by_agent)
 
-        if done: self._add_episode_info(info)
+        self._add_episode_info(info)
 
         # update start time if it is the first action
         if self.first_action_taken == True:
