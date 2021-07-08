@@ -17,13 +17,13 @@ from overcooked_ai_rl.policies import CategoricalCNNPolicy
 from overcooked_ai_rl.value_functions import GaussianCNNMLPValueFunction
 from overcooked_ai_rl.featurize_fn import *
 from overcooked_ai_rl.optimizer_wrapper import OptimizerWrapper
+from overcooked_ai_rl.algos import PPO
 
 from garage import wrap_experiment
-from garage.torch.algos import PPO
 from garage.envs import GymEnv
 from garage.experiment.deterministic import set_seed
 from garage.trainer import Trainer
-from garage.sampler import RaySampler
+from garage.sampler import RaySampler, LocalSampler
 from garage.torch.value_functions import GaussianMLPValueFunction
 from garage.torch import set_gpu_mode
 
@@ -101,7 +101,7 @@ def rl_overcooked(ctxt=None, seed=np.random.randint(1000)):
         )
 
     # set up sampler
-    sampler = RaySampler(agents=policy,
+    sampler = LocalSampler(agents=policy,
                          envs=env,
                          max_episode_length=base_env.horizon)
 
@@ -142,6 +142,12 @@ def rl_overcooked(ctxt=None, seed=np.random.randint(1000)):
 
     else:
         raise ValueError(f"Algorithm {algo_name} is not supported.")
+
+    if torch.cuda.is_available():
+        set_gpu_mode(True)
+    else:
+        set_gpu_mode(False)
+    algo.to()
 
     trainer = Trainer(ctxt)
     trainer.setup(algo, env)

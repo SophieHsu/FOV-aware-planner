@@ -4,6 +4,7 @@ import torch
 from torch import nn
 
 from garage import InOutSpec
+from garage.torch import global_device
 from garage.torch.modules import CNNModule, MultiHeadedMLPModule
 from garage.torch.policies.stochastic_policy import StochasticPolicy
 
@@ -129,6 +130,10 @@ class CategoricalCNNPolicy(StochasticPolicy):
             dict[str, torch.Tensor]: Additional agent_info, as torch Tensors.
                 Do not need to be detached, and can be on any device.
         """
+        original_device = obs.device
+        if obs.device != global_device():
+            obs = obs.to(global_device())
+
         # We're given flattened observations.
         non_space_dims = obs.shape[:len(obs.shape) -
                                    len(self._env_spec.observation_space.shape)]
@@ -136,7 +141,8 @@ class CategoricalCNNPolicy(StochasticPolicy):
         cnn_output = self._cnn_module(observations)
         mlp_output = self._mlp_module(cnn_output)[0]
         logits = torch.softmax(mlp_output, axis=1)
-        logits = logits.reshape(*non_space_dims,
-                                self._env_spec.action_space.flat_dim)
+        logits = logits.reshape(
+            *non_space_dims,
+            self._env_spec.action_space.flat_dim).to(original_device)
         dist = torch.distributions.Categorical(logits=logits)
         return dist, {}

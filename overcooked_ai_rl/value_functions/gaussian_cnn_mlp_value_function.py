@@ -3,15 +3,18 @@ import torch
 from torch import nn
 
 from garage import InOutSpec
-from garage.torch.modules import GaussianMLPModule, CNNModule
+from garage.torch.modules import CNNModule
 from garage.torch.value_functions.value_function import ValueFunction
+from garage.torch import global_device
+
+from overcooked_ai_rl.modules import GaussianMLPModule
 
 
 class GaussianCNNMLPValueFunction(ValueFunction):
     """Gaussian CNN value function.
 
 
-    It fits CNN input to gaussian distribution estimated by a MLP.
+    It fits CNN input to gaussian distribution estimated by a CNN+MLP.
 
     Args:
         env_spec (EnvSpec): Environment specification.
@@ -138,13 +141,18 @@ class GaussianCNNMLPValueFunction(ValueFunction):
                 objective (float).
 
         """
+        original_device = obs.device
+        if obs.device != global_device():
+            obs = obs.to(global_device())
+            returns = returns.to(global_device())
+
         observations = obs.reshape(-1, *self._env_spec.observation_space.shape)
         cnn_output = self._cnn_module(observations)
         dist = self._gaussian_mlp_module(cnn_output)
 
         ll = dist.log_prob(returns.reshape(-1, 1))
         loss = -ll.mean()
-        return loss
+        return loss.to(original_device)
 
     # pylint: disable=arguments-differ
     def forward(self, obs):
@@ -158,6 +166,10 @@ class GaussianCNNMLPValueFunction(ValueFunction):
                 shape :math:`(P, O*)`.
 
         """
+        original_device = obs.device
+        if obs.device != global_device():
+            obs = obs.to(global_device())
+
         # In case we're given flattened observations.
         non_space_dims = obs.shape[:len(obs.shape) -
                                    len(self._env_spec.observation_space.shape)]
@@ -167,4 +179,4 @@ class GaussianCNNMLPValueFunction(ValueFunction):
             *non_space_dims, *self._cnn_module.spec.output_space.shape)
         dist = self._gaussian_mlp_module(cnn_output)
 
-        return dist.mean.flatten(-2)
+        return dist.mean.flatten(-2).to(original_device)
