@@ -1188,7 +1188,7 @@ class MediumQMdpPlanningAgent(Agent):
         return action
 
     def action(self, state, track_belief=False):
-        LOW_LEVEL_ACTION = False
+        LOW_LEVEL_ACTION = True
         num_item_in_pot = 0; pot_pos = []
         if state.objects is not None and len(state.objects) > 0:
             for obj_pos, obj_state in state.objects.items():
@@ -1219,7 +1219,7 @@ class MediumQMdpPlanningAgent(Agent):
         # print('Subtasks:', self.mdp_planner.subtask_dict.keys())
         # print('Belief =', self.belief)
         # print('Max belief =', list(self.mdp_planner.subtask_dict.keys())[np.argmax(self.belief)])
-        # print('Action =', action, '\n')
+        print('Action =', action, '\n')
         if track_belief:
             self.track_belief.append(self.belief)
 

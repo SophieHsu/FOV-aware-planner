@@ -207,9 +207,9 @@ class MotionPlanner(object):
         """Returns cost of a single-agent action"""
         assert action in Action.ALL_ACTIONS
         
-        # penalize plans that have the action stay to avoid stopping and waiting in joint plans
-        if action == Action.STAY:
-            return 2
+        # # penalize plans that have the action stay to avoid stopping and waiting in joint plans
+        # if action == Action.STAY:
+        #     return 2
 
         return 1
 
@@ -803,7 +803,9 @@ class JointMotionPlanner(object):
             for joint_action, successor_jm_state in self._get_valid_successor_joint_positions(start_joint_positions).items():
                 successor_node_index = state_encoder[successor_jm_state]
 
-                this_action_cost = self._graph_joint_action_cost(joint_action)
+                # this_action_cost = self._graph_joint_action_cost(joint_action)
+                # Below counts stay actions as cost of COST_OF_STAY. Above (original overcooked ai implementation) function, stay action costs nothing.
+                this_action_cost = self._graph_joint_action_cost_include_stay(joint_action)
                 current_cost = adjacency_matrix[start_state_index][successor_node_index]
 
                 if current_cost == 0 or this_action_cost < current_cost:
@@ -818,6 +820,17 @@ class JointMotionPlanner(object):
         if num_of_non_stay_actions == 0:
             return 1
         return num_of_non_stay_actions
+
+    def _graph_joint_action_cost_include_stay(self, joint_action, COST_OF_STAY=1):
+        """The cost used in the graph shortest-path problem for a certain joint-action"""
+        num_of_non_stay_actions = len([a for a in joint_action if a != Action.STAY])
+        num_of_stay_actions = len([a for a in joint_action if a == Action.STAY])
+        # NOTE: Removing the possibility of having 0 cost joint_actions
+        if (num_of_stay_actions + num_of_non_stay_actions) == 0:
+            return 1
+
+        total_cost_of_actions = num_of_non_stay_actions + num_of_stay_actions*COST_OF_STAY
+        return total_cost_of_actions
 
     def _get_valid_successor_joint_positions(self, starting_positions):
         """Get all joint positions that can be reached by a joint action.
@@ -3006,7 +3019,7 @@ class HumanSubtaskQMDPPlanner(MediumLevelMdpPlanner):
             new_world_state.players[1].held_object = ObjectState(mdp_state_obj[-2], new_human_pos)
         new_world_state.players[1].update_pos_and_or(new_human_pos[0], new_human_pos[1])
 
-        total_cost = max([agent_cost, human_cost])
+        total_cost = max([agent_cost, human_cost]) # in rss paper is max
         if AI_WAIT or HUMAN_WAIT: # if wait, then cost is sum of current tasks cost and one player's next task cost (est. as half map area length)
             total_cost = agent_cost + human_cost + ((self.mdp.width-1)+(self.mdp.height-1))/2
 
@@ -3023,14 +3036,18 @@ class HumanSubtaskQMDPPlanner(MediumLevelMdpPlanner):
                 mdp_state_keys.append(self.world_state_to_mdp_state_key(world_state, player, other_player, self.get_key_from_value(self.subtask_idx_dict, i)))
         return mdp_state_keys
 
-    def joint_action_cost(self, world_state, goal_pos_and_or):
+    def joint_action_cost(self, world_state, goal_pos_and_or, COST_OF_STAY=1):
         joint_action_plan, end_motion_state, plan_costs = self.jmp.get_low_level_action_plan(world_state.players_pos_and_or, goal_pos_and_or, merge_one=True)
         # joint_action_plan, end_state, plan_costs = self.mlp.get_embedded_low_level_action_plan(world_state, goal_pos_and_or, other_agent, other_agent_idx)
         # print('joint_action_plan =', joint_action_plan, '; plan_costs =', plan_costs)
 
         if len(joint_action_plan) == 0:
             return (Action.INTERACT, None), 0
-        return joint_action_plan[0], max(plan_costs)
+
+        num_of_non_stay_actions = len([a for a in joint_action_plan if a[0] != Action.STAY])
+        num_of_stay_actions = len([a for a in joint_action_plan if a[0] == Action.STAY])
+
+        return joint_action_plan[0], max(plan_costs)# num_of_non_stay_actions+num_of_stay_actions*COST_OF_STAY # in rss paper is max(plan_costs)
 
     def step(self, world_state, mdp_state_keys, belief, agent_idx, low_level_action=False):
         """
@@ -3057,7 +3074,7 @@ class HumanSubtaskQMDPPlanner(MediumLevelMdpPlanner):
             if mdp_state_idx is not None:
                 agent_action_idx_arr, next_mdp_state_idx_arr = np.where(self.transition_matrix[:, mdp_state_idx] > 0.000001) # returns array(action idx), array(next_state_idx)
                 nxt_possible_mdp_state.append([agent_action_idx_arr, next_mdp_state_idx_arr])
-                for j, action_idx in enumerate(agent_action_idx_arr):
+                for j, action_idx in enumerate(agent_action_idx_arr): # action_idx is encoded subtask action
                     # print('action_idx =', action_idx)
                     next_state_idx = next_mdp_state_idx_arr[j]
                     after_action_world_state, cost, goals_pos = self.mdp_action_state_to_world_state(action_idx, mdp_state_idx, world_state, with_argmin=True)
@@ -3080,7 +3097,7 @@ class HumanSubtaskQMDPPlanner(MediumLevelMdpPlanner):
                         action_cost[i, Action.ACTION_TO_INDEX[joint_action[agent_idx]]] -= (one_step_cost)*self.transition_matrix[action_idx, mdp_state_idx, next_state_idx]
                     # print('action_idx =', self.get_key_from_value(self.action_idx_dict, action_idx), '; mdp_state_key =', mdp_state_key, '; next_state_key =', self.get_key_from_value(self.state_idx_dict, next_state_idx))
                     # print('next_state_v =', next_state_v[i])
-        # print('action_cost =', action_cost)
+        print('action_cost =', action_cost)
 
         q = self.compute_Q(belief, next_state_v, action_cost)
         # print(q)
