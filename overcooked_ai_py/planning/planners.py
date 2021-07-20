@@ -3097,7 +3097,7 @@ class HumanSubtaskQMDPPlanner(MediumLevelMdpPlanner):
                         action_cost[i, Action.ACTION_TO_INDEX[joint_action[agent_idx]]] -= (one_step_cost)*self.transition_matrix[action_idx, mdp_state_idx, next_state_idx]
                     # print('action_idx =', self.get_key_from_value(self.action_idx_dict, action_idx), '; mdp_state_key =', mdp_state_key, '; next_state_key =', self.get_key_from_value(self.state_idx_dict, next_state_idx))
                     # print('next_state_v =', next_state_v[i])
-        print('action_cost =', action_cost)
+        # print('action_cost =', action_cost)
 
         q = self.compute_Q(belief, next_state_v, action_cost)
         # print(q)

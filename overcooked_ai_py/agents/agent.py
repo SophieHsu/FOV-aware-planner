@@ -1229,6 +1229,7 @@ class MediumQMdpPlanningAgent(Agent):
         # HACK: if two agents get stuck and neither performing a pick or drop action, select an action at random that would
         # change the player positions if the other player were to move
         if self.prev_state is not None and state.players_pos_and_or == self.prev_state.players_pos_and_or and state.players[0].held_object == self.prev_state.players[0].held_object and state.players[1].held_object == self.prev_state.players[1].held_object:
+            # print('Resolving stuck...')
             joint_actions = list(itertools.product(Action.MOTION_ACTIONS, Action.MOTION_ACTIONS))
             unblocking_joint_actions = []
             for j_a in joint_actions:

@@ -450,7 +450,7 @@ def main(opt):
                         plot_heatmap(dataframe, ax, cbar_ax, y_name, x_name,
                                      mode)
                         video_img_paths.append(
-                            os.path.join(img_dir, f"tmp_frame_{i}.png"))
+                            os.path.join(img_dir, f"tmp_frame_{y_feature_idx}_{x_feature_idx}_{i*1000}.png"))
                         fig.savefig(video_img_paths[-1])
                         plt.close(fig)
                         progress()
@@ -461,8 +461,8 @@ def main(opt):
                         img_dir,
                         f"map_video_{y_feature_idx}_{x_feature_idx}.avi"))
 
-                for path in video_img_paths:
-                    os.remove(path)
+                # for path in video_img_paths:
+                #     os.remove(path)
 
             # Break early because we only want the plot for features 0 and 1 for
             # workload_diff

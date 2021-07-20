@@ -58,10 +58,9 @@ def play_ind_id(elite_map, agent_configs, individuals, f1, f2, row_idx, col_idx,
     print(lvl_str)
     ind = Individual()
     ind.level = lvl_str
-    ind.human_preference = individuals["human_preference"][ind_id_index]
-    ind.human_adaptiveness = individuals["human_adaptiveness"][ind_id_index]
-    ind.rand_seed = int(individuals["rand_seed"][ind_id_index])
-    print(ind.rand_seed)
+    # ind.human_preference = individuals["human_preference"][ind_id_index]
+    # ind.human_adaptiveness = individuals["human_adaptiveness"][ind_id_index]
+    ind.rand_seed = 0#int(individuals["rand_seed"][ind_id_index])
     for agent_config in agent_configs:
         print(agent_config["Agent1"], agent_config["Agent2"])
         fitness, _, _, _, ind.joint_actions, _, _ = run_overcooked_game(ind, agent_config, render=True)

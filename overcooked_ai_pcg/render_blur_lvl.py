@@ -17,11 +17,23 @@ def render_blur(joint_action_log, log_dir, log_name, lb, ub):
 
     done = False
     t = 0
+    ub = len(joint_actions)
+
+    img_dir = os.path.join(log_dir, log_name)
+    if not os.path.exists(img_dir):
+        os.makedirs(img_dir)
+    img_name = lambda timestep: f"{img_dir}/{t:05d}.png"
+
     while not done:
         if t >= lb and t <= ub:
-            env.render("blur")
-            # env.render()
+            # env.render("blur")
+            env.render()
             time.sleep(0.1)
+
+        if img_name is not None:
+            cur_name = img_name(t)
+            pygame.image.save(env.mdp.viewer, cur_name)
+
         agent1_action = joint_actions[t][0]
         agent2_action = joint_actions[t][1]
         joint_action = (tuple(agent1_action) if isinstance(
@@ -29,13 +41,19 @@ def render_blur(joint_action_log, log_dir, log_name, lb, ub):
                         if isinstance(agent2_action, list) else agent2_action)
         next_state, timestep_sparse_reward, done, info = env.step(joint_action)
         t += 1
-        print(t)
+        # print(t)
         # tmp = input()
 
-    # save the rendered blur image
-    pygame.image.save(
-        env.mdp.viewer,
-        os.path.join(log_dir, log_name+"_blurred_%sto%s.png" % (str(lb), str(ub))))
+    os.system("ffmpeg -r 5 -i \"{}%*.png\"  {}video.mp4".format(img_dir+'/', img_dir+'/'))
+    for file in os.listdir(img_dir):
+        if file.endswith('.png'):
+            os.remove(os.path.join(img_dir, file)) 
+
+
+    # # save the rendered blur image
+    # pygame.image.save(
+    #     env.mdp.viewer,
+    #     os.path.join(log_dir, log_name+"_blurred_%sto%s.png" % (str(lb), str(ub))))
 
 
     # print("fitness =", joint_action_log["fitness"])
