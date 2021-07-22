@@ -662,7 +662,23 @@ class OvercookedV1(gym.Env):
     """
     metadata = {'render.modes': ['human']}
 
-    def __init__(self, ai_agent, human_agent, base_env, featurize_fn):
+    def __init__(self,
+                 ai_agent,
+                 human_agent,
+                 base_env,
+                 featurize_fn,
+                 reward_mode="sparse"):
+        """
+        Args:
+            ai_agent (overcooked_ai_py.agents.agent.RLTrainingAgent): RL agent
+                to be trained.
+            human_agent (overcooked_ai_py.agents.agent.Agent): Any human agent.
+            base_env (OvercookedEnv): Underlying overcooked environment.
+            featurize_fn: Featurization function.
+            reward_mode (string):
+                `sparse` to use sparse reward.
+                `shaped` to use shaped dense reward.
+        """
         super(OvercookedV1, self).__init__()
 
         self.ai_agent = ai_agent
@@ -671,6 +687,7 @@ class OvercookedV1(gym.Env):
         self.featurize_fn = featurize_fn
         self.observation_space = self._setup_observation_space()
         self.action_space = akro.Discrete(len(Action.ALL_ACTIONS))
+        self.reward_mode = reward_mode
         self.reset()
 
     def _setup_observation_space(self):
@@ -710,11 +727,21 @@ class OvercookedV1(gym.Env):
         joint_action = (ai_agent_action, human_agent_action)
 
         # step the env
-        next_state, reward, done, info = self.base_env.step(joint_action)
+        next_state, sparse_reward, done, info = self.base_env.step(joint_action)
         ai_next_obs, human_next_obs = self.featurize_fn(self.mdp, next_state)
         both_agents_ob = (ai_next_obs, human_next_obs)
         info["human_next_obs"] = human_next_obs
         info["overcooked_state"] = self.base_env.state
+        ai_shaped_reward = info["shaped_r_by_agent"][0]
+        ai_sparse_reward = info["sparse_r_by_agent"][0]
+
+        # reward
+        if self.reward_mode == "sparse":
+            reward = ai_sparse_reward
+        elif self.reward_mode == "shaped":
+            reward = ai_shaped_reward
+        else:
+            raise ValueError(f"Unknown reward mode: '{self.reward_mode}'.")
 
         return ai_next_obs, reward, done, info
 

@@ -34,7 +34,7 @@ def setup_env(layout_name):
     return agent1, agent2, env
 
 
-agent1, agent2, env = setup_env("train_gan_large/gen2_basic_6-6-4")
+agent1, agent2, env = setup_env("train_gan_small/gen2_basic_6-6-4")
 
 overcooked_v1 = OvercookedV1(agent1, agent2, env, lossless_state_featurize)
 
@@ -46,7 +46,7 @@ env = GymEnv(overcooked_v1)
 policy = CategoricalCNNPolicy(
     env.spec,
     image_format="NHWC",
-    kernel_sizes=(5, 3, 3),
+    kernel_sizes=(3, 2, 2),
     hidden_channels=(25, 25, 25),
 )
 
@@ -55,7 +55,7 @@ print(policy)
 vf = GaussianCNNMLPValueFunction(
     env.spec,
     image_format="NHWC",
-    kernel_sizes=(5, 3, 3),
+    kernel_sizes=(3, 2, 2),
     hidden_channels=(25, 25, 25),
 )
 
@@ -77,5 +77,4 @@ while not done:
     ai_action, _ = policy.get_action(torch.Tensor(next_obs))
     next_obs, reward, done, info = overcooked_v1.step(ai_action)
     time.sleep(0.1)
-    print(vf.forward(torch.Tensor(next_obs)))
-    print(vf.compute_loss(torch.Tensor(next_obs), torch.Tensor([reward])))
+    print(info)

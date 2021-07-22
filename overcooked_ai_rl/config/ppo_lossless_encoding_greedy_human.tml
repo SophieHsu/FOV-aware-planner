@@ -1,6 +1,6 @@
 [Env]
-layout_name="train_gan_large/gen2_basic_6-6-4"
-horizon=100
+layout_name="train_gan_small/gen2_basic_6-6-4"
+horizon=400
 
 [Env.params_to_overwrite]
 start_order_list=['onion', 'onion']
@@ -23,4 +23,7 @@ auto_unstuck=true
 [RL]
 algo="ppo"
 featurize_fn="lossless_encoding"
-n_epochs=10
+kernel_sizes=[3, 3]
+hidden_channels=[25, 25]
+n_epochs=1000
+reward_mode="shaped"

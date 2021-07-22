@@ -88,7 +88,11 @@ def rl_overcooked(ctxt=None, seed=np.random.randint(1000)):
             f"Featurize function {featurize_fn_name} not supported.")
 
     # set up env and garage env
-    overcooked_v1 = OvercookedV1(ai_agent, human_agent, base_env, featurize_fn)
+    overcooked_v1 = OvercookedV1(ai_agent,
+                                 human_agent,
+                                 base_env,
+                                 featurize_fn,
+                                 reward_mode=rl_config["reward_mode"])
     env = GymEnv(overcooked_v1, max_episode_length=base_env.horizon)
 
     # set up policy
@@ -96,14 +100,14 @@ def rl_overcooked(ctxt=None, seed=np.random.randint(1000)):
         policy = CategoricalCNNPolicy(
             env.spec,
             image_format="NHWC",
-            kernel_sizes=(5, 5),
-            hidden_channels=(10, 8),
+            kernel_sizes=rl_config["kernel_sizes"],
+            hidden_channels=rl_config["hidden_channels"],
         )
 
     # set up sampler
     sampler = LocalSampler(agents=policy,
-                         envs=env,
-                         max_episode_length=base_env.horizon)
+                           envs=env,
+                           max_episode_length=base_env.horizon)
 
     # set up algo
     algo_name = rl_config["algo"]
@@ -111,11 +115,11 @@ def rl_overcooked(ctxt=None, seed=np.random.randint(1000)):
         value_function = GaussianCNNMLPValueFunction(
             env.spec,
             image_format="NHWC",
-            kernel_sizes=(5, 5),
-            hidden_channels=(10, 8),
+            kernel_sizes=rl_config["kernel_sizes"],
+            hidden_channels=rl_config["hidden_channels"],
         )
 
-        batch_size = base_env.horizon * 10
+        batch_size = base_env.horizon * 100
 
         algo = PPO(env_spec=env.spec,
                    policy=policy,
@@ -145,8 +149,10 @@ def rl_overcooked(ctxt=None, seed=np.random.randint(1000)):
 
     if torch.cuda.is_available():
         set_gpu_mode(True)
+        print("Using GPU.")
     else:
         set_gpu_mode(False)
+        print("Using CPU.")
     algo.to()
 
     trainer = Trainer(ctxt)
