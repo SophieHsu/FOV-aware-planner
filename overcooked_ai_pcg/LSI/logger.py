@@ -176,7 +176,7 @@ class FrequentMapLog(LoggerBase):
         to_add.append("x".join(str(num) for num in feature_map.resolutions), )
         for index in feature_map.elite_indices:
             ind = feature_map.elite_map[index]
-            if len(ind.fitness) > 1:
+            if isinstance(ind.fitness, list) and len(ind.fitness) > 1:
                 curr = [
                     *index,
                     ind.ID,

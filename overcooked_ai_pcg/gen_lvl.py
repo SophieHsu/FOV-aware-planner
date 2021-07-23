@@ -3,6 +3,7 @@ import json
 import os
 import subprocess
 import time
+from tqdm import tqdm
 
 import numpy as np
 import torch
@@ -157,7 +158,12 @@ def generate_all_human_lvl():
 
 
 def main(config, lvl_size, gan_pth_path):
-    for _ in range(10):
+    all_lvl_strs = {
+        "gan_only": [],
+        "gan_milp": [],
+        "milp_only": [],
+    }
+    for _ in tqdm(range(1000)):
         # initialize saving directory
         time_str = time.strftime("%Y-%m-%d_%H-%M-%S")
         base_log_dir = time_str
@@ -170,18 +176,28 @@ def main(config, lvl_size, gan_pth_path):
                                     map_location=lambda storage, loc: storage)
         generator = dcgan.DCGAN_G(**G_params)
         generator.load_state_dict(gan_state_dict)
-        lvl_unrepaired, lvl_str = generate_lvl(1,
+        lvl_gan_only, lvl_gan_milp = generate_lvl(1,
                                             generator,
                                             lvl_size=lvl_size,
                                             return_unrepaired=True)
-        visualize_lvl(lvl_unrepaired, log_dir, "gan_only_unrepaired.png")
-        visualize_lvl(lvl_str, log_dir, "gan_milp_repaired.png")
+        visualize_lvl(lvl_gan_only, log_dir, "gan_only_unrepaired.png")
+        visualize_lvl(lvl_gan_milp, log_dir, "gan_milp_repaired.png")
 
         #from IPython import embed
         #embed()
         # generate randomly then using milp to repair
         #lvl_str = generate_rnd_lvl(lvl_size)
         #visualize_lvl(lvl_str, log_dir, "milp_only.png")
+        lvl_milp_only = generate_rnd_lvl(lvl_size)
+        visualize_lvl(lvl_milp_only, log_dir, "milp_only.png")
+
+        all_lvl_strs["gan_only"].append(lvl_gan_only)
+        all_lvl_strs["gan_milp"].append(lvl_gan_milp)
+        all_lvl_strs["milp_only"].append(lvl_milp_only)
+
+    # save lvl_str
+    with open('all_lvl_strs.json', 'w') as outfile:
+        json.dump(all_lvl_strs, outfile)
 
     # lvl_str = """XXPXX
     #              T  2T

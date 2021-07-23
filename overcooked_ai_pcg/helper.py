@@ -1,22 +1,30 @@
-import os
-import json
-import torch
-import toml
-import pickle
-import numpy as np
-from statistics import median
-from matplotlib import pyplot as plt
-from overcooked_ai_py.mdp.graphics import render_from_grid
-from overcooked_ai_py.mdp.overcooked_mdp import OvercookedGridworld
-from overcooked_ai_py.mdp.overcooked_env import OvercookedEnv
-from overcooked_ai_py.planning.planners import MediumLevelPlanner, MediumLevelMdpPlanner, HumanMediumLevelPlanner, HumanAwareMediumMDPPlanner, MediumLevelActionManager, HumanSubtaskQMDPPlanner
-from overcooked_ai_py.agents.agent import *
-from overcooked_ai_py.planning.planners import Heuristic
-from overcooked_ai_py import read_layout_dict
-from overcooked_ai_py import LAYOUTS_DIR
-from overcooked_ai_pcg import ERR_LOG_PIC, G_PARAM_FILE, LSI_CONFIG_ALGO_DIR, LSI_CONFIG_MAP_DIR, LSI_CONFIG_AGENT_DIR
-import time
 import gc
+import json
+import os
+import pickle
+import time
+from statistics import median
+
+import numpy as np
+import pygame
+import toml
+import torch
+from matplotlib import pyplot as plt
+from overcooked_ai_py import LAYOUTS_DIR, read_layout_dict
+from overcooked_ai_py.agents.agent import *
+from overcooked_ai_py.mdp.graphics import render_from_grid
+from overcooked_ai_py.mdp.overcooked_env import OvercookedEnv
+from overcooked_ai_py.mdp.overcooked_mdp import OvercookedGridworld
+from overcooked_ai_py.planning.planners import (Heuristic,
+                                                HumanAwareMediumMDPPlanner,
+                                                HumanMediumLevelPlanner,
+                                                HumanSubtaskQMDPPlanner,
+                                                MediumLevelActionManager,
+                                                MediumLevelMdpPlanner,
+                                                MediumLevelPlanner)
+
+from overcooked_ai_pcg import (ERR_LOG_PIC, G_PARAM_FILE, LSI_CONFIG_AGENT_DIR,
+                               LSI_CONFIG_ALGO_DIR, LSI_CONFIG_MAP_DIR)
 
 obj_types = "12XSPOD "
 num_obj_type = len(obj_types)
@@ -82,7 +90,7 @@ def lvl_number2str(np_lvl):
     lvl_str = ""
     for lvl_row in np_lvl:
         for tile_int in lvl_row:
-            lvl_str += obj_types[tile_int]
+            lvl_str += obj_types[int(tile_int)]
         lvl_str += "\n"
     return lvl_str
 
@@ -129,17 +137,13 @@ def read_in_training_data(data_path, sub_dir=None):
     return np.array(lvls)
 
 
-# print(read_in_training_data(LAYOUTS_DIR))
-
-
 def read_in_lsi_config(exp_config_file):
     experiment_config = toml.load(exp_config_file)
     algorithm_config = toml.load(
         os.path.join(LSI_CONFIG_ALGO_DIR,
                      experiment_config["algorithm_config"]))
     elite_map_config = toml.load(
-        os.path.join(LSI_CONFIG_MAP_DIR,
-                     experiment_config["elite_map_config"]))
+        os.path.join(LSI_CONFIG_MAP_DIR, experiment_config["elite_map_config"]))
     agent_configs = []
     for agent_config_file in experiment_config["agent_config"]:
         agent_config = toml.load(
@@ -325,7 +329,8 @@ def visualize_lvl(lvl_str, log_dir, filename):
     """
     Render and save the level without running game
     """
-    grid = lvl_str2grid(lvl_str)
+    grid = [layout_row for layout_row in lvl_str.split("\n")][:-1]
+    assert len(set([len(layout_row) for layout_row in grid])) == 1
     render_from_grid(grid, log_dir, filename)
 
 
@@ -334,9 +339,19 @@ def run_overcooked_game(ind,
                         render=True,
                         worker_id=0,
                         num_iters=1, 
-                        track_belief=False):
+                        track_belief=False,
+                        delay=500,
+                        img_name=None):
     """
     Run one turn of overcooked game and return the sparse reward as fitness
+
+    Args:
+        render (bool): Whether to render the environment with pygame.
+        delay (int): Milliseconds to wait between rendering frames.
+        img_name (callable): If passed in, this should be a callable that takes
+            in a timestep and outputs the filename for an image. An image of the
+            env will then be saved to this file. Note: `render` must be True for
+            this callable to be used.
     """
     agent1, agent2, env, mdp = init_env_and_agent(ind,
                                                   agent_config,
@@ -368,13 +383,7 @@ def run_overcooked_game(ind,
             if render:
                 env.render()
                 time.sleep(0.5)
-
-            if agent_config["Agent1"]["name"] == "qmdp_agent" and track_belief:
-                joint_action = (agent1.action(env.state, track_belief)[0],
-                            agent2.action(env.state)[0])
-
-            else:
-                joint_action = (agent1.action(env.state)[0],
+            joint_action = (agent1.action(env.state)[0],
                             agent2.action(env.state)[0])
             # print(joint_action)
             joint_actions.append(joint_action)
@@ -388,24 +397,6 @@ def run_overcooked_game(ind,
 
             last_state = next_state
             timestep += 1
-            # tmp = input()
-
-        if agent_config["Agent1"]["name"] == "qmdp_agent" and track_belief:
-            # print(agent1.mdp_planner.subtask_dict.items())
-            agent1.track_belief=np.array(agent1.track_belief)
-
-            fig = plt.figure()
-
-            for i, subtask in enumerate(agent1.mdp_planner.subtask_dict.items()):
-                plt.plot(agent1.track_belief[:,i], label=subtask[0])
-
-            plt.xlabel('Time step')
-            plt.ylabel('Belief')
-            plt.title('Belief distribution over human subtasks')
-            plt.grid()
-            plt.legend()
-            fig.savefig('Belief_tracking_'+agent_config["Agent1"]["name"]+'_'+agent_config["Agent2"]["name"]+'.png')
-            # plt.show()
 
         workloads = last_state.get_player_workload()
         concurr_active = last_state.cal_concurrent_active_sum()
@@ -503,23 +494,24 @@ def init_env_and_agent(ind, agent_config, worker_id=0):
 
     return agent1, agent2, env, mdp
 
+
 def init_env(lvl_str, horizon=100):
     grid = lvl_str2grid(lvl_str)
-    print(lvl_str)
     mdp = OvercookedGridworld.from_grid(grid, CONFIG)
     env = OvercookedEnv.from_mdp(mdp, info_level=0, horizon=horizon)
     return env
 
+
 def init_qmdp_agent(mdp):
     qmdp_planner = HumanSubtaskQMDPPlanner.from_pickle_or_compute(
-            mdp, BASE_PARAMS, force_compute_all=True)
+        mdp, BASE_PARAMS, force_compute_all=True)
 
-    agent = MediumQMdpPlanningAgent(
-        qmdp_planner,
-        greedy=False,
-        auto_unstuck=True)
+    agent = MediumQMdpPlanningAgent(qmdp_planner,
+                                    greedy=False,
+                                    auto_unstuck=True)
 
     return agent
+
 
 def gen_int_rnd_lvl(size):
     """

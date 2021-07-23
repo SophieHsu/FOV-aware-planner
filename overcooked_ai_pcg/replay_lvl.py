@@ -1,14 +1,30 @@
-import os
-import csv
-import time
-import json
-import toml
+"""Replays an Overcooked level.
+
+Images showing frames of the level are saved in the logdir in a directory called
+`replay_...` (the rest of the name includes the parameters of the replay). To
+compose these frames into a video, use `ffmpeg` within that directory, such as:
+
+    ffmpeg -r 6 -i "%*.png" video.mp4
+
+The 6 above is the frame rate (6 fps).
+"""
 import argparse
+import csv
+import json
+import os
+import shutil
+import time
+
 import pandas as pd
-from overcooked_ai_pcg import LSI_CONFIG_EXP_DIR, LSI_LOG_DIR, LSI_CONFIG_ALGO_DIR, LSI_CONFIG_MAP_DIR, LSI_CONFIG_AGENT_DIR
-from overcooked_ai_pcg.helper import (run_overcooked_game, read_in_lsi_config,
+import toml
+
+from overcooked_ai_pcg import (LSI_CONFIG_AGENT_DIR, LSI_CONFIG_ALGO_DIR,
+                               LSI_CONFIG_EXP_DIR, LSI_CONFIG_MAP_DIR,
+                               LSI_LOG_DIR)
+from overcooked_ai_pcg.helper import (read_in_lsi_config, run_overcooked_game,
                                       visualize_lvl)
 from overcooked_ai_pcg.LSI.qd_algorithms import Individual
+
 
 def log_actions(ind, agent_config, log_dir, f1, f2, row_idx, col_idx, ind_id):
     agent1_config = agent_config["Agent1"]
@@ -32,7 +48,9 @@ def log_actions(ind, agent_config, log_dir, f1, f2, row_idx, col_idx, ind_id):
             "name"] == "greedy_agent":
         log_file = "qmdp_"
 
-    log_file += ("joint_actions_"+str(f1)+"_"+str(f2)+"_"+str(row_idx)+"_"+str(col_idx)+"_"+str(ind_id)+".json")
+    log_file += ("joint_actions_" + str(f1) + "_" + str(f2) + "_" +
+                 str(row_idx) + "_" + str(col_idx) + "_" + str(ind_id) +
+                 ".json")
 
     full_path = os.path.join(log_dir, log_file)
     if os.path.exists(full_path):
@@ -48,11 +66,18 @@ def log_actions(ind, agent_config, log_dir, f1, f2, row_idx, col_idx, ind_id):
         print("Joint actions saved")
 
 
-
-def play_ind_id(elite_map, agent_configs, individuals, f1, f2, row_idx, col_idx,
-         log_dir, ind_id, num_sim=1):
+def play_ind_id(elite_map,
+                agent_configs,
+                individuals,
+                f1,
+                f2,
+                row_idx,
+                col_idx,
+                log_dir,
+                ind_id,
+                num_sim=1):
     ind_id = int(ind_id)
-    ind_id_index = ind_id*num_sim
+    ind_id_index = ind_id * num_sim
     lvl_str = individuals["lvl_str"][ind_id_index]
     print("Playing in individual %d" % ind_id)
     print(lvl_str)
@@ -63,13 +88,17 @@ def play_ind_id(elite_map, agent_configs, individuals, f1, f2, row_idx, col_idx,
     ind.rand_seed = 0#int(individuals["rand_seed"][ind_id_index])
     for agent_config in agent_configs:
         print(agent_config["Agent1"], agent_config["Agent2"])
-        fitness, _, _, _, ind.joint_actions, _, _ = run_overcooked_game(ind, agent_config, render=True)
+        fitness, _, _, _, ind.joint_actions, _, _ = run_overcooked_game(
+            ind, agent_config, render=True)
         print("Fitness:", fitness)
-        log_actions(ind, agent_config, log_dir, f1, f2, row_idx, col_idx, ind_id)
+        log_actions(ind, agent_config, log_dir, f1, f2, row_idx, col_idx,
+                    ind_id)
 
-    visualize_lvl(lvl_str, log_dir,
-                    "rendered_level_"+str(f1)+"_"+str(f2)+"_"+str(row_idx)+"_"+str(col_idx)+"_"+str(ind_id)+".png")
+    visualize_lvl(
+        lvl_str, log_dir, "rendered_level_" + str(f1) + "_" + str(f2) + "_" +
+        str(row_idx) + "_" + str(col_idx) + "_" + str(ind_id) + ".png")
     return
+
 
 def play(elite_map,
          agent_configs,
@@ -81,9 +110,8 @@ def play(elite_map,
          is_3d=False,
          mode="replay",
          num_sim=1):
-    """
-    Find the individual in the specified cell in the elite map
-    and run overcooked game with the specified agents
+    """Find the individual in the specified cell in the elite map and run
+    overcooked game with the specified agents.
 
     Args:
         elite_map (list): list of logged cell strings.
@@ -107,8 +135,9 @@ def play(elite_map,
         # print(curr_idx)
         if curr_idx == (row_idx, col_idx, mat_idx):
             ind_id = int(splited[num_features])
-            ind_idx = ind_id*num_sim
-            lvl_str = individuals["lvl_str"][ind_idx]
+            ind_idx = ind_id * num_sim
+            lvl_str = individuals[individuals["ID"] ==
+                                  ind_id]["lvl_str"].iloc[0]
             print("Playing in individual %d" % ind_id)
             print(lvl_str)
             ind = Individual()
@@ -118,18 +147,32 @@ def play(elite_map,
             ind.rand_seed = int(individuals["rand_seed"][ind_idx])
 
             if mode == "replay":
-                for agent_config in agent_configs:
+                for agent_idx, agent_config in enumerate(agent_configs):
+                    # Create image directory -- removes existing one.
+                    img_dir = os.path.join(
+                        log_dir, (f"replay_f1{f1}_f2{f2}_row{row_idx}_"
+                                  f"col{col_idx}_ind{ind_id}_agent{agent_idx}"))
+                    if os.path.exists(img_dir):
+                        shutil.rmtree(img_dir)
+                    os.mkdir(img_dir)
+                    print(f"Saving video frames in {img_dir}")
+
                     fitness, _, _, _, ind.joint_actions, _, _ = run_overcooked_game(
                         ind,
                         agent_config,
                         render=True,
                         track_belief=True,
+                        img_name=(
+                            lambda timestep: f"{img_dir}/{timestep:05d}.png"),
                     )
                     print("Fitness: ", fitness)
-                    log_actions(ind, agent_config, log_dir, f1, f2, row_idx, col_idx, ind_id)
+                    log_actions(ind, agent_config, log_dir, f1, f2, row_idx,
+                                col_idx, ind_id)
 
-                visualize_lvl(lvl_str, log_dir,
-                    "rendered_level_"+str(row_idx)+"_"+str(col_idx)+"_"+str(mat_idx)+"_"+str(ind_id)+".png")
+                visualize_lvl(
+                    lvl_str, log_dir,
+                    "rendered_level_" + str(row_idx) + "_" + str(col_idx) +
+                    "_" + str(mat_idx) + "_" + str(ind_id) + ".png")
             elif mode == "render":
                 visualize_lvl(
                     lvl_str, log_dir,
@@ -229,8 +272,8 @@ if __name__ == "__main__":
     # number of simulations for one level map to row number in log files
     num_sim = 1
     if int(opt.num_sim) > 1:
-        num_sim = int(opt.num_sim) + 1 # extra row for logging average/mode
-    
+        num_sim = int(opt.num_sim) + 1  # extra row for logging average/mode
+
     # play_ind_id(elite_map, agent_configs, individuals, f1, f2, row_idx, col_idx, log_dir, opt.ind_id, num_sim)
     mat_idx = None
     if is_3d:
@@ -245,5 +288,5 @@ if __name__ == "__main__":
          col_idx,
          mat_idx=mat_idx,
          is_3d=is_3d,
-         mode=opt.mode, 
+         mode=opt.mode,
          num_sim=num_sim)

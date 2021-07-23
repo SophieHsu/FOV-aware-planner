@@ -173,6 +173,9 @@ class OvercookedGame:
         concurr_active = self.last_state.cal_concurrent_active_sum()
         stuck_time = self.last_state.cal_total_stuck_time()
 
+        # from IPython import embed
+        # embed()
+
         fitness = self.total_sparse_reward + 1
         for checked_time in reversed(self.checkpoints):
             fitness *= self.env.horizon
@@ -209,7 +212,7 @@ def load_human_log_data(log_index):
     return human_log_csv, human_log_data
 
 
-def replay_with_joint_actions(lvl_str, joint_actions, horizon=100):
+def replay_with_joint_actions(lvl_str, joint_actions, plot=True):
     """Replay a game play with given level and joint actions.
 
     Args:
@@ -217,13 +220,42 @@ def replay_with_joint_actions(lvl_str, joint_actions, horizon=100):
     """
     env = init_env(lvl_str, horizon=HUMAN_STUDY_ENV_HORIZON)
     done = False
+    # Hacky: use human agent for replay.
+    ai_agent = HumanPlayer()
+    player = HumanPlayer()
+
+    ai_agent.set_agent_index(0)
+    ai_agent.set_mdp(env.mdp)
+    player.set_agent_index(1)
+    player.set_mdp(env.mdp)
     i = 0
+    last_state = None
+    total_sparse_reward = 0
+    checkpoints = [env.horizon - 1] * env.num_orders
+    cur_order = 0
+
     while not done:
-        env.render()
+        if plot:
+            env.render()
+            time.sleep(0.2)
+        ai_agent.update_logs(env.state, joint_actions[i][0])
+        player.update_logs(env.state, joint_actions[i][1])
         next_state, timestep_sparse_reward, done, info = env.step(
             joint_actions[i])
+        total_sparse_reward += timestep_sparse_reward
+
+        if timestep_sparse_reward > 0:
+            checkpoints[cur_order] = i
+            cur_order += 1
+        # print(joint_actions[i])
+        last_state = next_state
         i += 1
-        time.sleep(0.2)
+
+    # recalculate the bcs
+    workloads = next_state.get_player_workload()
+    concurr_active = next_state.cal_concurrent_active_sum()
+    stuck_time = next_state.cal_total_stuck_time()
+    return workloads, concurr_active, stuck_time, checkpoints, i
 
 
 def human_play(
@@ -364,6 +396,7 @@ if __name__ == "__main__":
                         default=None)
     opt = parser.parse_args()
 
+    np.random.seed(1)
     # not replay, run the study
     if not opt.replay:
         # read in human study levels
@@ -385,6 +418,9 @@ if __name__ == "__main__":
                 agent_save_path = os.path.join(
                     LSI_HUMAN_STUDY_AGENT_DIR,
                     "{lvl_type}.pkl".format(lvl_type=lvl_config["lvl_type"]))
+
+                print("trial")
+                print(lvl_config["lvl_str"])
 
                 # play 3 times
                 # first 2 times with stay agent and infinite horizon
@@ -416,6 +452,8 @@ if __name__ == "__main__":
                         agent_save_path = os.path.join(
                             LSI_HUMAN_STUDY_AGENT_DIR, "{lvl_type}.pkl".format(
                                 lvl_type=lvl_config["lvl_type"]))
+                        print(lvl_config["lvl_type"])
+                        print(lvl_config["lvl_str"])
                         results = human_play(lvl_config["lvl_str"],
                                              agent_save_path=agent_save_path)
                         # write the results
@@ -435,6 +473,7 @@ if __name__ == "__main__":
                     lvl_config = study_lvls[study_lvls["lvl_type"] ==
                                             lvl_type].iloc[0]
                     lvl_str = lvl_config["lvl_str"]
+                    print(lvl_config["lvl_type"])
                     print(lvl_str)
                     agent_save_path = os.path.join(
                         LSI_HUMAN_STUDY_AGENT_DIR,
@@ -451,16 +490,13 @@ if __name__ == "__main__":
     else:
         log_index = opt.log_index
         lvl_type = opt.type
-        assert int(log_index) >= 0
 
         # get level string and logged joint actions from log file
         _, human_log_data = load_human_log_data(log_index)
         lvl_str = human_log_data[human_log_data["lvl_type"] ==
-                                 lvl_type]["lvl_str"][0]
+                                 lvl_type]["lvl_str"].iloc[0]
         joint_actions = ast.literal_eval(human_log_data[
-            human_log_data["lvl_type"] == lvl_type]["joint_actions"][0])
+            human_log_data["lvl_type"] == lvl_type]["joint_actions"].iloc[0])
 
         # replay the game
-        replay_with_joint_actions(lvl_str,
-                                  joint_actions,
-                                  horizon=HUMAN_STUDY_ENV_HORIZON)
+        replay_with_joint_actions(lvl_str, joint_actions)
