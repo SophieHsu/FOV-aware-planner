@@ -9,7 +9,7 @@ import torch.nn.functional as F
 import torch.optim as optim
 
 from overcooked_ai_py.mdp.overcooked_mdp import OvercookedGridworld
-from overcooked_ai_py.mdp.overcooked_env import OvercookedEnv, OvercookedV1
+from overcooked_ai_py.mdp.overcooked_env import OvercookedEnv
 from overcooked_ai_py.agents.agent import (HRLTrainingAgent, GreedyHumanModel)
 from overcooked_ai_py.planning.planners import (
     Heuristic, HumanSubtaskQMDPPlanner, MediumLevelActionManager, MediumLevelMdpPlanner, MediumLevelPlanner)
@@ -220,7 +220,7 @@ def main(config):
     optimizer = optim.Adam(q.parameters(), lr=learning_rate)
 
     for n_epi in range(50000):
-        epsilon = max(0.01, 0.5 - 0.01*(n_epi/500)) #Linear annealing from 8% to 1%
+        epsilon = max(0.01, 0.5 - 0.01*(n_epi/200)) #Linear annealing from 8% to 1%
         h_state, env = reset(mdp, config)
         env_items = encode_env(mdp)
         done = False
