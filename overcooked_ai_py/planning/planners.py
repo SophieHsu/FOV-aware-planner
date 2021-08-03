@@ -1918,7 +1918,7 @@ class MediumLevelMdpPlanner(object):
         # print('Initialize states:', self.state_idx_dict.items())
         return
 
-    def init_actions(self, actions=None):
+    def init_actions(self, actions=None, action_dict=None, action_idx_dict=None):
         '''
         action_dict = {'pickup_onion': ['pickup', 'onion'], 'pickup_dish': ['pickup', 'dish'], 'drop_onion': ['drop', 'onion'], 'drop_dish': ['drop', 'dish'], 'deliver_soup': ['deliver', 'soup'], 'pickup_soup': ['pickup', 'soup']}
         '''
@@ -2109,7 +2109,7 @@ class MediumLevelMdpPlanner(object):
         return location
 
     def map_action_to_state_location(self, state, state_str, action, obj, world_info):
-        pots_states_dict = get_pot_states(world_info)
+        pots_states_dict = self.mdp.get_pot_states(world_info)
         location = []
         if action == 'pickup' and obj != 'soup':
             if not self._not_holding_object(state_str):
@@ -2364,7 +2364,6 @@ class HumanAwareMediumMDPPlanner(MediumLevelMdpPlanner):
                 # define state and action game transition logic
                 p0_state, p1_obj = self.extract_p0(state_obj)
                 
-
                 # get next step p1 object
                 p1_nxt_states = []
                 if len(p0_state) > 2:
@@ -2566,7 +2565,7 @@ class HumanSubtaskQMDPPlanner(MediumLevelMdpPlanner):
                         self.state_dict[new_key] = new_obj # update value
                         self.state_idx_dict[new_key] = len(self.state_idx_dict)
 
-        # print('subtask dict =', self.subtask_dict)
+        print('subtask dict =', self.subtask_dict)
 
     def init_transition(self, transition_matrix=None):
         """
@@ -2872,19 +2871,19 @@ class HumanSubtaskQMDPPlanner(MediumLevelMdpPlanner):
         else:
             return list(dictionary.keys())[idx]
 
-    def map_action_to_location(self, world_state, state_str, action, obj, p0_obj=None, player_idx=None):
+    def map_action_to_location(self, world_state, state_str, action, obj, p0_obj=None, player_idx=None, counter_drop=True, state_dict=None):
         """
         Get the next location the agent will be in based on current world state, medium level actions, after-action state obj.
         """
-
-        p0_obj = p0_obj if p0_obj is not None else self.state_dict[state_str][0]
+        state_dict = self.state_dict if state_dict is None else state_dict
+        p0_obj = p0_obj if p0_obj is not None else state_dict[state_str][0]
         other_obj = world_state.players[1-player_idx].held_object.name if world_state.players[1-player_idx].held_object is not None else 'None'
         pots_states_dict = self.mdp.get_pot_states(world_state)
         location = []
         WAIT = False # If wait becomes true, one player has to wait for the other player to finish its current task and its next task
 
         if action == 'pickup' and obj != 'soup':
-            if p0_obj != 'None':
+            if p0_obj != 'None' and counter_drop:
                 location = self.drop_item(world_state)
             else:
                 if obj == 'onion':
@@ -2897,13 +2896,13 @@ class HumanSubtaskQMDPPlanner(MediumLevelMdpPlanner):
                     print(p0_obj, action, obj)
                     ValueError()
         elif action == 'pickup' and obj == 'soup':
-            if p0_obj != 'dish' and p0_obj != 'None':
+            if p0_obj != 'dish' and p0_obj != 'None' and counter_drop:
                 location = self.drop_item(world_state)
             elif p0_obj == 'None':
                 location = self.mdp.get_dish_dispenser_locations()
             else:
                 if state_str is not None:
-                    num_item_in_pot = self.state_dict[state_str][1]
+                    num_item_in_pot = state_dict[state_str][1]
                     if num_item_in_pot == 0:
                         location = self.mdp.get_empty_pots(pots_states_dict)
                         if len(location) > 0: return location, True
@@ -2926,7 +2925,7 @@ class HumanSubtaskQMDPPlanner(MediumLevelMdpPlanner):
             if obj == 'onion' or obj == 'tomato':
 
                 if state_str is not None:
-                    num_item_in_pot = self.state_dict[state_str][1]
+                    num_item_in_pot = state_dict[state_str][1]
                     if num_item_in_pot == 0:
                         location = self.mdp.get_empty_pots(pots_states_dict)
                     elif num_item_in_pot > 0 and num_item_in_pot < self.mdp.num_items_for_soup:
@@ -2944,18 +2943,43 @@ class HumanSubtaskQMDPPlanner(MediumLevelMdpPlanner):
                         location = self.mdp.get_ready_pots(pots_states_dict) + self.mdp.get_cooking_pots(pots_states_dict) + self.mdp.get_full_pots(pots_states_dict)
                         # location = world_state.players[player_idx].pos_and_or
                         return location, WAIT
-                    else:
+                    elif counter_drop:
                         location = self.drop_item(world_state)
+                    else:
+                        WAIT = True
+                        location = self.mdp.get_ready_pots(pots_states_dict) + self.mdp.get_cooking_pots(pots_states_dict) + self.mdp.get_full_pots(pots_states_dict)
+                        # location = world_state.players[player_idx].pos_and_or
+                        return location, WAIT
 
-            elif obj == 'dish' and player_idx==0: # agent_index = 0
+            elif obj == 'dish' and player_idx==0 and counter_drop: # agent_index = 0
                 location = self.drop_item(world_state)
             else:
                 print(p0_obj, action, obj)
                 ValueError()
 
         elif action == 'deliver':
-            if p0_obj != 'soup':
+            if p0_obj != 'soup' and p0_obj != 'None' and counter_drop:
                 location = self.mdp.get_empty_counter_locations(world_state)
+            elif p0_obj != 'soup':
+                if state_str is not None:
+                    num_item_in_pot = state_dict[state_str][1]
+                    if num_item_in_pot == 0:
+                        location = self.mdp.get_empty_pots(pots_states_dict)
+                        if len(location) > 0: return location, True
+                    elif num_item_in_pot > 0 and num_item_in_pot < self.mdp.num_items_for_soup:
+                        location = self.mdp.get_partially_full_pots(pots_states_dict)
+                        if len(location) > 0: return location, True
+                    else:
+                        location = self.mdp.get_ready_pots(pots_states_dict) + self.mdp.get_cooking_pots(pots_states_dict) + self.mdp.get_full_pots(pots_states_dict)
+                    if len(location) > 0: return location, WAIT
+
+                location = self.mdp.get_ready_pots(pots_states_dict) + self.mdp.get_cooking_pots(pots_states_dict) + self.mdp.get_full_pots(pots_states_dict)
+                if len(location) == 0:
+                    WAIT = True
+                    # location = self.ml_action_manager.go_to_closest_feature_or_counter_to_goal(location)
+                    location = self.mdp.get_partially_full_pots(pots_states_dict) + self.mdp.get_empty_pots(pots_states_dict)
+                    # location = world_state.players[player_idx].pos_and_or
+                    return location, WAIT
             else:
                 location = self.mdp.get_serving_locations()
 

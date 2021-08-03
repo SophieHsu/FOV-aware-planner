@@ -1,0 +1,77 @@
+import argparse, toml, os, time, json
+import torch
+
+from overcooked_ai_py.mdp.overcooked_mdp import OvercookedGridworld
+from overcooked_ai_py.mdp.overcooked_env import OvercookedEnv, OvercookedV1
+from overcooked_ai_py.agents.agent import (HRLTrainingAgent, GreedyHumanModel)
+from overcooked_ai_py.planning.planners import (
+    Heuristic, HumanSubtaskQMDPPlanner, MediumLevelActionManager, MediumLevelMdpPlanner, MediumLevelPlanner)
+from overcooked_ai_rl.dqn import Qnet, setup_env_w_agents, encode_env, reset
+
+def log_actions(log_dir, actions):
+    full_path = os.path.join(log_dir, "joint_actions.json")
+    if os.path.exists(full_path):
+        print("Joint actions logged before, skipping...")
+        return
+
+    # log the joint actions if not logged before
+    with open(full_path, "w") as f:
+        json.dump({
+            "joint_actions": actions,
+        }, f)
+        print("Joint actions saved")
+
+def main(config, q):
+    # config overcooked env and human agent
+    ai_agent, human_agent, env, mdp = setup_env_w_agents(config)
+    h_state, env = reset(mdp, config)
+    done = False
+
+    total_sparse_reward = 0; timestep = 0
+    # Saves when each soup (order) was delivered
+    checkpoints = [env.horizon - 1] * env.num_orders
+    cur_order = 0; last_state = None; joint_actions = []
+    while not done:
+        env.render()
+        time.sleep(0.5)
+        joint_action = (ai_agent.action(env.state, q=q),
+                        human_agent.action(env.state)[0])
+        # print(joint_action)
+        joint_actions.append(joint_action)
+        next_state, timestep_sparse_reward, done, info = env.step(
+            joint_action)
+        total_sparse_reward += timestep_sparse_reward
+
+        if timestep_sparse_reward > 0:
+            checkpoints[cur_order] = timestep
+            cur_order += 1
+
+        last_state = next_state
+        timestep += 1
+
+    print("Fitness:", total_sparse_reward)
+    log_actions(config["Experiment"]["log_dir"], joint_actions)
+
+
+if __name__ == '__main__':
+    parser = argparse.ArgumentParser()
+    parser.add_argument('-c',
+                        '--config',
+                        help='path of config file',
+                        required=True)
+    parser.add_argument('-q',
+                        '--qnet',
+                        help='Qnet pth file name',
+                        required=True)
+    opt = parser.parse_args()
+
+    with open(opt.config) as f:
+        config = toml.load(f)
+
+    q = Qnet()
+    log_file = os.path.join(config["Experiment"]["log_dir"], config["Experiment"]["log_name"])
+    q.load_state_dict(torch.load(os.path.join(log_file, opt.qnet)))
+    q.eval()
+
+    main(config, q)
+

@@ -667,7 +667,8 @@ class OvercookedV1(gym.Env):
                  human_agent,
                  base_env,
                  featurize_fn,
-                 reward_mode="sparse"):
+                 reward_mode="sparse",
+                 action_mode="subtask"):
         """
         Args:
             ai_agent (overcooked_ai_py.agents.agent.RLTrainingAgent): RL agent
@@ -686,7 +687,10 @@ class OvercookedV1(gym.Env):
         self.base_env = base_env
         self.featurize_fn = featurize_fn
         self.observation_space = self._setup_observation_space()
-        self.action_space = akro.Discrete(len(Action.ALL_ACTIONS))
+        if action_mode == "subtask":
+            self.action_space = akro.Discrete(len(ai_agent.mdp_planner.subtask_dict))
+        else:
+            self.action_space = akro.Discrete(len(Action.ALL_ACTIONS))
         self.reward_mode = reward_mode
         self.reset()
 
