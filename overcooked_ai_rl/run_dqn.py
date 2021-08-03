@@ -21,7 +21,7 @@ def log_actions(log_dir, actions):
         }, f)
         print("Joint actions saved")
 
-def main(config, q):
+def main(config, q, log_dir):
     # config overcooked env and human agent
     ai_agent, human_agent, env, mdp = setup_env_w_agents(config)
     h_state, env = reset(mdp, config)
@@ -32,7 +32,6 @@ def main(config, q):
     checkpoints = [env.horizon - 1] * env.num_orders
     cur_order = 0; last_state = None; joint_actions = []
 
-    log_dir = os.path.join(config["Experiment"]["log_dir"], config["Experiment"]["log_name"])
     img_dir = log_dir
     if not os.path.exists(img_dir):
         os.makedirs(img_dir)
@@ -72,9 +71,9 @@ def main(config, q):
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
-    parser.add_argument('-c',
-                        '--config',
-                        help='path of config file',
+    parser.add_argument('-l',
+                        '--log_dir',
+                        help='path of log dir',
                         required=True)
     parser.add_argument('-q',
                         '--qnet',
@@ -82,13 +81,12 @@ if __name__ == '__main__':
                         required=True)
     opt = parser.parse_args()
 
-    with open(opt.config) as f:
+    with open(os.path.join(opt.log_dir, 'config.tml')) as f:
         config = toml.load(f)
 
     q = Qnet()
-    log_file = os.path.join(config["Experiment"]["log_dir"], config["Experiment"]["log_name"])
-    q.load_state_dict(torch.load(os.path.join(log_file, opt.qnet)))
+    q.load_state_dict(torch.load(os.path.join(opt.log_dir, opt.qnet)))
     q.eval()
 
-    main(config, q)
+    main(config, q, opt.log_dir)
 

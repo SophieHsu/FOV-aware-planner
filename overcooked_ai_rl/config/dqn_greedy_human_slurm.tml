@@ -6,7 +6,8 @@ slurm_worker_walltime="24:00:00"
 slurm_project="nikolaid_548"
 
 [Env]
-layout_name="train_gan_small/gen1_basic_1-6"
+layout_name="train_gan_large/gen2_basic_6-3"
+small_layout_name="train_gan_small/gen1_basic_1-6"
 horizon=150
 
 [Env.params_to_overwrite]
@@ -14,6 +15,7 @@ start_order_list=['onion', 'onion']
 cook_time=10
 num_items_for_soup=3
 delivery_reward=20
+rew_shaping_params={"PLACEMENT_IN_POT_REW": 2, "DISH_PICKUP_REWARD": 2, "SOUP_PICKUP_REWARD": 5}
 
 [Env.planner]
 start_orientations=false

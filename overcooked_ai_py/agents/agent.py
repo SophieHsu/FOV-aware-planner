@@ -1315,7 +1315,7 @@ class HRLTrainingAgent(MediumQMdpPlanningAgent):
             self.state_idx_dict = state_idx_dict
             self.state_dict = state_dict
 
-        print('Initialize states:', self.state_idx_dict.items())
+        # print('Initialize states:', self.state_idx_dict.items())
         return
 
     def init_human_info_states(self, state_idx_dict=None, order_list=None):
@@ -1338,7 +1338,7 @@ class HRLTrainingAgent(MediumQMdpPlanningAgent):
                 self.state_dict[new_key] = new_obj # update value
                 self.state_idx_dict[new_key] = len(self.state_idx_dict)
 
-        print('init_human_info_states dict =', self.state_dict)
+        # print('init_human_info_states dict =', self.state_dict)
 
     def init_actions(self, actions=None, action_dict=None, action_idx_dict=None):
         '''
@@ -1361,7 +1361,7 @@ class HRLTrainingAgent(MediumQMdpPlanningAgent):
             self.action_dict = action_dict
             self.action_idx_dict = action_idx_dict
 
-        print('Initialize actions:', self.action_dict)
+        # print('Initialize actions:', self.action_dict)
         
         return
     
