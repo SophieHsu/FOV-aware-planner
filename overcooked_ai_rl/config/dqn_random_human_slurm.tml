@@ -24,7 +24,7 @@ counter_pickup=[]
 same_motion_goals=true
 
 [Human]
-name="greedy_agent"
+name="random_agent"
 auto_unstuck=true
 
 [Robot]
@@ -42,5 +42,5 @@ memory_min = 2000
 
 [Experiment]
 log_dir="data/dqn_log/"
-log_name="dqn_test_50k"
+log_name="dqn_random"
 log_freq=1000

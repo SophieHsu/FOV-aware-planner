@@ -18,7 +18,9 @@ same_motion_goals=true
 
 [Human]
 name="greedy_agent"
-greedy=true
+auto_unstuck=true
+
+[Robot]
 auto_unstuck=true
 
 [RL]
@@ -26,9 +28,12 @@ algo="dqn"
 featurize_fn="lossless_encoding"
 kernel_sizes=[3, 3]
 hidden_channels=[25, 25]
-n_epochs=1000
+n_epochs=50000
 reward_mode="both"
+eta = 200
+memory_min = 2000
 
 [Experiment]
 log_dir="data/dqn_log/"
 log_name="dqn_test_50k"
+log_freq=1000

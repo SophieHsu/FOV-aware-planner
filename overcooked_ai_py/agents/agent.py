@@ -1253,8 +1253,8 @@ class MediumQMdpPlanningAgent(Agent):
 
 
 class HRLTrainingAgent(MediumQMdpPlanningAgent):
-    def __init__(self, mdp, mdp_planner, greedy=False, other_agent=None, delivery_horizon=1, logging_level=0, auto_unstuck=False):
-        super().__init__(mdp_planner, greedy=greedy, other_agent=other_agent, delivery_horizon=delivery_horizon, logging_level=logging_level, auto_unstuck=auto_unstuck)
+    def __init__(self, mdp, mdp_planner, other_agent=None, delivery_horizon=1, logging_level=0, auto_unstuck=False):
+        super().__init__(mdp_planner, other_agent=other_agent, delivery_horizon=delivery_horizon, logging_level=logging_level, auto_unstuck=auto_unstuck)
 
         self.mdp = mdp
 

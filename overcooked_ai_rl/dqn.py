@@ -10,9 +10,8 @@ import torch.optim as optim
 
 from overcooked_ai_py.mdp.overcooked_mdp import OvercookedGridworld
 from overcooked_ai_py.mdp.overcooked_env import OvercookedEnv
-from overcooked_ai_py.agents.agent import (HRLTrainingAgent, GreedyHumanModel)
-from overcooked_ai_py.planning.planners import (
-    Heuristic, HumanSubtaskQMDPPlanner, MediumLevelActionManager, MediumLevelMdpPlanner, MediumLevelPlanner)
+from overcooked_ai_py.agents.agent import (HRLTrainingAgent, GreedyHumanModel, RandomAgent)
+from overcooked_ai_py.planning.planners import (HumanSubtaskQMDPPlanner, MediumLevelPlanner)
 
 #Hyperparameters
 learning_rate = 0.0005
@@ -40,12 +39,16 @@ def setup_env_w_agents(config):
         human_agent.set_agent_index(1)
         human_agent.set_mdp(mdp)
 
+    elif human_config["name"] == "random_agent":
+        human_agent = RandomAgent()
+        human_agent.set_agent_index(1)
+        human_agent.set_mdp(mdp)
+
     qmdp_planner = HumanSubtaskQMDPPlanner.from_pickle_or_compute(
             mdp, env_config["planner"], force_compute_all=True)
     ai_agent = HRLTrainingAgent(mdp, 
             qmdp_planner, 
-            greedy=human_config["greedy"],
-            auto_unstuck=human_config["auto_unstuck"])
+            auto_unstuck=config["Robot"]["auto_unstuck"])
     ai_agent.set_agent_index(0)
     ai_agent.set_mdp(mdp)
 
@@ -215,12 +218,20 @@ def main(config):
     q_target.load_state_dict(q.state_dict())
     memory = ReplayBuffer()
 
-    print_interval = 1000
+    print_interval = config['Experiment']['log_freq']
     score = 0.0  
     optimizer = optim.Adam(q.parameters(), lr=learning_rate)
+    eta = config['RL']['eta']
+    start_training_mem = config['RL']['memory_min']
+    log_file = os.path.join(config["Experiment"]["log_dir"], config["Experiment"]["log_name"])
 
-    for n_epi in range(50000):
-        epsilon = max(0.01, 0.5 - 0.01*(n_epi/200)) #Linear annealing from 8% to 1%
+    if not os.path.exists(log_file):
+        os.mkdir(log_file)
+    with open(os.path.join(log_file, 'config.tml'), "w") as toml_file:
+        toml.dump(config, toml_file)
+
+    for n_epi in range(config['RL']['n_epochs']):
+        epsilon = max(0.01, 0.5 - 0.01*(n_epi/eta)) #Linear annealing from 8% to 1%
         h_state, env = reset(mdp, config)
         env_items = encode_env(mdp)
         done = False
@@ -240,7 +251,7 @@ def main(config):
 
             score += r
 
-        if memory.size()>2000:
+        if memory.size()>start_training_mem:
             train(q, q_target, memory, optimizer)
 
         if n_epi%print_interval==0 and n_epi!=0:
@@ -249,9 +260,6 @@ def main(config):
             score = 0.0
 
             # save model
-            log_file = os.path.join(config["Experiment"]["log_dir"], config["Experiment"]["log_name"])
-            if not os.path.exists(log_file):
-                os.mkdir(log_file)
             torch.save(q.state_dict(), '{0}/qnet_epi_{1}.pth'.format(log_file, n_epi))
     # env.close()
 

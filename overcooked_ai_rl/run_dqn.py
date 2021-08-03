@@ -1,5 +1,5 @@
 import argparse, toml, os, time, json
-import torch
+import torch, pygame
 
 from overcooked_ai_py.mdp.overcooked_mdp import OvercookedGridworld
 from overcooked_ai_py.mdp.overcooked_env import OvercookedEnv, OvercookedV1
@@ -31,9 +31,21 @@ def main(config, q):
     # Saves when each soup (order) was delivered
     checkpoints = [env.horizon - 1] * env.num_orders
     cur_order = 0; last_state = None; joint_actions = []
+
+    log_dir = os.path.join(config["Experiment"]["log_dir"], config["Experiment"]["log_name"])
+    img_dir = log_dir
+    if not os.path.exists(img_dir):
+        os.makedirs(img_dir)
+    img_name = lambda timestep: f"{img_dir}/{timestep:05d}.png"
+
     while not done:
         env.render()
         time.sleep(0.5)
+
+        if img_name is not None:
+            cur_name = img_name(timestep)
+            pygame.image.save(env.mdp.viewer, cur_name)
+        
         joint_action = (ai_agent.action(env.state, q=q),
                         human_agent.action(env.state)[0])
         # print(joint_action)
@@ -50,7 +62,12 @@ def main(config, q):
         timestep += 1
 
     print("Fitness:", total_sparse_reward)
-    log_actions(config["Experiment"]["log_dir"], joint_actions)
+    log_actions(os.path.join(config["Experiment"]["log_dir"], config["Experiment"]["log_name"]), joint_actions)
+
+    os.system("ffmpeg -r 5 -i \"{}%*.png\"  {}video.mp4".format(img_dir+'/', img_dir+'/'))
+    for file in os.listdir(img_dir):
+        if file.endswith('.png'):
+            os.remove(os.path.join(img_dir, file)) 
 
 
 if __name__ == '__main__':
