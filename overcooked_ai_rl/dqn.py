@@ -19,7 +19,7 @@ gamma         = 0.98
 buffer_limit  = 50000
 batch_size    = 32
 
-def setup_env_w_agents(config, n_epi=None, env_list=None):
+def setup_env_w_agents(config, n_epi=None, env_list=None, human=None):
     """
     Setup environment and agents.
 
@@ -40,14 +40,16 @@ def setup_env_w_agents(config, n_epi=None, env_list=None):
                                  info_level=0,
                                  horizon=env_config["horizon"])
 
-    if human_config["name"] == "greedy_agent":
+    human_type = human_config["name"] if human is None else human
+
+    if human_type == "greedy_agent":
         mlp_planner = MediumLevelPlanner(mdp, env_config["planner"])
         human_agent = GreedyHumanModel(
             mlp_planner, auto_unstuck=human_config["auto_unstuck"])
         human_agent.set_agent_index(1)
         human_agent.set_mdp(mdp)
 
-    elif human_config["name"] == "random_agent":
+    elif human_type == "random_agent":
         human_agent = RandomAgent()
         human_agent.set_agent_index(1)
         human_agent.set_mdp(mdp)
@@ -269,7 +271,7 @@ def main(config):
         if memory.size()>start_training_mem:
             train(q, q_target, memory, optimizer)
 
-        if n_epi%print_interval==0 and n_epi!=0:
+        if (n_epi%print_interval==0 and n_epi!=0) or (n_epi == config['RL']['n_epochs']-1):
             q_target.load_state_dict(q.state_dict())
             print("n_episode :{}, score : {:.1f}, n_buffer : {}, eps : {:.1f}%".format(n_epi, score/print_interval, memory.size(), epsilon*100))
             score = 0.0

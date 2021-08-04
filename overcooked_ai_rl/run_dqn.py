@@ -21,14 +21,14 @@ def log_actions(log_dir, actions):
         }, f)
         print("Joint actions saved")
 
-def main(config, q, log_dir):
+def main(config, q, log_dir, human=None):
     # config overcooked env and human agent
     if not config['Env']['multi']:
-        ai_agent, human_agent, env, mdp = setup_env_w_agents(config)
+        ai_agent, human_agent, env, mdp = setup_env_w_agents(config, human=human)
     else:
         env_list=os.listdir(config['Env']['layout_dir'])
         env_list.remove('base.layout')
-        ai_agent, human_agent, env, mdp = setup_env_w_agents(config, len(env_list), env_list)
+        ai_agent, human_agent, env, mdp = setup_env_w_agents(config, len(env_list), env_list, human=human)
     h_state, env = reset(mdp, config)
     done = False
 
@@ -68,7 +68,7 @@ def main(config, q, log_dir):
     print("Fitness:", total_sparse_reward)
     log_actions(os.path.join(config["Experiment"]["log_dir"], config["Experiment"]["log_name"]), joint_actions)
 
-    os.system("ffmpeg -r 5 -i \"{}%*.png\"  {}video.mp4".format(img_dir+'/', img_dir+'/'))
+    os.system("ffmpeg -r 5 -i \"{}%*.png\"  {}{}_video.mp4".format(img_dir+'/', img_dir+'/', human_agent.get_model_name()))
     for file in os.listdir(img_dir):
         if file.endswith('.png'):
             os.remove(os.path.join(img_dir, file)) 
@@ -84,6 +84,11 @@ if __name__ == '__main__':
                         '--qnet',
                         help='Qnet pth file name',
                         required=True)
+    parser.add_argument('-a',
+                        '--human_type',
+                        help='Type of human agent (greedy_agent or random_agent) for testing',
+                        default=None,
+                        required=False)
     opt = parser.parse_args()
 
     with open(os.path.join(opt.log_dir, 'config.tml')) as f:
@@ -93,5 +98,5 @@ if __name__ == '__main__':
     q.load_state_dict(torch.load(os.path.join(opt.log_dir, opt.qnet)))
     q.eval()
 
-    main(config, q, opt.log_dir)
+    main(config, q, opt.log_dir, human=opt.human_type)
 

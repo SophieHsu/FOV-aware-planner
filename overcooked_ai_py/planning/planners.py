@@ -3240,7 +3240,7 @@ class HumanSubtaskQMDPPlanner(MediumLevelMdpPlanner):
         self.num_actions = len(self.action_dict)
         # print('Total states =', self.num_states, '; Total actions =', self.num_actions)
 
-        print("It took {} seconds to create HumanSubtaskQMDPPlanner".format(time.time() - start_time))
+        # print("It took {} seconds to create HumanSubtaskQMDPPlanner".format(time.time() - start_time))
         # self.save_to_file(final_filepath)
         # tmp = input()
         # self.save_to_file(output_mdp_path)
