@@ -2565,7 +2565,7 @@ class HumanSubtaskQMDPPlanner(MediumLevelMdpPlanner):
                         self.state_dict[new_key] = new_obj # update value
                         self.state_idx_dict[new_key] = len(self.state_idx_dict)
 
-        print('subtask dict =', self.subtask_dict)
+        # print('subtask dict =', self.subtask_dict)
 
     def init_transition(self, transition_matrix=None):
         """
