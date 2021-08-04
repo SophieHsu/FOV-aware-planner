@@ -33,7 +33,7 @@ def setup_env_w_agents(config, n_epi=None, env_list=None):
         else:
             r = random.randint(0, len(env_list)-1)
             env_config["layout_name"] = 'train_gan_small'+'/'+env_list[r].split('.')[0]
-
+    print(env_config["layout_name"])
     mdp = OvercookedGridworld.from_layout_name(
         env_config["layout_name"], **env_config["params_to_overwrite"])
     env = OvercookedEnv.from_mdp(mdp,
@@ -53,7 +53,7 @@ def setup_env_w_agents(config, n_epi=None, env_list=None):
         human_agent.set_mdp(mdp)
 
     qmdp_planner = HumanSubtaskQMDPPlanner.from_pickle_or_compute(
-            mdp, env_config["planner"], force_compute_all=True)
+            mdp, env_config["planner"], force_compute_all=True, info=False)
     ai_agent = HRLTrainingAgent(mdp, 
             qmdp_planner, 
             auto_unstuck=config["Robot"]["auto_unstuck"])
