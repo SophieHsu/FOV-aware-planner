@@ -19,13 +19,21 @@ gamma         = 0.98
 buffer_limit  = 50000
 batch_size    = 32
 
-def setup_env_w_agents(config):
+def setup_env_w_agents(config, n_epi=None, env_list=None):
     """
     Setup environment and agents.
 
     NOTE: Green hat is agent 1/robot; Blue hat is agent 2/human
     """
     env_config, human_config = config["Env"], config["Human"]
+
+    if env_list is not None:
+        if n_epi < len(env_list):
+            env_config["layout_name"] = 'train_gan_small'+'/'+env_list[n_epi].split('.')[0]
+        else:
+            r = random.randint(0, len(env_list)-1)
+            env_config["layout_name"] = 'train_gan_small'+'/'+env_list[r].split('.')[0]
+
     mdp = OvercookedGridworld.from_layout_name(
         env_config["layout_name"], **env_config["params_to_overwrite"])
     env = OvercookedEnv.from_mdp(mdp,
@@ -210,7 +218,11 @@ def train(q, q_target, memory, optimizer):
 
 def main(config):
     # config overcooked env and human agent
-    ai_agent, human_agent, env, mdp = setup_env_w_agents(config)
+    if not config['Env']['multi']:
+        ai_agent, human_agent, env, mdp = setup_env_w_agents(config)
+    else:
+        env_list=os.listdir(config['Env']['layout_dir'])
+        env_list.remove('base.layout')
 
     # initialize network
     q = Qnet()
@@ -231,6 +243,9 @@ def main(config):
         toml.dump(config, toml_file)
 
     for n_epi in range(config['RL']['n_epochs']):
+        if config['Env']['multi']:
+            ai_agent, human_agent, env, mdp = setup_env_w_agents(config, n_epi, env_list)
+
         epsilon = max(0.01, 0.5 - 0.01*(n_epi/eta)) #Linear annealing from 8% to 1%
         h_state, env = reset(mdp, config)
         env_items = encode_env(mdp)

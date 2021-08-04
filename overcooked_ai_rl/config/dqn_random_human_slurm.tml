@@ -6,6 +6,7 @@ slurm_worker_walltime="24:00:00"
 slurm_project="nikolaid_548"
 
 [Env]
+multi=false
 layout_name="train_gan_large/gen2_basic_6-3"
 small_layout_name="train_gan_small/gen1_basic_1-6"
 horizon=200
