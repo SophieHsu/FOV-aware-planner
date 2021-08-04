@@ -1,7 +1,7 @@
 import gym, tqdm
 import numpy as np
 import time
-import akro
+#import akro
 from overcooked_ai_py.utils import mean_and_std_err, append_dictionaries
 from overcooked_ai_py.mdp.actions import Action
 from overcooked_ai_py.mdp.overcooked_mdp import OvercookedGridworld, EVENT_TYPES
@@ -645,7 +645,7 @@ class OvercookedV0(gym.Env):
     def render(self, mode='human', close=False):
         pass
 
-
+'''
 class OvercookedV1(gym.Env):
     """
     Wrapper of the Overcooked environment that is compatible with garage.
@@ -763,3 +763,4 @@ class OvercookedV1(gym.Env):
 
     def render(self, mode="human"):
         self.base_env.render(mode)
+'''
