@@ -197,6 +197,9 @@ class RandomAgent(Agent):
         self.all_actions = all_actions
         self.custom_wait_prob = custom_wait_prob
     
+    def get_model_name(self):
+        return 'random'
+
     def action(self, state):
         action_probs = np.zeros(Action.NUM_ACTIONS)
         legal_actions = list(Action.MOTION_ACTIONS)
@@ -382,6 +385,9 @@ class GreedyHumanModel(Agent):
     def reset(self):
         super().reset()
         self.prev_state = None
+
+    def get_model_name(self):
+        return 'greedy'
 
     def actions(self, states, agent_indices):
         actions_and_infos_n = []
