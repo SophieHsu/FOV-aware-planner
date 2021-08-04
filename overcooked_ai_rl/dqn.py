@@ -26,14 +26,14 @@ def setup_env_w_agents(config, n_epi=None, env_list=None):
     NOTE: Green hat is agent 1/robot; Blue hat is agent 2/human
     """
     env_config, human_config = config["Env"], config["Human"]
-
+    env_config["layout_dir"].split('/')[-1]
     if env_list is not None:
         if n_epi < len(env_list):
-            env_config["layout_name"] = 'train_gan_small'+'/'+env_list[n_epi].split('.')[0]
+            env_config["layout_name"] = env_config["layout_dir"].split('/')[-1]+'/'+env_list[n_epi].split('.')[0]
         else:
             r = random.randint(0, len(env_list)-1)
-            env_config["layout_name"] = 'train_gan_small'+'/'+env_list[r].split('.')[0]
-    print(env_config["layout_name"])
+            env_config["layout_name"] = env_config["layout_dir"].split('/')[-1]+'/'+env_list[r].split('.')[0]
+
     mdp = OvercookedGridworld.from_layout_name(
         env_config["layout_name"], **env_config["params_to_overwrite"])
     env = OvercookedEnv.from_mdp(mdp,

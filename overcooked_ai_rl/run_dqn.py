@@ -23,7 +23,12 @@ def log_actions(log_dir, actions):
 
 def main(config, q, log_dir):
     # config overcooked env and human agent
-    ai_agent, human_agent, env, mdp = setup_env_w_agents(config)
+    if not config['Env']['multi']:
+        ai_agent, human_agent, env, mdp = setup_env_w_agents(config)
+    else:
+        env_list=os.listdir(config['Env']['layout_dir'])
+        env_list.remove('base.layout')
+        ai_agent, human_agent, env, mdp = setup_env_w_agents(config, len(env_list), env_list)
     h_state, env = reset(mdp, config)
     done = False
 
