@@ -1259,7 +1259,7 @@ class MediumQMdpPlanningAgent(Agent):
 
 
 class HRLTrainingAgent(MediumQMdpPlanningAgent):
-    def __init__(self, mdp, mdp_planner, other_agent=None, delivery_horizon=1, logging_level=0, auto_unstuck=False):
+    def __init__(self, mdp, mdp_planner, other_agent=None, delivery_horizon=1, logging_level=0, auto_unstuck=False, qnet=None):
         super().__init__(mdp_planner, other_agent=other_agent, delivery_horizon=delivery_horizon, logging_level=logging_level, auto_unstuck=auto_unstuck)
 
         self.mdp = mdp
@@ -1271,6 +1271,7 @@ class HRLTrainingAgent(MediumQMdpPlanningAgent):
         self.subtask_dict = None
         self.env_items = self.encode_env()
         self.init_state_space()
+        self.qnet = qnet
 
     def init_states(self, state_dict=None, state_idx_dict=None, order_list=None):
         # player_obj, num_item_in_pot, order_list
@@ -1450,6 +1451,8 @@ class HRLTrainingAgent(MediumQMdpPlanningAgent):
         return laction
 
     def action(self, state, q=None, track_belief=False):
+        if q is None:
+            q = self.qnet
         h_state, h_state_strs = self.lstate_to_hstate(state, to_str=True)
         h_env_state = np.concatenate((h_state.reshape(4,1), self.env_items), axis=1)
         a = q.sample_action(torch.from_numpy(h_env_state).float(), 0)
