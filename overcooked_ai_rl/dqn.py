@@ -218,7 +218,7 @@ def train(q, q_target, memory, optimizer):
         loss.backward()
         optimizer.step()
 
-def main(config):
+def main(config, n_eqi=None):
     # config overcooked env and human agent
     if not config['Env']['multi']:
         ai_agent, human_agent, env, mdp = setup_env_w_agents(config)
@@ -278,6 +278,12 @@ def main(config):
 
             # save model
             torch.save(q.state_dict(), '{0}/qnet_epi_{1}.pth'.format(log_file, n_epi))
+            torch.save({
+                'epoch': n_epi,
+                "q": q.state_dict(),
+                'optimizer': optimizer.state_dict(),
+                'optimizer': optimizer.state_dict()
+            }, '{0}/saved_model.tar'.format(log_file))
     # env.close()
 
 if __name__ == '__main__':
@@ -286,9 +292,27 @@ if __name__ == '__main__':
                         '--config',
                         help='path of config file',
                         required=True)
+    parser.add_argument('-q',
+                        '--qnet',
+                        help='Qnet pth file',
+                        default=None,
+                        required=False)
     opt = parser.parse_args()
 
-    with open(opt.config) as f:
-        config = toml.load(f)
+    n_eqi = None
+    if opt.qnet is None:
+        with open(opt.config) as f:
+            config = toml.load(f)
 
-    main(config)
+    else:
+        q_log_dir = opt.qnet.split("/")[:-1]
+        with open(os.path.join(q_log_dir, 'config.tml')) as f:
+            config = toml.load(f)
+
+        q = Qnet()
+        q.load_state_dict(torch.load(opt.qnet))
+        q.eval()
+
+        n_eqi = q_log_dir = opt.qnet.split("/")[-1].split(".")[0].split("_")[-1]
+
+    main(config, n_eqi)
