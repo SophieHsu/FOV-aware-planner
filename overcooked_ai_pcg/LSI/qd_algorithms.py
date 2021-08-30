@@ -407,7 +407,7 @@ class ImprovementEmitter:
 
         if area < 1e-11:
             return True
-        if len(parents[0].fitness) > 1:
+        if isinstance(parents[0].fitness, list):
             if abs(parents[0].fitness[-1]-parents[-1].fitness[-1]) < 1e-12:
                 return True
         else:
