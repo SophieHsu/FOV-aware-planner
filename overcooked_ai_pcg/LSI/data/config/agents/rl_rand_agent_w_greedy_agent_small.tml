@@ -8,8 +8,8 @@ multi_iter=false
 name="rl_rand_agent"
 known=false
 auto_unstuck=true
-q_dir="../../overcooked_ai_rl/data/dqn_log/multi_rand_large"
-pth_file="qnet_epi_33000.pth"
+q_dir="../../overcooked_ai_rl/data/dqn_log/multi_rand_small"
+pth_file="qnet_epi_49999.pth"
 
 [Agent2]
 name="greedy_agent"
