@@ -309,7 +309,7 @@ def setup_env_from_grid(layout_grid,
 
     # Set up 6: rl random agent + greedy agent
     elif (agent1_config["name"] == "rl_rand_agent" or agent1_config["name"]
-          == "mdp_agent") and agent2_config["name"] == "greedy_agent":
+          == "rl_greedy_agent") and agent2_config["name"] == "greedy_agent":
         print("worker(%d): Pre-constructing graph..." % (worker_id))
         # print(human_preference, human_adaptiveness)
         mlp_planner = MediumLevelPlanner(mdp, BASE_PARAMS)
