@@ -142,9 +142,9 @@ def play(elite_map,
             print(lvl_str)
             ind = Individual()
             ind.level = lvl_str
-            ind.human_preference = individuals["human_preference"][ind_idx]
-            ind.human_adaptiveness = individuals["human_adaptiveness"][ind_idx]
-            ind.rand_seed = int(individuals["rand_seed"][ind_idx])
+            ind.human_preference = individuals["human_preference"].iloc[ind_idx]
+            ind.human_adaptiveness = individuals["human_adaptiveness"].iloc[ind_idx]
+            ind.rand_seed = int(individuals["rand_seed"].iloc[ind_idx])
 
             if mode == "replay":
                 for agent_idx, agent_config in enumerate(agent_configs):

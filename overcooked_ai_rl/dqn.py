@@ -19,7 +19,7 @@ gamma         = 0.98
 buffer_limit  = 50000
 batch_size    = 32
 
-def setup_env_w_agents(config, n_epi=None, env_list=None, human=None):
+def setup_env_w_agents(config, n_epi=None, env_list=None, human=None, q=None):
     """
     Setup environment and agents.
 
@@ -58,7 +58,8 @@ def setup_env_w_agents(config, n_epi=None, env_list=None, human=None):
             mdp, env_config["planner"], force_compute_all=True, info=False)
     ai_agent = HRLTrainingAgent(mdp, 
             qmdp_planner, 
-            auto_unstuck=config["Robot"]["auto_unstuck"])
+            auto_unstuck=config["Robot"]["auto_unstuck"],
+            qnet=q)
     ai_agent.set_agent_index(0)
     ai_agent.set_mdp(mdp)
 

@@ -2,7 +2,7 @@ import argparse, toml, os, time, json
 import torch, pygame
 
 from overcooked_ai_py.mdp.overcooked_mdp import OvercookedGridworld
-from overcooked_ai_py.mdp.overcooked_env import OvercookedEnv, OvercookedV1
+from overcooked_ai_py.mdp.overcooked_env import OvercookedEnv
 from overcooked_ai_py.agents.agent import (HRLTrainingAgent, GreedyHumanModel)
 from overcooked_ai_py.planning.planners import (
     Heuristic, HumanSubtaskQMDPPlanner, MediumLevelActionManager, MediumLevelMdpPlanner, MediumLevelPlanner)
@@ -24,11 +24,11 @@ def log_actions(log_dir, actions):
 def main(config, q, log_dir, human=None):
     # config overcooked env and human agent
     if not config['Env']['multi']:
-        ai_agent, human_agent, env, mdp = setup_env_w_agents(config, human=human)
+        ai_agent, human_agent, env, mdp = setup_env_w_agents(config, human=human, q=q)
     else:
         env_list=os.listdir(config['Env']['layout_dir'])
         env_list.remove('base.layout')
-        ai_agent, human_agent, env, mdp = setup_env_w_agents(config, len(env_list), env_list, human=human)
+        ai_agent, human_agent, env, mdp = setup_env_w_agents(config, len(env_list), env_list, human=human, q=q)
     h_state, env = reset(mdp, config)
     done = False
 
@@ -50,7 +50,7 @@ def main(config, q, log_dir, human=None):
             cur_name = img_name(timestep)
             pygame.image.save(env.mdp.viewer, cur_name)
         
-        joint_action = (ai_agent.action(env.state, q=q),
+        joint_action = (ai_agent.action(env.state),
                         human_agent.action(env.state)[0])
         # print(joint_action)
         joint_actions.append(joint_action)
