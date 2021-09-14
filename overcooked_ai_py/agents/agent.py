@@ -1458,7 +1458,7 @@ class HRLTrainingAgent(MediumQMdpPlanningAgent):
         a = q.sample_action(torch.from_numpy(h_env_state).float(), 0)
         action = self.haction_to_laction(state, h_state_strs, a)
 
-        return action
+        return action, {}
 
 
 class QMDPAgent(Agent):
