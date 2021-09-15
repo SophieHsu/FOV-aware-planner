@@ -42,6 +42,14 @@ def setup_env_w_agents(config, n_epi=None, env_list=None, human=None, q=None):
 
     human_type = human_config["name"] if human is None else human
 
+    if human_type == "mix_agent":
+        # train with random_agent for every other 500 rounds
+        flag = int(n_epi / 500) % 2
+        if flag == 0:
+            human_type = "random_agent"
+        else:
+            human_type = "greedy_agent"
+
     if human_type == "greedy_agent":
         mlp_planner = MediumLevelPlanner(mdp, env_config["planner"])
         human_agent = GreedyHumanModel(
