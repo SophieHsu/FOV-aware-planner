@@ -1,7 +1,9 @@
 import argparse, toml, os
 import collections
-import random
+import random, time
 import numpy as np
+import dask.distributed
+from dask_jobqueue import SLURMCluster
 
 import torch
 import torch.nn as nn
@@ -172,6 +174,10 @@ class ReplayBuffer():
     
     def put(self, transition):
         self.buffer.append(transition)
+
+    def put_trans_arr(self, trans_array):
+        for i in trans_array:
+            self.buffer.append(i)
     
     def sample(self, n):
         mini_batch = random.sample(self.buffer, n)
@@ -213,6 +219,53 @@ class Qnet(nn.Module):
         else : 
             return out.argmax().item()
             
+def init_dask(experiment_config, log_dir):
+    """Initializes Dask with a local or SLURM cluster.
+
+    Args:
+        experiment_config (toml): toml config object of experiment
+        log_dir (str): directory for storing logs
+    Returns:
+        A Dask client for the cluster created.
+    """
+    num_cores = experiment_config["num_cores"]
+
+    if experiment_config.get("slurm", False):
+        worker_logs = os.path.join(log_dir, "worker_logs")
+        if not os.path.isdir(worker_logs):
+            os.mkdir(worker_logs)
+        output_file = os.path.join(worker_logs, 'slurm-%j.out')
+
+        cores_per_worker = experiment_config["num_cores_per_slurm_worker"]
+
+        # 1 process per CPU since cores == processes
+        cluster = SLURMCluster(
+            project=experiment_config["slurm_project"],
+            cores=cores_per_worker,
+            memory=f"{experiment_config['mem_gib_per_slurm_worker']}GiB",
+            processes=cores_per_worker,
+            walltime=experiment_config['slurm_worker_walltime'],
+            job_extra=[
+                f"--output {output_file}",
+                f"--error {output_file}",
+            ],
+            death_timeout=3600,
+        )
+
+        print("### SLURM Job script ###")
+        print("--------------------------------------")
+        print(cluster.job_script())
+        print("--------------------------------------")
+
+        cluster.scale(cores=num_cores)
+        return dask.distributed.Client(cluster)
+
+    # Single machine -- run with num_cores worker processes.
+    cluster = dask.distributed.LocalCluster(n_workers=num_cores,
+                                            threads_per_worker=1,
+                                            processes=True)
+    return dask.distributed.Client(cluster)
+        
 def train(q, q_target, memory, optimizer):
     for i in range(10):
         s,a,r,s_prime,done_mask = memory.sample(batch_size)
@@ -227,7 +280,34 @@ def train(q, q_target, memory, optimizer):
         loss.backward()
         optimizer.step()
 
-def main(config, n_eqi=None):
+def run_env_w_agent(n_epi, q, env_list, eta):
+    if config['Env']['multi']:
+        ai_agent, human_agent, env, mdp = setup_env_w_agents(config, n_epi, env_list)
+
+    epsilon = max(0.01, 0.5 - 0.01*(n_epi/eta)) #Linear annealing from 8% to 1%
+    h_state, env = reset(mdp, config)
+    env_items = encode_env(mdp)
+    done = False
+    trans_array = []
+    score = 0.0
+    while not done:
+        # stack ai and human state info with environment info
+        h_env_state = np.concatenate((h_state.reshape(4,1), env_items), axis=1)
+
+        # sample action for robot
+        a = q.sample_action(torch.from_numpy(h_env_state).float(), epsilon)      
+        h_s_prime, r, done, info = step(env, h_state, ai_agent, human_agent, a, config["RL"]["reward_mode"])
+        h_env_state_prime = np.concatenate((h_s_prime.reshape(4,1), env_items), axis=1)
+
+        done_mask = 0.0 if done else 1.0
+        trans_array.append((h_env_state, a, r/100.0, h_env_state_prime, done_mask))
+        h_state = h_s_prime
+
+        score += r
+    
+    return n_epi, trans_array, score, epsilon
+
+def main(dask_client, config):
     # config overcooked env and human agent
     if not config['Env']['multi']:
         ai_agent, human_agent, env, mdp = setup_env_w_agents(config)
@@ -253,47 +333,90 @@ def main(config, n_eqi=None):
     with open(os.path.join(log_file, 'config.tml'), "w") as toml_file:
         toml.dump(config, toml_file)
 
-    for n_epi in range(config['RL']['n_epochs']):
-        if config['Env']['multi']:
-            ai_agent, human_agent, env, mdp = setup_env_w_agents(config, n_epi, env_list)
+    evaluations = []
+    active_evals = 0
+    n_epi = 0
+    completed_evals = 0
+    
+    start_time = time.time()
 
-        epsilon = max(0.01, 0.5 - 0.01*(n_epi/eta)) #Linear annealing from 8% to 1%
-        h_state, env = reset(mdp, config)
-        env_items = encode_env(mdp)
-        done = False
+    def _request_envs_w_agent(before_loop):
+        nonlocal active_evals, n_epi
+        while active_evals < config["num_cores"]:
+            future = dask_client.submit(
+                run_env_w_agent,
+                n_epi, 
+                q,
+                env_list, 
+                eta,
+            )
+            active_evals += 1
+            if before_loop:
+                evaluations.append(future)  # pylint: disable=no-member
+            else:
+                evaluations.add(future)
+            print(f"{n_epi}/{config['RL']['n_epochs']}")
+            n_epi += 1
+        print(f"Active evaluations: {active_evals}")
 
-        while not done:
-            # stack ai and human state info with environment info
-            h_env_state = np.concatenate((h_state.reshape(4,1), env_items), axis=1)
+    _request_envs_w_agent(True)
+    evaluations = dask.distributed.as_completed(evaluations)
+    print(f"Started {active_evals} simulations")        
 
-            # sample action for robot
-            a = q.sample_action(torch.from_numpy(h_env_state).float(), epsilon)      
-            h_s_prime, r, done, info = step(env, h_state, ai_agent, human_agent, a, config["RL"]["reward_mode"])
-            h_env_state_prime = np.concatenate((h_s_prime.reshape(4,1), env_items), axis=1)
+    # completion time of the latest simulation
+    last_eval = time.time()
 
-            done_mask = 0.0 if done else 1.0
-            memory.put((h_env_state, a, r/100.0, h_env_state_prime, done_mask))
-            h_state = h_s_prime
+    for completion in evaluations:
+        # process the individual
+        active_evals -= 1
 
-            score += r
+        try:
+            ind_n_epi, ind_trans_array, ind_score, epsilon  = completion.result()
+            memory.put_trans_arr(ind_trans_array)
+            score += ind_score
 
-        if memory.size()>start_training_mem:
-            train(q, q_target, memory, optimizer)
+            if memory.size()>start_training_mem:
+                train(q, q_target, memory, optimizer)
 
-        if (n_epi%print_interval==0 and n_epi!=0) or (n_epi == config['RL']['n_epochs']-1):
-            q_target.load_state_dict(q.state_dict())
-            print("n_episode :{}, score : {:.1f}, n_buffer : {}, eps : {:.1f}%".format(n_epi, score/print_interval, memory.size(), epsilon*100))
-            score = 0.0
+            if (ind_n_epi%print_interval==0 and ind_n_epi!=0) or (ind_n_epi == config['RL']['n_epochs']-1):
+                q_target.load_state_dict(q.state_dict())
+                print("n_episode :{}, score : {:.1f}, n_buffer : {}, eps : {:.1f}%".format(ind_n_epi, score/print_interval, memory.size(), epsilon*100))
+                score = 0.0
 
-            # save model
-            torch.save(q.state_dict(), '{0}/qnet_epi_{1}.pth'.format(log_file, n_epi))
-            torch.save({
-                'epoch': n_epi,
-                "q": q.state_dict(),
-                'optimizer': optimizer.state_dict(),
-                'optimizer': optimizer.state_dict()
-            }, '{0}/saved_model.tar'.format(log_file))
-    # env.close()
+                # save model
+                torch.save(q.state_dict(), '{0}/qnet_epi_{1}.pth'.format(log_file, ind_n_epi))
+                torch.save({
+                    'epoch': ind_n_epi,
+                    "q": q.state_dict(),
+                    'optimizer': optimizer.state_dict(),
+                    'optimizer': optimizer.state_dict()
+                }, '{0}/saved_model.tar'.format(log_file))
+            
+            completed_evals += 1
+
+        except dask.distributed.scheduler.KilledWorker as err:  
+            # worker may fail due to, for instance, memory
+            print("Worker failed with the following error; continuing anyway\n"
+                  "-------------------------------------------\n"
+                  f"{err}\n"
+                  "-------------------------------------------")
+            # avoid not sending out more evaluations while evaluating initial
+            # populations
+            # algorithm.individuals_disbatched -= 1
+            continue
+        
+        del completion
+
+        if completed_evals < config['RL']['n_epochs']:
+            # request more evaluations if still running
+            _request_envs_w_agent(False)
+        else:
+            # otherwise, terminate
+            break
+
+        finish_time = time.time()
+    print("Total time:", str(finish_time - start_time), "seconds")
+
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
@@ -324,4 +447,5 @@ if __name__ == '__main__':
 
         n_eqi = q_log_dir = opt.qnet.split("/")[-1].split(".")[0].split("_")[-1]
 
-    main(config, n_eqi)
+    log_file = os.path.join(config["Experiment"]["log_dir"], config["Experiment"]["log_name"])
+    main(init_dask(config, log_file), config)
