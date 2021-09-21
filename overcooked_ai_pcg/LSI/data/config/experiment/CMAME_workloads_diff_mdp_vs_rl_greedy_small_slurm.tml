@@ -2,7 +2,7 @@ visualize=false
 num_simulations=10000
 algorithm_config="cma_me.tml"
 elite_map_config="workloads_diff.tml"
-agent_config=["rl_greedy_agent_w_greedy_agent_small.tml", "mdp_agent_w_greedy_agent.tml"]
+agent_config=["mdp_agent_w_greedy_agent.tml", "rl_greedy_agent_w_greedy_agent_small.tml"]
 
 slurm=true
 num_cores=120

@@ -150,7 +150,7 @@ def run_overcooked_eval(ind, visualize, elite_map_config, agent_configs,
     elif len(agent_configs) == 2:
         if len(ind.fitnesses[0]) > 1:
             ind.fitnesses = np.array(ind.fitnesses)
-            ind.fitness = ind.fitnesses[0,:] - ind.fitnesses[1,:]
+            ind.fitness = (ind.fitnesses[0,:] - ind.fitnesses[1,:]).tolist()
         else:
             ind.fitness = ind.fitnesses[0][0] - ind.fitnesses[1][0]
 
