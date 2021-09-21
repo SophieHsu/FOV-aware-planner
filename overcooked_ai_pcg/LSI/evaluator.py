@@ -141,11 +141,11 @@ def run_overcooked_eval(ind, visualize, elite_map_config, agent_configs,
     ind.joint_actions = tuple(joint_actions)
     ind.concurr_actives = tuple(concurr_actives)
     ind.stuck_times = tuple(stuck_times)
-    print("ind.fitnesses")
-    print(ind.fitnesses)
+    # print("ind.fitnesses")
+    # print(ind.fitnesses)
     # for unnormalized version, fitness is scale
     if len(agent_configs) == 1:
-        ind.fitness = ind.fitnesses[0][0]
+        ind.fitness = ind.fitnesses[0]
     # for normalized version, fitness is the difference between two runs
     elif len(agent_configs) == 2:
         if len(ind.fitnesses[0]) > 1:

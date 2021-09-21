@@ -1024,7 +1024,7 @@ class MdpPlanningAgent(Agent):
         state_str = self.mdp_planner.gen_state_dict_key(state)
 
         if state_str not in self.mdp_planner.state_idx_dict:
-            print('State = ', state_str, ';\nNot in dictionary. Action = North')
+            # print('State = ', state_str, ';\nNot in dictionary. Action = North')
             action = Action.ALL_ACTIONS[0]#random.choice(Action.ALL_ACTIONS)
         else:
             action_idx = self.mdp_planner.policy_matrix[self.mdp_planner.state_idx_dict[state_str]]
@@ -1080,7 +1080,7 @@ class MediumMdpPlanningAgent(Agent):
         state_str = self.get_ml_states(state)
         action = []; chosen_action = []
         if state_str not in self.mdp_planner.state_idx_dict:
-            print('State = ', state_str, ';\nNot in dictionary. Action = North')
+            # print('State = ', state_str, ';\nNot in dictionary. Action = North')
             action = Action.ALL_ACTIONS[0]#random.choice(Action.ALL_ACTIONS)
             state.players[self.agent_index].active_log += [0]
         
@@ -1222,7 +1222,7 @@ class MediumQMdpPlanningAgent(Agent):
             state.players[self.agent_index].active_log += [0]
         else:
             state.players[self.agent_index].active_log += [1]
-        print('\nState =', state)
+        # print('\nState =', state)
         # print('Subtasks:', self.mdp_planner.subtask_dict.keys())
         # print('Belief =', self.belief)
         # print('Max belief =', list(self.mdp_planner.subtask_dict.keys())[np.argmax(self.belief)])
