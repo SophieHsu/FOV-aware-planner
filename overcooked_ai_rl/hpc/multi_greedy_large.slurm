@@ -1,5 +1,5 @@
 #!/bin/bash
-#SBATCH --job-name=hrl-dqn-random-agent-multi-env
+#SBATCH --job-name=hrl-dqn-random-agent-multi-greedy
 #SBATCH --partition=gpu
 #SBATCH --cpus-per-task=16
 #SBATCH --mem-per-cpu=4GB
@@ -50,7 +50,7 @@ echo
 echo "========== Starting Dask Python script =========="
 
 # The "-u" option removes buffers from stdin and stdout.
-python -u dqn.py -c config/multi_rand_human_slurm.tml
+python -u dqn.py -c config/multi_greedy_human_slurm.tml
 
 echo
 echo "========== Done =========="
