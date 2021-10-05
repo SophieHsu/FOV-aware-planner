@@ -9,7 +9,7 @@ name="rl_greedy_agent"
 known=false
 auto_unstuck=true
 q_dir="../../overcooked_ai_rl/data/dqn_log/multi_greedy_large"
-pth_file="qnet_epi_49999.pth"
+pth_file="qnet_epi_20000.pth"
 
 [Agent2]
 name="greedy_agent"

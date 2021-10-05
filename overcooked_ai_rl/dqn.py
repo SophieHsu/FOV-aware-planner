@@ -305,6 +305,8 @@ def run_env_w_agent(n_epi, q, env_list, eta):
 
         score += r
     
+    del ai_agent, human_agent, env, mdp
+    
     return n_epi, trans_array, score, epsilon
 
 def main(dask_client, config):
@@ -437,7 +439,7 @@ if __name__ == '__main__':
             config = toml.load(f)
 
     else:
-        q_log_dir = opt.qnet.split("/")[:-1]
+        q_log_dir = '/'.join(opt.qnet.split("/")[:-1])
         with open(os.path.join(q_log_dir, 'config.tml')) as f:
             config = toml.load(f)
 

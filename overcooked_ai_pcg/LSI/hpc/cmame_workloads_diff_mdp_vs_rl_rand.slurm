@@ -1,7 +1,6 @@
 #!/bin/bash
-#SBATCH --job-name=hrl-dqn-random-agent-multi-env-greedy
-#SBATCH --partition=gpu
-#SBATCH --cpus-per-task=16
+#SBATCH --job-name=cmame-workloads-diff-mdp-vs-rl-rand
+#SBATCH --cpus-per-task=4
 #SBATCH --mem-per-cpu=4GB
 #SBATCH --nodes=1
 #SBATCH --tasks-per-node=1
@@ -49,10 +48,10 @@ conda env list
 echo
 echo "========== Starting Dask Python script =========="
 
-# The "-u" option removes buffers from stdin and stdout.
-python -u dqn.py -c config/multi_rand_greedy_human_slurm.tml -q data/dqn_log/multi_rand_small/qnet_epi_49999.pth
+python -u run_search.py \
+  -s "large" \
+  -c "data/config/experiment/CMAME_workloads_diff_mdp_vs_rl_rand_slurm.tml"
 
 echo
 echo "========== Done =========="
 date
-

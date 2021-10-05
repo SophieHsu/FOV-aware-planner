@@ -48,5 +48,5 @@ memory_min = 2000
 
 [Experiment]
 log_dir="data/dqn_log/"
-log_name="multi_rand_large"
+log_name="multi_rand_large2"
 log_freq=1000
