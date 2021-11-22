@@ -14,4 +14,3 @@ pth_file="qnet_epi_20000.pth"
 [Agent2]
 name="greedy_agent"
 auto_unstuck=true
-

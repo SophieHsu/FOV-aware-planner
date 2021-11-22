@@ -1,4 +1,4 @@
-import os
+import os, shutil
 import json
 import time
 import argparse
@@ -44,10 +44,8 @@ def render_blur(joint_action_log, log_dir, log_name, lb, ub):
         # print(t)
         # tmp = input()
 
-    os.system("ffmpeg -r 5 -i \"{}%*.png\"  {}video.mp4".format(img_dir+'/', img_dir+'/'))
-    for file in os.listdir(img_dir):
-        if file.endswith('.png'):
-            os.remove(os.path.join(img_dir, file)) 
+    os.system("ffmpeg -r 5 -i \"{}%*.png\"  {}{}.mp4".format(img_dir+'/', log_dir+'/', log_name))
+    shutil.rmtree(img_dir) 
 
 
     # # save the rendered blur image
