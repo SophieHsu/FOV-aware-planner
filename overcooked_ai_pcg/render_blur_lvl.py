@@ -17,7 +17,7 @@ def render_blur(joint_action_log, log_dir, log_name, lb, ub):
 
     done = False
     t = 0
-    ub = len(joint_actions)
+    ub = len(joint_actions) if ub > len(joint_actions) else ub
 
     img_dir = os.path.join(log_dir, log_name)
     if not os.path.exists(img_dir):
@@ -26,13 +26,13 @@ def render_blur(joint_action_log, log_dir, log_name, lb, ub):
 
     while not done:
         if t >= lb and t <= ub:
-            # env.render("blur")
+            # env.render("blur", time_step_left=ub-t, time_passed=t)
             env.render()
             time.sleep(0.1)
 
-        if img_name is not None:
-            cur_name = img_name(t)
-            pygame.image.save(env.mdp.viewer, cur_name)
+            if img_name is not None:
+                cur_name = img_name(t)
+                pygame.image.save(env.mdp.viewer, cur_name)
 
         agent1_action = joint_actions[t][0]
         agent2_action = joint_actions[t][1]
@@ -48,10 +48,10 @@ def render_blur(joint_action_log, log_dir, log_name, lb, ub):
     shutil.rmtree(img_dir) 
 
 
-    # # save the rendered blur image
-    # pygame.image.save(
-    #     env.mdp.viewer,
-    #     os.path.join(log_dir, log_name+"_blurred_%sto%s.png" % (str(lb), str(ub))))
+    # save the rendered blur image
+    pygame.image.save(
+        env.mdp.viewer,
+        os.path.join(log_dir, log_name+"_blurred_%s_to_%s.png" % (str(lb), str(ub))))
 
 
     # print("fitness =", joint_action_log["fitness"])
@@ -82,7 +82,7 @@ if __name__ == '__main__':
 
     log_dir, log_json_file = os.path.split(opt.log_file)
     log_name = log_json_file.split('.')[0]
-
+    print(opt.upper_bound)
     # get upper and lower bounds
     lb = int(opt.lower_bound)
     ub = int(opt.upper_bound)

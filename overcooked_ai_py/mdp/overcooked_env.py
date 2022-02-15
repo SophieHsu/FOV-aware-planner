@@ -508,10 +508,17 @@ class OvercookedEnv(object):
     ###################
     # RENDER FUNCTION #
     ###################
-    def render(self, mode="human"):
-        time_step_left = self.horizon - self.t if self.horizon != MAX_HORIZON else None
-        time_passed = time.time(
-        ) - self.start_time if self.start_time is not None else 0
+    def render(self, mode="human", time_step_left=None, time_passed=None):
+        if mode == "blur":
+            time_step_left = self.horizon - self.t if time_step_left is None else time_step_left
+            time_passed = time.time(
+            ) - self.start_time if time_passed is None else time_passed
+        else:
+            time_step_left = self.horizon - self.t if self.horizon != MAX_HORIZON else None
+            time_passed = time.time(
+            ) - self.start_time if self.start_time is not None else 0
+
+
         self.mdp.render(self.state,
                         mode,
                         time_step_left=time_step_left,

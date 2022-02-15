@@ -1528,8 +1528,8 @@ class OvercookedGridworld(object):
                 player, player_idx_lst[0])
 
             if mode == "blur":
-                transparent = (105-time_step_left+1)*5
-                # print(transparent)
+                transparent = (time_step_left+10)*5
+                print(transparent)
                 player_pgobj.set_alpha(transparent)
                 player_hat_pgobj.set_alpha(transparent)
                 # draw_arrow(self.viewer, player, player_idx_lst[0], curr_pos,
