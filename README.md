@@ -47,18 +47,6 @@ cd overcooked_ai
 pip install -e .
 ```
 
-### Verifying Installation (Deprecated for now)
-
-To verify your python installation, you can try running the following command
-from the inner `overcooked_ai_py` folder:
-
-```
-python run_tests.py
-```
-
-If you're thinking of using the planning code extensively, you should run (this
-can take 5-10 mins): `python run_tests_full_planning_suite.py`
-
 ### Overcooked-AI Code Structure Overview
 
 `overcooked_ai_py` contains:
@@ -106,6 +94,9 @@ To train the GAN that generates Overcooked-AI levels, run the following:
 cd overcooked_ai_pcg/GAN_training
 python train_gan.py --cuda
 ```
+
+Note: We have 2 trained GANs in `overcooked_ai_pcg/GAN_training/data/training`.
+One for large (10x15) levels and one for small (6x9).
 
 ### Mixed Integer Linear Programming Solver
 
