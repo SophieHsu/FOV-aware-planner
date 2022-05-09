@@ -1,0 +1,40 @@
+==========================================
+SLURM_JOB_ID = 5737358
+SLURM_JOB_NODELIST = d11-02
+TMPDIR = /tmp/SLURM_5737358
+==========================================
+========== SLURM JOB INFO ==========
+
+The job will be started on the following node(s):
+d11-02
+
+Slurm User:         yachuanh
+Run Directory:      /home1/yachuanh/overcooked_proj/overcooked_ai/overcooked_ai_rl
+Job ID:             5737358
+Job Name:           hrl-dqn-random-agent-multi-greedy
+Partition:          gpu
+Number of nodes:    1
+Number of tasks:    1
+Submitted From:     discovery1.usc.edu
+Submit directory:   /home1/yachuanh/overcooked_proj/overcooked_ai/overcooked_ai_rl
+Hostname:           d11-02.hpc.usc.edu
+
+Dashboard Host:     |d11-02.hpc.usc.edu:8787|
+
+
+========== Start ==========
+Tue Aug 31 00:11:36 PDT 2021
+
+========== Setup ==========
+# conda environments:
+#
+floorplan                /home1/yachuanh/.conda/envs/floorplan
+overcooked_ai         *  /home1/yachuanh/.conda/envs/overcooked_ai
+rocus                    /home1/yachuanh/.conda/envs/rocus
+base                     /spack/apps/anaconda3/2021.05
+
+
+========== Starting Dask Python script ==========
+pygame 2.0.1 (SDL 2.0.14, Python 3.7.9)
+Hello from the pygame community. https://www.pygame.org/contribute.html
+slurmstepd: error: *** JOB 5737358 ON d11-02 CANCELLED AT 2021-08-31T00:12:16 ***

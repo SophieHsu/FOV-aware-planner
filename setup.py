@@ -8,7 +8,7 @@ setup(
     version='0.0.1',
     description='Cooperative multi-agent environment based on Overcooked',
     author=('Micah Carroll<mdc@berkeley.edu>, Matt Fontaine<mfontain@usc.edu>, '
-            'Stefanos Nikolaidis<nikolaid@usc.edu>, '
+            'Stefanos Nikolaidis<nikolaid@usc.edu>, Ya-Chuan Hsu<yachuanh@usc.edu>'
             'Yulun Zhang<yulunzha@usc.edu>, Bryon Tjanaka<tjanaka@usc.edu>'),
     packages=find_packages(),
     install_requires=[
@@ -26,4 +26,6 @@ setup(
         'bokeh==2.2.3',  # For the dashboard.
         'toml',
         'seaborn',
+        'akro',
+        'garage==2021.3.0',
     ])

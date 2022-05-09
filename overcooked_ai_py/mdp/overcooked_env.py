@@ -1,6 +1,7 @@
 import gym, tqdm
 import numpy as np
 import time
+#import akro
 from overcooked_ai_py.utils import mean_and_std_err, append_dictionaries
 from overcooked_ai_py.mdp.actions import Action
 from overcooked_ai_py.mdp.overcooked_mdp import OvercookedGridworld, EVENT_TYPES
@@ -197,7 +198,7 @@ class OvercookedEnv(object):
                                        reward_shaping_by_agent,
                                        sparse_reward_by_agent)
 
-        if done: self._add_episode_info(info)
+        self._add_episode_info(info)
 
         # update start time if it is the first action
         if self.first_action_taken == True:
@@ -507,31 +508,44 @@ class OvercookedEnv(object):
     ###################
     # RENDER FUNCTION #
     ###################
-    def render(self, mode="human"):
-        time_step_left = self.horizon - self.t if self.horizon != MAX_HORIZON else None
-        time_passed = time.time() - self.start_time if self.start_time is not None else 0
+    def render(self, mode="human", time_step_left=None, time_passed=None):
+        if mode == "blur":
+            time_step_left = self.horizon - self.t if time_step_left is None else time_step_left
+            time_passed = time.time(
+            ) - self.start_time if time_passed is None else time_passed
+        else:
+            time_step_left = self.horizon - self.t if self.horizon != MAX_HORIZON else None
+            time_passed = time.time(
+            ) - self.start_time if self.start_time is not None else 0
+
+
         self.mdp.render(self.state,
                         mode,
                         time_step_left=time_step_left,
                         time_passed=time_passed)
 
 
-class Overcooked(gym.Env):
+class OvercookedV0(gym.Env):
     """
-    Wrapper for the Env class above that is SOMEWHAT compatible with the standard gym API.
+    Wrapper for the Env class above that is SOMEWHAT compatible with the
+    standard gym API.
 
-    NOTE: Observations returned are in a dictionary format with various information that is
-    necessary to be able to handle the multi-agent nature of the environment. There are probably
-    better ways to handle this, but we found this to work with minor modifications to OpenAI Baselines.
-    
-    NOTE: The index of the main agent in the mdp is randomized at each reset of the environment, and 
-    is kept track of by the self.agent_idx attribute. This means that it is necessary to pass on this 
-    information in the output to know for which agent index featurizations should be made for other agents.
-    
-    For example, say one is training A0 paired with A1, and A1 takes a custom state featurization.
-    Then in the runner.py loop in OpenAI Baselines, we will get the lossless encodings of the state,
-    and the true Overcooked state. When we encode the true state to feed to A1, we also need to know
-    what agent index it has in the environment (as encodings will be index dependent).
+    NOTE: Observations returned are in a dictionary format with various
+    information that is necessary to be able to handle the multi-agent nature
+    of the environment. There are probably better ways to handle this, but we
+    found this to work with minor modifications to OpenAI Baselines.
+
+    NOTE: The index of the main agent in the mdp is randomized at each reset of
+    the environment, and is kept track of by the self.agent_idx attribute. This
+    means that it is necessary to pass on this information in the output to
+    know for which agent index featurizations should be made for other agents.
+
+    For example, say one is training A0 paired with A1, and A1 takes a custom
+    state featurization. Then in the runner.py loop in OpenAI Baselines, we
+    will get the lossless encodings of the state, and the true Overcooked
+    state. When we encode the true state to feed to A1, we also need to know
+    what agent index it has in the environment (as encodings will be index
+    dependent).
     """
     env_name = "Overcooked-v0"
 
@@ -571,12 +585,14 @@ class Overcooked(gym.Env):
 
     def step(self, action):
         """
-        action: 
+        action:
             (agent with index self.agent_idx action, other agent action)
-            is a tuple with the joint action of the primary and secondary agents in index format
-        
+                is a tuple with the joint action of the primary and secondary
+                agents in index format
+
         returns:
-            observation: formatted to be standard input for self.agent_idx's policy
+            observation: formatted to be standard input for self.agent_idx's
+                policy
         """
         assert all(self.action_space.contains(a)
                    for a in action), "%r (%s) invalid" % (action, type(action))
@@ -610,12 +626,13 @@ class Overcooked(gym.Env):
 
     def reset(self):
         """
-        When training on individual maps, we want to randomize which agent is assigned to which
-        starting location, in order to make sure that the agents are trained to be able to 
-        complete the task starting at either of the hardcoded positions.
+        When training on individual maps, we want to randomize which agent is
+        assigned to which starting location, in order to make sure that the
+        agents are trained to be able to complete the task starting at either
+        of the hardcoded positions.
 
-        NOTE: a nicer way to do this would be to just randomize starting positions, and not
-        have to deal with randomizing indices.
+        NOTE: a nicer way to do this would be to just randomize starting
+        positions, and not have to deal with randomizing indices.
         """
         self.base_env.reset()
         self.mdp = self.base_env.mdp
@@ -634,3 +651,123 @@ class Overcooked(gym.Env):
 
     def render(self, mode='human', close=False):
         pass
+
+'''
+class OvercookedV1(gym.Env):
+    """
+    Wrapper of the Overcooked environment that is compatible with garage.
+
+    This wrapper(v1) is different from v0 in several different ways:
+    1. This environment assumes that only one agent is being trained. i.e. this
+       is essentially a "single-agent" environment with the second agent being
+       a part of the environment.
+    1. The `reset()` and `step()` functions will only return observations of the
+       AI agent to be trained.
+    2. The `step()` function only takes in the action of the AI agent.
+    3. This version does not randomize the agent index at reset.
+    4. This version works with garage rl library.
+    """
+    metadata = {'render.modes': ['human']}
+
+    def __init__(self,
+                 ai_agent,
+                 human_agent,
+                 base_env,
+                 featurize_fn,
+                 reward_mode="sparse",
+                 action_mode="subtask"):
+        """
+        Args:
+            ai_agent (overcooked_ai_py.agents.agent.RLTrainingAgent): RL agent
+                to be trained.
+            human_agent (overcooked_ai_py.agents.agent.Agent): Any human agent.
+            base_env (OvercookedEnv): Underlying overcooked environment.
+            featurize_fn: Featurization function.
+            reward_mode (string):
+                `sparse` to use sparse reward.
+                `shaped` to use shaped dense reward.
+        """
+        super(OvercookedV1, self).__init__()
+
+        self.ai_agent = ai_agent
+        self.human_agent = human_agent
+        self.base_env = base_env
+        self.featurize_fn = featurize_fn
+        self.observation_space = self._setup_observation_space()
+        if action_mode == "subtask":
+            self.action_space = akro.Discrete(len(ai_agent.mdp_planner.subtask_dict))
+        else:
+            self.action_space = akro.Discrete(len(Action.ALL_ACTIONS))
+        self.reward_mode = reward_mode
+        self.reset()
+
+    def _setup_observation_space(self):
+        dummy_mdp = self.base_env.mdp
+        dummy_state = dummy_mdp.get_standard_start_state()
+        obs_shape = self.featurize_fn(dummy_mdp, dummy_state)[0].shape
+        high = np.ones(obs_shape) * max(dummy_mdp.soup_cooking_time,
+                                        dummy_mdp.num_items_for_soup, 5)
+        return akro.Box(np.float32(high * 0),
+                        np.float32(high),
+                        dtype=np.float32)
+
+    def step(self, action):
+        """
+        Args:
+            action: action of the AI agent. Can be either:
+                1. (np.ndarray) action logits with dimension the same as the
+                   action space.
+                2. (int) index of the action.
+
+        returns:
+            next_observation, reward, done, info
+        """
+        # get AI agent action
+        if isinstance(action, np.ndarray):
+            assert len(action) == self.action_space.flat_dim
+            action_idx = np.argmax(action)
+        elif isinstance(action, np.integer):
+            action_idx = action
+        else:
+            raise ValueError(f"Type of action {type(action)} not supported.")
+        ai_agent_action = Action.INDEX_TO_ACTION[action_idx]
+
+        # get human action
+        human_agent_action, _ = self.human_agent.action(self.base_env.state)
+
+        joint_action = (ai_agent_action, human_agent_action)
+
+        # step the env
+        next_state, sparse_reward, done, info = self.base_env.step(joint_action)
+        ai_next_obs, human_next_obs = self.featurize_fn(self.mdp, next_state)
+        both_agents_ob = (ai_next_obs, human_next_obs)
+        info["human_next_obs"] = human_next_obs
+        info["overcooked_state"] = self.base_env.state
+        ai_shaped_reward = info["shaped_r_by_agent"][0]
+        ai_sparse_reward = info["sparse_r_by_agent"][0]
+
+        # reward
+        if self.reward_mode == "sparse":
+            reward = ai_sparse_reward
+        elif self.reward_mode == "shaped":
+            reward = ai_shaped_reward
+        else:
+            raise ValueError(f"Unknown reward mode: '{self.reward_mode}'.")
+
+        return ai_next_obs, reward, done, info
+
+    def reset(self):
+        """
+        Reset the environment. Unlike v0, this version does not randomize the
+        agent index. i.e. all agent starts at the location where they are
+        specified in the layout string.
+        """
+        self.base_env.reset()
+        self.mdp = self.base_env.mdp
+        self.ai_agent_idx = 0  # the first agent (green hat) is always the robot
+        ai_obs, _ = self.featurize_fn(self.mdp, self.base_env.state)
+        return ai_obs
+
+    def render(self, mode="human"):
+        self.base_env.render(mode)
+'''

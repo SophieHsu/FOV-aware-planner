@@ -26,7 +26,7 @@ from overcooked_ai_pcg.helper import (read_in_lsi_config, run_overcooked_game,
 from overcooked_ai_pcg.LSI.qd_algorithms import Individual
 
 
-def log_actions(ind, agent_config, log_dir, f1, f2, row_idx, col_idx, ind_id):
+def log_actions(ind, agent_config, log_dir, f1, f2, row_idx, col_idx, ind_id, mat_idx=0):
     agent1_config = agent_config["Agent1"]
     agent2_config = agent_config["Agent2"]
 
@@ -49,7 +49,7 @@ def log_actions(ind, agent_config, log_dir, f1, f2, row_idx, col_idx, ind_id):
         log_file = "qmdp_"
 
     log_file += ("joint_actions_" + str(f1) + "_" + str(f2) + "_" +
-                 str(row_idx) + "_" + str(col_idx) + "_" + str(ind_id) +
+                 str(row_idx) + "_" + str(col_idx) + "_" + str(mat_idx) + "_" + str(ind_id) +
                  ".json")
 
     full_path = os.path.join(log_dir, log_file)
@@ -83,10 +83,9 @@ def play_ind_id(elite_map,
     print(lvl_str)
     ind = Individual()
     ind.level = lvl_str
-    ind.human_preference = individuals["human_preference"][ind_id_index]
-    ind.human_adaptiveness = individuals["human_adaptiveness"][ind_id_index]
-    ind.rand_seed = int(individuals["rand_seed"][ind_id_index])
-    print(ind.rand_seed)
+    # ind.human_preference = individuals["human_preference"][ind_id_index]
+    # ind.human_adaptiveness = individuals["human_adaptiveness"][ind_id_index]
+    ind.rand_seed = 0#int(individuals["rand_seed"][ind_id_index])
     for agent_config in agent_configs:
         print(agent_config["Agent1"], agent_config["Agent2"])
         fitness, _, _, _, ind.joint_actions, _, _ = run_overcooked_game(
@@ -143,31 +142,32 @@ def play(elite_map,
             print(lvl_str)
             ind = Individual()
             ind.level = lvl_str
-            ind.human_preference = individuals["human_preference"][ind_idx]
-            ind.human_adaptiveness = individuals["human_adaptiveness"][ind_idx]
-            ind.rand_seed = int(individuals["rand_seed"][ind_idx])
+            ind.human_preference = individuals["human_preference"].iloc[ind_idx]
+            ind.human_adaptiveness = individuals["human_adaptiveness"].iloc[ind_idx]
+            ind.rand_seed = 0 #int(individuals["rand_seed"].iloc[ind_idx])
 
             if mode == "replay":
                 for agent_idx, agent_config in enumerate(agent_configs):
                     # Create image directory -- removes existing one.
-                    img_dir = os.path.join(
-                        log_dir, (f"replay_f1{f1}_f2{f2}_row{row_idx}_"
-                                  f"col{col_idx}_ind{ind_id}_agent{agent_idx}"))
-                    if os.path.exists(img_dir):
-                        shutil.rmtree(img_dir)
-                    os.mkdir(img_dir)
-                    print(f"Saving video frames in {img_dir}")
+                    # img_dir = os.path.join(
+                    #     log_dir, (f"replay_row{row_idx}_"
+                    #               f"col{col_idx}_mat{col_idx}_ind{ind_id}_agent{agent_idx}"))
+                    # if os.path.exists(img_dir):
+                    #     shutil.rmtree(img_dir)
+                    # os.mkdir(img_dir)
+                    # print(f"Saving video frames in {img_dir}")
 
                     fitness, _, _, _, ind.joint_actions, _, _ = run_overcooked_game(
                         ind,
                         agent_config,
                         render=True,
-                        img_name=(
-                            lambda timestep: f"{img_dir}/{timestep:05d}.png"),
+                        track_belief=True,
+                        # img_name=(
+                            # lambda timestep: f"{img_dir}/{timestep:05d}.png"),
                     )
                     print("Fitness: ", fitness)
                     log_actions(ind, agent_config, log_dir, f1, f2, row_idx,
-                                col_idx, ind_id)
+                                col_idx, ind_id, mat_idx=mat_idx)
 
                 visualize_lvl(
                     lvl_str, log_dir,

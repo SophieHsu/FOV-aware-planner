@@ -149,31 +149,30 @@ if __name__ == "__main__" :
 
     # np.random.seed(0)
     start_time = time.time()
-    scenario_1_mdp = OvercookedGridworld.from_layout_name('gen2_basic_4-6', start_order_list=['onion','onion'], cook_time=5)
+    scenario_1_mdp = OvercookedGridworld.from_layout_name('10x15_test1', start_order_list=['onion','onion'])
     # start_state = OvercookedState(
     #     [P((2, 1), s, Obj('onion', (2, 1))),
     #      P((3, 2), s)],
     #     {}, order_list=['onion','onion'])
-    env = OvercookedEnv.from_mdp(scenario_1_mdp, horizon = 1000)
+    env = OvercookedEnv.from_mdp(scenario_1_mdp, horizon = 500)
     human_start_time = time.time()
-    ml_action_manager = planners.MediumLevelActionManager(scenario_1_mdp, NO_COUNTERS_PARAMS)
 
     # a0 = agent.GreedyHumanModel(mlp)
 
-    hmlp = planners.HumanMediumLevelPlanner(scenario_1_mdp, ml_action_manager, [0.5, (1.0-0.5)], 0.5)
-    a0 = agent.biasHumanModel(ml_action_manager, [0.5, (1.0-0.5)], 0.5, auto_unstuck=True)
+    mlp = planners.MediumLevelPlanner(scenario_1_mdp, NO_COUNTERS_PARAMS)
+    a0 = agent.GreedyHumanModel(mlp, auto_unstuck=True)
     mdp_start_time = time.time()
     # mdp_planner = planners.MediumLevelMdpPlanner.from_pickle_or_compute(scenario_1_mdp, NO_COUNTERS_PARAMS, mlp, force_compute_all=True)
-    mdp_planner = planners.HumanAwareMediumMDPPlanner.from_pickle_or_compute(scenario_1_mdp, NO_COUNTERS_PARAMS, hmlp, force_compute_all=True)
-    a1 = agent.MediumMdpPlanningAgent(mdp_planner, auto_unstuck=True)
+    qmdp_planner = planners.HumanSubtaskQMDPPlanner.from_pickle_or_compute(scenario_1_mdp, NO_COUNTERS_PARAMS, force_compute_all=True)
+    a1 = agent.MediumQMdpPlanningAgent(qmdp_planner, greedy=False, auto_unstuck=True)
 
     # # a1 = agent.oneGoalHumanModel(mlp, 'Soup server', auto_unstuck=True)
     # a1 = agent.biasHumanModel(mlp, [0.3, 0.7], 0.3, auto_unstuck=True)
 
     # a1 = MdpPlanningAgent(a0, mdp_planner, env)
-    del ml_action_manager, hmlp, mdp_planner
+    del mlp, qmdp_planner
     gc.collect()
-    agent_pair = agent.AgentPair(a0, a1)
+    agent_pair = agent.AgentPair(a1, a0)
 
 
     game_start_time = time.time()

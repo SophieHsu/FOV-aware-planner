@@ -12,7 +12,7 @@ import pickle
 from overcooked_ai_pcg import LSI_CONFIG_EXP_DIR, LSI_LOG_DIR, LSI_CONFIG_ALGO_DIR, LSI_CONFIG_MAP_DIR, LSI_CONFIG_AGENT_DIR
 from overcooked_ai_pcg.helper import run_overcooked_game, read_in_lsi_config
 from overcooked_ai_pcg.LSI.qd_algorithms import Individual, FeatureMap
-from overcooked_ai_pcg.helper import read_in_lsi_config, init_env_and_agent
+from overcooked_ai_pcg.helper import read_in_lsi_config, init_env_and_agent, visualize_lvl
 from overcooked_ai_py.mdp.overcooked_env import OvercookedEnv
 
 # def read_in_lsi_config(exp_config_file):
@@ -31,57 +31,63 @@ from overcooked_ai_py.mdp.overcooked_env import OvercookedEnv
 #     return experiment_config, algorithm_config, elite_map_config, agent_configs
 
 
-def retrieve_k_individuals(experiment_config, elite_map_config, agent_configs, individuals, row_idx, col_idx, mat_idx, log_dir, k):
+# def retrieve_k_individuals(experiment_config, elite_map_config, agent_configs, individuals, row_idx, col_idx, mat_idx, log_dir, k):
 
-    #from IPython import embed
-    #embed()
+#     #from IPython import embed
+#     #embed()
 
-    num_simulations = experiment_config["num_simulations"
-    ]
-    feature_map = FeatureMap(
-        num_simulations,
-        feature_ranges=[(bc["low"], bc["high"])
-                        for bc in elite_map_config["Map"]["Features"]],
-        resolutions=[
-            bc["resolution"] for bc in elite_map_config["Map"]["Features"]
-        ],
-    )
-    feature0_name = features[0]["name"]
-    feature1_name = features[1]["name"]
-    feature2_name = features[2]["name"]
+#     num_simulations = experiment_config["num_simulations"
+#     ]
+#     feature_map = FeatureMap(
+#         num_simulations,
+#         feature_ranges=[(bc["low"], bc["high"])
+#                         for bc in elite_map_config["Map"]["Features"]],
+#         resolutions=[
+#             bc["resolution"] for bc in elite_map_config["Map"]["Features"]
+#         ],
+#     )
+#     feature0_name = features[0]["name"]
+#     feature1_name = features[1]["name"]
+#     feature2_name = features[2]["name"]
 
 
-    num_individuals = num_simulations * 52
-    relevant_individuals = []
-    for indx in range(num_individuals):
-        individual = individuals.iloc[indx]
-        if indx % 1000== 0:
-          print(indx)
+#     num_individuals = num_simulations * 52
+#     relevant_individuals = []
+#     for indx in range(num_individuals):
+#         individual = individuals.iloc[indx]
+#         if indx % 1000== 0:
+#           print(indx)
 
-        if (np.isnan(individual["ID"])==False): 
-             feature0 = individual[feature0_name]
-             feature1 = individual[feature1_name]
-             feature2 = individual[feature2_name]
-             ind = Individual()
-             ind.features = ([feature0], [feature1], [feature2])
-             #from IPython import embed
-             #em3bed()
+#         if (np.isnan(individual["ID"])==False): 
+#              feature0 = individual[feature0_name]
+#              feature1 = individual[feature1_name]
+#              feature2 = individual[feature2_name]
+#              ind = Individual()
+#              ind.features = ([feature0], [feature1], [feature2])
+#              #from IPython import embed
+#              #em3bed()
 
-             ind.fitness = individual["fitness"]
-             index = feature_map.get_index(ind)
+#              ind.fitness = individual["fitness"]
+#              index = feature_map.get_index(ind)
 
-             if index[0] == row_idx and index[1] == col_idx and index[2] == mat_idx: 
-                relevant_individuals.append(individual)
+#              if index[0] == row_idx and index[1] == col_idx and index[2] == mat_idx: 
+#                 relevant_individuals.append(individual)
 
-    sorted_individuals = sorted(relevant_individuals, key=lambda x: x.fitness)[::-1]
-    sorted_individuals = sorted_individuals[:k]
+#     sorted_individuals = sorted(relevant_individuals, key=lambda x: x.fitness)[::-1]
+#     sorted_individuals = sorted_individuals[:k]
 
-    IDs = []
-    for dd in range(k):
-      IDs.append(sorted_individuals[dd]["ID"])
+#     IDs = []
+#     for dd in range(k):
+#       IDs.append(sorted_individuals[dd]["ID"])
 
     
-    return IDs, sorted_individuals
+#     return IDs, sorted_individuals
+
+
+def reset_env_from_mdp(mdp):
+    env = OvercookedEnv.from_mdp(mdp, info_level=0, horizon=100)
+    return env
+
 
 
 def play_individual(individual, agent_configs):
@@ -190,16 +196,16 @@ def run_overcooked_local(agent1, agent2, env, mdp, render=True, worker_id=0, num
         concurr_actives.append(concurr_active)
         stuck_times.append(stuck_time)
 
-        #env = reset_env_from_mdp(mdp)
+        env = reset_env_from_mdp(mdp)
 
     #if agent_config["Search"]["multi_iter"] == False:
-        fitnesses = [fitnesses[0] for i in range(num_iters)]
-        total_sparse_rewards = [total_sparse_rewards[0] for i in range(num_iters)]
-        checkpointses = [checkpointses[0] for i in range(num_iters)]
-        workloadses = [workloadses[0] for i in range(num_iters)]
-        joint_actionses = [joint_actionses[0] for i in range(num_iters)]
-        concurr_actives = [concurr_actives[0] for i in range(num_iters)]
-        stuck_times = [stuck_times[0] for i in range(num_iters)]
+        # fitnesses = [fitnesses[0] for i in range(num_iters)]
+        # total_sparse_rewards = [total_sparse_rewards[0] for i in range(num_iters)]
+        # checkpointses = [checkpointses[0] for i in range(num_iters)]
+        # workloadses = [workloadses[0] for i in range(num_iters)]
+        # joint_actionses = [joint_actionses[0] for i in range(num_iters)]
+        # concurr_actives = [concurr_actives[0] for i in range(num_iters)]
+        # stuck_times = [stuck_times[0] for i in range(num_iters)]
 
     # if num_iters > 1:
     #     checkpointses = np.array(checkpointses)
@@ -363,7 +369,7 @@ class App:
         return fitness, self.total_sparse_reward, self.checkpoints, workloads, self.joint_actions, concurr_active, stuck_time
 
 
-def play(elite_map, agent_configs, individuals, row_idx, col_idx, mat_idx, log_dir, load_data, agent_config_idx):
+def play(elite_map, agent_configs, individuals, row_idx, col_idx, mat_idx, log_dir, load_data, agent_config_idx, mode = "replay", visualize = True, num_iters = 1):
     """
     Find the individual in the specified cell in the elite map
     and run overcooked game with the specified agents
@@ -385,60 +391,79 @@ def play(elite_map, agent_configs, individuals, row_idx, col_idx, mat_idx, log_d
 
         ind_id = int(splited[3])
 
- 
+        #from IPython import embed
+        #embed()
+
+
         if curr_row_idx == row_idx and curr_col_idx == col_idx and curr_mat_idx == mat_idx:
 
 
-            ind_id = int(splited[3])*51
-            lvl_str = individuals["lvl_str"][ind_id]
-            print("Playing in individual %d" % ind_id)
-            print(lvl_str)
+ 
+                ind_id = int(splited[3])*51
+                lvl_str = individuals["lvl_str"][ind_id]
+                print("Playing in individual %d" % ind_id)
+                print(lvl_str)
 
-            #from IPython import embed
-            #embed()
-
-
-            ind = Individual()
-            ind.level = lvl_str
-            ind.human_preference = individuals["human_preference"][ind_id]
-            ind.human_adaptiveness = individuals["human_adaptiveness"][ind_id]
-            ind.rand_seed = int(individuals["rand_seed"][ind_id])
-
-            log_file_name = str(row_idx) + "_" + str(col_idx) + "_" + str(mat_idx)+"_" + str(agent_configs[agent_config_idx]['Agent1']['name'])
-
-            load_data_dir = os.path.join(log_dir, "stored_data/")
-            game_log = GameConfigLog(load_data_dir, log_file_name)
-
-
-
-            if load_data == 0: 
-                agent1, agent2, env, mdp = init_env_and_agent(ind, agent_configs[agent_config_idx])
-                game_log.addData(["agent1", "agent2", "mdp"], [agent1, agent2, mdp])
-                game_log.storeData()
-            else:
-                agent1, agent2, mdp = game_log.loadData()
-                env = OvercookedEnv.from_mdp(mdp, info_level=0, horizon=100)
-
-
-            #theApp = App(env, agent1, agent2, rand_seed=ind.rand_seed, player_idx=0, slow_time=False)
-            #ind.fitness, ind.scores, ind.checkpoints, ind.player_workloads, ind.joint_actions, ind.concurr_active, ind.stuck_time = theApp.on_execute()
-            #for agent_config in agent_configs:
-            ind.fitness, ind.scores, ind.checkpoints, ind.player_workloads, ind.joint_actions, ind.concurr_active, ind.stuck_time= run_overcooked_local(agent1, agent2, env, mdp, render=True)
-            print("Fitness: {}".format(ind.fitness))
-            print("Concurrently active:", ind.concurr_active, "; Stuck time:", ind.stuck_time)                #from IPython import embed
                 #from IPython import embed
                 #embed()
-                #print("Fitness: %d" % fitness[0])
-                #log_actions(ind, agent_config, log_dir, f1, f2, row_idx, col_idx, ind_id)
-            #return
 
-            print("Fitness: {}; Total sparse reward: {};".format(ind.fitness, ind.scores))
-            print("Checkpoints", ind.checkpoints)
-            print("Workloads:", ind.player_workloads, "; Concurrently active:", ind.concurr_active, "; Stuck time:", ind.stuck_time)
+
+                ind = Individual()
+                ind.level = lvl_str
+                ind.human_preference = individuals["human_preference"][ind_id]
+                ind.human_adaptiveness = individuals["human_adaptiveness"][ind_id]
+                ind.rand_seed = int(individuals["rand_seed"][ind_id])
+
+                log_file_name = str(row_idx) + "_" + str(col_idx) + "_" + str(mat_idx)+"_" + str(agent_configs[agent_config_idx]['Agent1']['name'])
+
+                load_data_dir = os.path.join(log_dir, "stored_data/")
+                game_log = GameConfigLog(load_data_dir, log_file_name)
+
+                if mode == "render":
+                  visualize_lvl(lvl_str, log_dir,f"rendered_level_{row_idx}_{col_idx}_{ind_id}.png")
+                else:
+                    if load_data == 0: 
+                        agent1, agent2, env, mdp = init_env_and_agent(ind, agent_configs[agent_config_idx])
+                        game_log.addData(["agent1", "agent2", "mdp"], [agent1, agent2, mdp])
+                        game_log.storeData()
+                    else:
+                        agent1, agent2, mdp = game_log.loadData()
+                        env = OvercookedEnv.from_mdp(mdp, info_level=0, horizon=100)
+
+
+                    #theApp = App(env, agent1, agent2, rand_seed=ind.rand_seed, player_idx=0, slow_time=False)
+                    #ind.fitness, ind.scores, ind.checkpoints, ind.player_workloads, ind.joint_actions, ind.concurr_active, ind.stuck_time = theApp.on_execute()
+                    #for agent_config in agent_configs:
+                    ind.fitness, ind.scores, ind.checkpoints, ind.player_workloads, ind.joint_actions, ind.concurr_active, ind.stuck_time= run_overcooked_local(agent1, agent2, env, mdp, render=visualize, num_iters = num_iters)
+                    print("Fitness: {}".format(ind.fitness))
+                    print("Concurrently active:", ind.concurr_active, "; Stuck time:", ind.stuck_time)                #from IPython import embed
+                        #from IPython import embed
+                        #embed()
+                        #print("Fitness: %d" % fitness[0])
+                        #log_actions(ind, agent_config, log_dir, f1, f2, row_idx, col_idx, ind_id)
+                    #return
+                    workloads = ind.player_workloads
+                    if len(workloads) > 2:
+                      workloads = np.array(workloads)
+                      workload_diff_ingre = []
+                      workload_diff_plates=  []
+                      workload_diff_orders = []
+                      for w0, w1 in zip(workloads[:,0], workloads[:,1]):
+                          workload_diff_ingre.append(w0["num_ingre_held"] - w1["num_ingre_held"])
+                      for w0, w1 in zip(workloads[:,0], workloads[:,1]):
+                          workload_diff_plates.append(w0["num_plate_held"] - w1["num_plate_held"])
+                      for w0, w1 in zip(workloads[:,0], workloads[:,1]):
+                          workload_diff_orders.append(w0["num_served"] - w1["num_served"])
+ 
+                    from IPython import embed
+                    embed()
+                    #print("Fitness: {}; Total sparse reward: {};".format(ind.fitness, ind.scores))
+                    #print("Checkpoints", ind.checkpoints)
+                    #3print("Workloads:", ind.player_workloads, "; Concurrently active:", ind.concurr_active, "; Stuck time:", ind.stuck_time)
 
             #log_actions(ind, agent_configs[-1], log_dir, f1, f2, row_idx, col_idx, ind_id)
 
-            return
+                    return
 
     print("No individual found in the specified cell")
 
@@ -473,6 +498,7 @@ if __name__ == "__main__":
                         required=False,
                         default=1)
 
+
     parser.add_argument('-load',
                         '--load_data',
                          help = 'load the data from pkl file',
@@ -484,6 +510,22 @@ if __name__ == "__main__":
                          help='index of agent config',
                          required = False,
                          default = -1)
+
+    parser.add_argument('-mode', '--mode',
+                        help="mode to replay or merely render the level.",
+                        required=False,
+                        default="replay")
+
+    parser.add_argument('-visualize', '--visualize',
+                        help = 'option to visualize the level.',
+                        required = False,
+                        default = "true")
+
+    parser.add_argument('-num_iters', '--num_iters',
+                        help = 'number of iterations',
+                        required = False,
+                        default = 1)
+
     opt = parser.parse_args()
 
     # read in full elite map
@@ -495,7 +537,9 @@ if __name__ == "__main__":
     elite_map = all_rows[-1][1:]
     elite_map_log.close()
     agent_config_idx = int(opt.agent_config_idx)
-
+    mode = opt.mode
+    visualize = int(opt.visualize)
+    num_iters = int(opt.num_iters)
     # read in individuals
     individuals = pd.read_csv(os.path.join(log_dir, "individuals_log.csv"))
 
@@ -524,7 +568,12 @@ if __name__ == "__main__":
     assert (col_idx < num_col)
     assert (mat_idx < num_mat)
 
-    play(elite_map, agent_configs, individuals, row_idx, col_idx, mat_idx, log_dir, load_data, agent_config_idx)
+
+    #from IPython import embed
+    #embed()
+
+
+    play(elite_map, agent_configs, individuals, row_idx, col_idx, mat_idx, log_dir, load_data, agent_config_idx, mode = mode, visualize = visualize, num_iters = num_iters)
  
     exit()
 

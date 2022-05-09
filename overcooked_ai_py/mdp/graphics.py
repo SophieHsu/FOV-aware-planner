@@ -7,7 +7,7 @@ from overcooked_ai_py import ASSETS_DIR, PCG_EXP_IMAGE_DIR
 from overcooked_ai_py.mdp.actions import Action, Direction
 pygame.init()
 
-INFO_PANEL_HEIGHT = 60  # height of the game info panel
+INFO_PANEL_HEIGHT = 0#60  # height of the game info panel
 INFO_PANEL_COLOR = (230, 180, 83)  # some sort of yellow
 SPRITE_LENGTH = 50  # length of each sprite square
 TERRAIN_DIR = 'terrain'
@@ -209,7 +209,7 @@ def draw_arrow(window, player, player_index, pos, time_left):
 
     arrow = pygame.transform.scale(arrow, (SPRITE_LENGTH, SPRITE_LENGTH))
     window.blit(arrow, pos)
-    tmp = input()
+    # tmp = input()
 
 
 def get_orientation_str(player):
@@ -267,6 +267,33 @@ def render_from_grid(lvl_grid, log_dir, filename):
 
 def render_game_info_panel(window, game_window_size, num_orders_remaining,
                            time_passed):
+#<<<<<<< HEAD
+#    pass
+    # game_window_width, game_window_height = game_window_size
+
+    # # get panel rect
+    # panel_rect = pygame.Rect(0, 0, game_window_width,
+    #                          INFO_PANEL_HEIGHT)
+
+    # # fill with background color
+    # window.fill(INFO_PANEL_COLOR, rect=panel_rect)
+
+    # # update num orders left
+    # if num_orders_remaining == np.inf:
+    #     num_orders_remaining = "inf"
+    # num_order_t_surface = get_text_sprite(
+    #     f"Number of orders left: {num_orders_remaining}")
+    # num_order_text_pos = num_order_t_surface.get_rect()
+    # num_order_text_pos.topleft = panel_rect.topleft
+    # window.blit(num_order_t_surface, num_order_text_pos)
+
+    # # update time passed
+    # t_surface = get_text_sprite("Time passed: %3d s" % time_passed)
+    # time_passed_text_pos = t_surface.get_rect()
+    # _, num_order_txt_height = num_order_t_surface.get_size()
+    # time_passed_text_pos.y = num_order_text_pos.y + num_order_txt_height
+    # window.blit(t_surface, time_passed_text_pos)
+#=======
     game_window_width, game_window_height = game_window_size
 
     # get panel rect
@@ -290,3 +317,4 @@ def render_game_info_panel(window, game_window_size, num_orders_remaining,
     _, num_order_txt_height = num_order_t_surface.get_size()
     time_passed_text_pos.y = num_order_text_pos.y + num_order_txt_height
     window.blit(t_surface, time_passed_text_pos)
+#>>>>>>> bce3ff4b5f40e334f942ddc27276ace0cdea63ea

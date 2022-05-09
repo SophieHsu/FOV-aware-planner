@@ -206,6 +206,11 @@ class MotionPlanner(object):
     def _graph_action_cost(self, action):
         """Returns cost of a single-agent action"""
         assert action in Action.ALL_ACTIONS
+        
+        # # penalize plans that have the action stay to avoid stopping and waiting in joint plans
+        # if action == Action.STAY:
+        #     return 2
+
         return 1
 
     def _get_valid_successor_motion_states(self, start_motion_state):
@@ -380,8 +385,10 @@ class JointMotionPlanner(object):
         # Try using MotionPlanner plans and join them together
         action_plans, pos_and_or_paths, plan_lengths = self._get_plans_from_single_planner(joint_start_state, joint_goal_state)
         # Check if individual plans conflict
+        # print('action_plans =', action_plans)
         have_conflict = self.plans_have_conflict(joint_start_state, joint_goal_state, pos_and_or_paths, plan_lengths)
         # If there is no conflict, the joint plan computed by joining single agent MotionPlanner plans is optimal
+        # print('have_conflict =', have_conflict)
         if not have_conflict:
             joint_action_plan, end_pos_and_orientations = self._join_single_agent_action_plans(
                 joint_start_state, action_plans, pos_and_or_paths, min(plan_lengths)
@@ -489,9 +496,7 @@ class JointMotionPlanner(object):
         Returns:
             position_list1 (list), position_list2 (list)
         """
-
         s1, s2 = self.extract_ind_pos_list(pos_and_or_paths, joint_start_state)
-
         if s1[-1] == s2[-1] or s1[0] == s2[0]:
             return None, None
         oo = np.inf
@@ -541,7 +546,6 @@ class JointMotionPlanner(object):
         for idx in range(min(len(ans1), len(ans2)) - 1):
             if ans1[idx] == ans2[idx+1] and ans1[idx+1] == ans2[idx]:
                 raise ValueError("Two paths crached: Solution not valid!")
-
         return ans1[1:], ans2[1:]
 
     def extract_ind_pos_list(self, pos_and_or_paths, joint_start_state):
@@ -733,6 +737,7 @@ class JointMotionPlanner(object):
         start_positions = list(zip(*joint_start_state))[0]
         goal_positions = list(zip(*joint_goal_state))[0]
         joint_positions_node_path = self.joint_graph_problem.get_node_path(start_positions, goal_positions)[1:]
+        # print('joint_positions_node_path =', joint_positions_node_path)
         joint_actions_list, end_pos_and_orientations, finishing_times = self.joint_action_plan_from_positions(joint_positions_node_path, joint_start_state, joint_goal_state)
         return joint_actions_list, end_pos_and_orientations, finishing_times
 
@@ -798,7 +803,9 @@ class JointMotionPlanner(object):
             for joint_action, successor_jm_state in self._get_valid_successor_joint_positions(start_joint_positions).items():
                 successor_node_index = state_encoder[successor_jm_state]
 
-                this_action_cost = self._graph_joint_action_cost(joint_action)
+                # this_action_cost = self._graph_joint_action_cost(joint_action)
+                # Below counts stay actions as cost of COST_OF_STAY. Above (original overcooked ai implementation) function, stay action costs nothing.
+                this_action_cost = self._graph_joint_action_cost_include_stay(joint_action)
                 current_cost = adjacency_matrix[start_state_index][successor_node_index]
 
                 if current_cost == 0 or this_action_cost < current_cost:
@@ -813,6 +820,17 @@ class JointMotionPlanner(object):
         if num_of_non_stay_actions == 0:
             return 1
         return num_of_non_stay_actions
+
+    def _graph_joint_action_cost_include_stay(self, joint_action, COST_OF_STAY=1):
+        """The cost used in the graph shortest-path problem for a certain joint-action"""
+        num_of_non_stay_actions = len([a for a in joint_action if a != Action.STAY])
+        num_of_stay_actions = len([a for a in joint_action if a == Action.STAY])
+        # NOTE: Removing the possibility of having 0 cost joint_actions
+        if (num_of_stay_actions + num_of_non_stay_actions) == 0:
+            return 1
+
+        total_cost_of_actions = num_of_non_stay_actions + num_of_stay_actions*COST_OF_STAY
+        return total_cost_of_actions
 
     def _get_valid_successor_joint_positions(self, starting_positions):
         """Get all joint positions that can be reached by a joint action.
@@ -1900,7 +1918,10 @@ class MediumLevelMdpPlanner(object):
         # print('Initialize states:', self.state_idx_dict.items())
         return
 
-    def init_actions(self, actions=None):
+    def init_actions(self, actions=None, action_dict=None, action_idx_dict=None):
+        '''
+        action_dict = {'pickup_onion': ['pickup', 'onion'], 'pickup_dish': ['pickup', 'dish'], 'drop_onion': ['drop', 'onion'], 'drop_dish': ['drop', 'dish'], 'deliver_soup': ['deliver', 'soup'], 'pickup_soup': ['pickup', 'soup']}
+        '''
         # print('In init_actions()...')
 
         if actions is None:
@@ -2088,7 +2109,7 @@ class MediumLevelMdpPlanner(object):
         return location
 
     def map_action_to_state_location(self, state, state_str, action, obj, world_info):
-        pots_states_dict = get_pot_states(world_info)
+        pots_states_dict = self.mdp.get_pot_states(world_info)
         location = []
         if action == 'pickup' and obj != 'soup':
             if not self._not_holding_object(state_str):
@@ -2343,7 +2364,6 @@ class HumanAwareMediumMDPPlanner(MediumLevelMdpPlanner):
                 # define state and action game transition logic
                 p0_state, p1_obj = self.extract_p0(state_obj)
                 
-
                 # get next step p1 object
                 p1_nxt_states = []
                 if len(p0_state) > 2:
@@ -2544,6 +2564,8 @@ class HumanSubtaskQMDPPlanner(MediumLevelMdpPlanner):
                         new_obj = original_state_dict[ori_key]+[obj] + [subtask[0]]
                         self.state_dict[new_key] = new_obj # update value
                         self.state_idx_dict[new_key] = len(self.state_idx_dict)
+
+        # print('subtask dict =', self.subtask_dict)
 
     def init_transition(self, transition_matrix=None):
         """
@@ -2849,19 +2871,19 @@ class HumanSubtaskQMDPPlanner(MediumLevelMdpPlanner):
         else:
             return list(dictionary.keys())[idx]
 
-    def map_action_to_location(self, world_state, state_str, action, obj, p0_obj=None, player_idx=None):
+    def map_action_to_location(self, world_state, state_str, action, obj, p0_obj=None, player_idx=None, counter_drop=True, state_dict=None):
         """
         Get the next location the agent will be in based on current world state, medium level actions, after-action state obj.
         """
-
-        p0_obj = p0_obj if p0_obj is not None else self.state_dict[state_str][0]
+        state_dict = self.state_dict if state_dict is None else state_dict
+        p0_obj = p0_obj if p0_obj is not None else state_dict[state_str][0]
         other_obj = world_state.players[1-player_idx].held_object.name if world_state.players[1-player_idx].held_object is not None else 'None'
         pots_states_dict = self.mdp.get_pot_states(world_state)
         location = []
         WAIT = False # If wait becomes true, one player has to wait for the other player to finish its current task and its next task
 
         if action == 'pickup' and obj != 'soup':
-            if p0_obj != 'None':
+            if p0_obj != 'None' and counter_drop:
                 location = self.drop_item(world_state)
             else:
                 if obj == 'onion':
@@ -2874,13 +2896,13 @@ class HumanSubtaskQMDPPlanner(MediumLevelMdpPlanner):
                     print(p0_obj, action, obj)
                     ValueError()
         elif action == 'pickup' and obj == 'soup':
-            if p0_obj != 'dish' and p0_obj != 'None':
+            if p0_obj != 'dish' and p0_obj != 'None' and counter_drop:
                 location = self.drop_item(world_state)
             elif p0_obj == 'None':
                 location = self.mdp.get_dish_dispenser_locations()
             else:
                 if state_str is not None:
-                    num_item_in_pot = self.state_dict[state_str][1]
+                    num_item_in_pot = state_dict[state_str][1]
                     if num_item_in_pot == 0:
                         location = self.mdp.get_empty_pots(pots_states_dict)
                         if len(location) > 0: return location, True
@@ -2903,7 +2925,7 @@ class HumanSubtaskQMDPPlanner(MediumLevelMdpPlanner):
             if obj == 'onion' or obj == 'tomato':
 
                 if state_str is not None:
-                    num_item_in_pot = self.state_dict[state_str][1]
+                    num_item_in_pot = state_dict[state_str][1]
                     if num_item_in_pot == 0:
                         location = self.mdp.get_empty_pots(pots_states_dict)
                     elif num_item_in_pot > 0 and num_item_in_pot < self.mdp.num_items_for_soup:
@@ -2921,18 +2943,43 @@ class HumanSubtaskQMDPPlanner(MediumLevelMdpPlanner):
                         location = self.mdp.get_ready_pots(pots_states_dict) + self.mdp.get_cooking_pots(pots_states_dict) + self.mdp.get_full_pots(pots_states_dict)
                         # location = world_state.players[player_idx].pos_and_or
                         return location, WAIT
-                    else:
+                    elif counter_drop:
                         location = self.drop_item(world_state)
+                    else:
+                        WAIT = True
+                        location = self.mdp.get_ready_pots(pots_states_dict) + self.mdp.get_cooking_pots(pots_states_dict) + self.mdp.get_full_pots(pots_states_dict)
+                        # location = world_state.players[player_idx].pos_and_or
+                        return location, WAIT
 
-            elif obj == 'dish' and player_idx==0: # agent_index = 0
+            elif obj == 'dish' and player_idx==0 and counter_drop: # agent_index = 0
                 location = self.drop_item(world_state)
             else:
                 print(p0_obj, action, obj)
                 ValueError()
 
         elif action == 'deliver':
-            if p0_obj != 'soup':
+            if p0_obj != 'soup' and p0_obj != 'None' and counter_drop:
                 location = self.mdp.get_empty_counter_locations(world_state)
+            elif p0_obj != 'soup':
+                if state_str is not None:
+                    num_item_in_pot = state_dict[state_str][1]
+                    if num_item_in_pot == 0:
+                        location = self.mdp.get_empty_pots(pots_states_dict)
+                        if len(location) > 0: return location, True
+                    elif num_item_in_pot > 0 and num_item_in_pot < self.mdp.num_items_for_soup:
+                        location = self.mdp.get_partially_full_pots(pots_states_dict)
+                        if len(location) > 0: return location, True
+                    else:
+                        location = self.mdp.get_ready_pots(pots_states_dict) + self.mdp.get_cooking_pots(pots_states_dict) + self.mdp.get_full_pots(pots_states_dict)
+                    if len(location) > 0: return location, WAIT
+
+                location = self.mdp.get_ready_pots(pots_states_dict) + self.mdp.get_cooking_pots(pots_states_dict) + self.mdp.get_full_pots(pots_states_dict)
+                if len(location) == 0:
+                    WAIT = True
+                    # location = self.ml_action_manager.go_to_closest_feature_or_counter_to_goal(location)
+                    location = self.mdp.get_partially_full_pots(pots_states_dict) + self.mdp.get_empty_pots(pots_states_dict)
+                    # location = world_state.players[player_idx].pos_and_or
+                    return location, WAIT
             else:
                 location = self.mdp.get_serving_locations()
 
@@ -2996,7 +3043,7 @@ class HumanSubtaskQMDPPlanner(MediumLevelMdpPlanner):
             new_world_state.players[1].held_object = ObjectState(mdp_state_obj[-2], new_human_pos)
         new_world_state.players[1].update_pos_and_or(new_human_pos[0], new_human_pos[1])
 
-        total_cost = max([agent_cost, human_cost])
+        total_cost = max([agent_cost, human_cost]) # in rss paper is max
         if AI_WAIT or HUMAN_WAIT: # if wait, then cost is sum of current tasks cost and one player's next task cost (est. as half map area length)
             total_cost = agent_cost + human_cost + ((self.mdp.width-1)+(self.mdp.height-1))/2
 
@@ -3013,19 +3060,28 @@ class HumanSubtaskQMDPPlanner(MediumLevelMdpPlanner):
                 mdp_state_keys.append(self.world_state_to_mdp_state_key(world_state, player, other_player, self.get_key_from_value(self.subtask_idx_dict, i)))
         return mdp_state_keys
 
-    def joint_action_cost(self, world_state, goal_pos_and_or):
+    def joint_action_cost(self, world_state, goal_pos_and_or, COST_OF_STAY=1):
         joint_action_plan, end_motion_state, plan_costs = self.jmp.get_low_level_action_plan(world_state.players_pos_and_or, goal_pos_and_or, merge_one=True)
         # joint_action_plan, end_state, plan_costs = self.mlp.get_embedded_low_level_action_plan(world_state, goal_pos_and_or, other_agent, other_agent_idx)
         # print('joint_action_plan =', joint_action_plan, '; plan_costs =', plan_costs)
+
         if len(joint_action_plan) == 0:
             return (Action.INTERACT, None), 0
-        return joint_action_plan[0], max(plan_costs)
+
+        num_of_non_stay_actions = len([a for a in joint_action_plan if a[0] != Action.STAY])
+        num_of_stay_actions = len([a for a in joint_action_plan if a[0] == Action.STAY])
+
+        return joint_action_plan[0], max(plan_costs)# num_of_non_stay_actions+num_of_stay_actions*COST_OF_STAY # in rss paper is max(plan_costs)
 
     def step(self, world_state, mdp_state_keys, belief, agent_idx, low_level_action=False):
         """
         Compute plan cost that starts from the next qmdp state defined as next_state_v().
         Compute the action cost of excuting a step towards the next qmdp state based on the
         current low level state information.
+
+        next_state_v: shape(len(belief), len(action_idx)). If the low_level_action is True, 
+            the action_dix will be representing the 6 low level action index (north, south...).
+            If the low_level_action is False, it will be the action_dict (pickup_onion, pickup_soup...).
         """
         start_time = time.time()
         next_state_v = np.zeros((len(belief), len(self.action_dict)), dtype=float)
@@ -3042,18 +3098,21 @@ class HumanSubtaskQMDPPlanner(MediumLevelMdpPlanner):
             if mdp_state_idx is not None:
                 agent_action_idx_arr, next_mdp_state_idx_arr = np.where(self.transition_matrix[:, mdp_state_idx] > 0.000001) # returns array(action idx), array(next_state_idx)
                 nxt_possible_mdp_state.append([agent_action_idx_arr, next_mdp_state_idx_arr])
-                for j, action_idx in enumerate(agent_action_idx_arr):
+                for j, action_idx in enumerate(agent_action_idx_arr): # action_idx is encoded subtask action
+                    # print('action_idx =', action_idx)
                     next_state_idx = next_mdp_state_idx_arr[j]
                     after_action_world_state, cost, goals_pos = self.mdp_action_state_to_world_state(action_idx, mdp_state_idx, world_state, with_argmin=True)
                     value_cost = self.compute_V(after_action_world_state, self.get_key_from_value(self.state_idx_dict, next_state_idx), search_depth=100)
-                    joint_action, one_step_cost = self.joint_action_cost(world_state, after_action_world_state.players_pos_and_or)
-
+                    joint_action, one_step_cost = self.joint_action_cost(world_state, after_action_world_state.players_pos_and_or)  
+                    # print('joint_action =', joint_action, 'one_step_cost =', one_step_cost)
+                    # print('Action.ACTION_TO_INDEX[joint_action[agent_idx]] =', Action.ACTION_TO_INDEX[joint_action[agent_idx]])
                     if not low_level_action:
+                        # action_idx: are subtask action dictionary index
                         next_state_v[i, action_idx] += (value_cost * self.transition_matrix[action_idx, mdp_state_idx, next_state_idx])
                         # print(next_state_v[i, action_idx])
 
                         ## compute one step cost with joint motion considered
-                        action_cost[i, action_idx] -= max(one_step_cost)*self.transition_matrix[action_idx, mdp_state_idx, next_state_idx]
+                        action_cost[i, action_idx] -= (one_step_cost)*self.transition_matrix[action_idx, mdp_state_idx, next_state_idx]
                     else:
                         next_state_v[i, Action.ACTION_TO_INDEX[joint_action[agent_idx]]] += (value_cost * self.transition_matrix[action_idx, mdp_state_idx, next_state_idx])
                         # print(next_state_v[i, action_idx])
@@ -3062,7 +3121,7 @@ class HumanSubtaskQMDPPlanner(MediumLevelMdpPlanner):
                         action_cost[i, Action.ACTION_TO_INDEX[joint_action[agent_idx]]] -= (one_step_cost)*self.transition_matrix[action_idx, mdp_state_idx, next_state_idx]
                     # print('action_idx =', self.get_key_from_value(self.action_idx_dict, action_idx), '; mdp_state_key =', mdp_state_key, '; next_state_key =', self.get_key_from_value(self.state_idx_dict, next_state_idx))
                     # print('next_state_v =', next_state_v[i])
-                    # print('action_cost =', action_cost[i])
+        # print('action_cost =', action_cost)
 
         q = self.compute_Q(belief, next_state_v, action_cost)
         # print(q)
@@ -3071,11 +3130,12 @@ class HumanSubtaskQMDPPlanner(MediumLevelMdpPlanner):
         # print("It took {} seconds for this step".format(time.time() - start_time))
         if low_level_action:
             return Action.INDEX_TO_ACTION[action_idx], None, low_level_action
-        return action_idx, self.action_dict[self.get_key_from_value(self.action_idx_dict, action_idx)]
+        return action_idx, self.action_dict[self.get_key_from_value(self.action_idx_dict, action_idx)], low_level_action
 
     def belief_update(self, world_state, agent_player, soup_finish, human_player, belief_vector, prev_dist_to_feature, greedy=False):
         """
         Update belief based on both human player's game logic and also it's current position and action.
+        Belief shape is an array with size equal the length of subtask_dict.
         """
         start_time = time.time()
 
@@ -3105,6 +3165,10 @@ class HumanSubtaskQMDPPlanner(MediumLevelMdpPlanner):
 
             # update distance to feature
             prev_dist_to_feature[str(feature_pos)] = human_dist_cost
+
+        # print('dist_belief_prob =', dist_belief_prob)
+        # print('prev_dist_to_feature =', prev_dist_to_feature)
+        # print('human_dist_cost =', human_dist_cost)
 
         game_logic_prob /= game_logic_prob.sum()
         dist_belief_prob /= dist_belief_prob.sum()
@@ -3155,6 +3219,8 @@ class HumanSubtaskQMDPPlanner(MediumLevelMdpPlanner):
         # print('b =', b)
         # print('v =', v)
         # print('c =', c)
+
+        # tmp=input()
         return b@(v+c)
 
     def get_best_action(self, q):
@@ -3174,7 +3240,7 @@ class HumanSubtaskQMDPPlanner(MediumLevelMdpPlanner):
         self.num_actions = len(self.action_dict)
         # print('Total states =', self.num_states, '; Total actions =', self.num_actions)
 
-        print("It took {} seconds to create HumanSubtaskQMDPPlanner".format(time.time() - start_time))
+        # print("It took {} seconds to create HumanSubtaskQMDPPlanner".format(time.time() - start_time))
         # self.save_to_file(final_filepath)
         # tmp = input()
         # self.save_to_file(output_mdp_path)

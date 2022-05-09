@@ -48,11 +48,12 @@ WORKLOAD_DIFFS_HIGH = np.array([6, 2, 2])
 
 # Maps the raw feature names to a more human-readable name.
 FEATURE_NAME = {
-    "diff_num_ingre_held": "# ingredients held (H - R)",
-    "diff_num_plate_held": "# plates held (H - R)",
-    "diff_num_dish_served": "# soups served (H - R)",
-    "cc_active": "# time steps concurrent motion",
-    "stuck_time": "# time steps stuck",
+    "diff_num_ingre_held": "Difference in Ingredients (R-H)",
+    "diff_num_plate_held": "Difference in Plates (R-H)",
+    "diff_num_dish_served": "Difference in Orders (R-H)",
+
+    "cc_active": "% concurrent motion",
+    "stuck_time": "% time stuck",
 }
 
 
@@ -141,6 +142,8 @@ def csv_data_to_pandas(
               fitness -= 280_000
         else: 
               fitness -= 370_000   
+
+              
          #elif 200_000 <= fitness < 400_000:
          #    fitness -= 200_000
          #elif fitness >= 400_000:
@@ -197,6 +200,7 @@ def create_axes(
 
     enumerate_name only applies if mode.use_3d() is True.
     """
+
     if mode.use_3d():
         y_len = len(dataframe[list(dataframe)[0]].index)
         x_len = len(dataframe[list(dataframe)[0]].columns)
@@ -313,19 +317,19 @@ def plot_heatmap(dataframe: Union[pd.DataFrame, Dict[int, pd.DataFrame]],
                     vmax=1,
                     square=True,
                     ax=ax,
-                    cbar_ax=cbar_ax,linewidths = 0.1, linecolor= (0,0,0))
+                    cbar_ax=cbar_ax, linecolor= (0,0,0))
         #ax.set_xticks([0.5, 20.5, 40.5, 60.5, 80.5, 100.5])
         #ax.set_yticks([0.5, 20.5, 40.5, 60.5, 80.5, 100.5])
         # ax.set_xticks([0.5,20.5,40.5])
         ax.set_xticks([0.5,10.5,20.5,30.5,40.5])
-        ax.set_xticklabels([0,10,20,30,40], rotation = 0)
+        ax.set_xticklabels([0,'',20,'',40], rotation = 0)
         #ax.set_yticks([0.5, 20,])
         #ax.set_xticklabels([0, 20, 40], rotation=0)
         
 
         ax.set_yticks([0.5,10.5,20.5,30.5,40.5,50.5,60.5,70.5])
         #ax.set_yticklabels([30,40,50,60,70,80,90,100][::-1])
-        ax.set_yticklabels([0,10,20,30,40,50,60,70][::-1])
+        ax.set_yticklabels(['',40,'',60,'',80,'',100][::-1])
 
         #ax.set_yticklabels([0, 30, 60, 90][::-1])
         ax.set_ylabel(y_name, labelpad=12)
@@ -373,7 +377,7 @@ def main(opt):
         context="paper",
         style="ticks",
         font="Palatino Linotype",
-        font_scale=2.4 if mode.use_3d() else 3.5,
+        font_scale=2.4 if mode.use_3d() else 2.2,
         rc={
             # Refer to https://matplotlib.org/3.2.1/tutorials/introductory/customizing.html
             "axes.facecolor": "1",
@@ -446,7 +450,7 @@ def main(opt):
                         plot_heatmap(dataframe, ax, cbar_ax, y_name, x_name,
                                      mode)
                         video_img_paths.append(
-                            os.path.join(img_dir, f"tmp_frame_{i}.png"))
+                            os.path.join(img_dir, f"tmp_frame_{y_feature_idx}_{x_feature_idx}_{i*1000}.png"))
                         fig.savefig(video_img_paths[-1])
                         plt.close(fig)
                         progress()
@@ -457,8 +461,8 @@ def main(opt):
                         img_dir,
                         f"map_video_{y_feature_idx}_{x_feature_idx}.avi"))
 
-                for path in video_img_paths:
-                    os.remove(path)
+                # for path in video_img_paths:
+                #     os.remove(path)
 
             # Break early because we only want the plot for features 0 and 1 for
             # workload_diff

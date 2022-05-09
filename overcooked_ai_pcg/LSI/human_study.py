@@ -26,6 +26,13 @@ SUB_STUDY_TYPES = [
     'low_team_fluency',
 ]
 
+SUB_STUDY_TYPES_VALUE_RANGE = [
+    [i for i in range(-6,7,1)],
+    [i for i in range(-6,7,1)],
+    [i for i in range(0,101,1)],
+    [i for i in range(0,101,1)]
+]
+
 NON_TRIAL_STUDY_TYPES = [
     'all',
     *SUB_STUDY_TYPES,

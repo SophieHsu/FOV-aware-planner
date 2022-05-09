@@ -36,6 +36,7 @@ LSI_CONFIG_AGENT_DIR = os.path.join(LSI_CONFIG_DIR, "agents")
 # human study
 LSI_HUMAN_STUDY_DIR = os.path.join(LSI_DATA_DIR, "human_study")
 LSI_HUMAN_STUDY_CONFIG_DIR = os.path.join(LSI_HUMAN_STUDY_DIR, "config")
+LSI_HUMAN_STUDY_LOG_DIR = os.path.join(LSI_HUMAN_STUDY_DIR, "result")
 LSI_HUMAN_STUDY_AGENT_DIR = os.path.join(LSI_HUMAN_STUDY_CONFIG_DIR, "agents")
 
 LSI_HUMAN_STUDY_RESULT_DIR = os.path.join(LSI_HUMAN_STUDY_DIR, "result")

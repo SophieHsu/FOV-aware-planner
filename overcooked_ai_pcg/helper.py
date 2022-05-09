@@ -25,6 +25,7 @@ from overcooked_ai_py.planning.planners import (Heuristic,
 
 from overcooked_ai_pcg import (ERR_LOG_PIC, G_PARAM_FILE, LSI_CONFIG_AGENT_DIR,
                                LSI_CONFIG_ALGO_DIR, LSI_CONFIG_MAP_DIR)
+from overcooked_ai_rl.dqn import Qnet
 
 obj_types = "12XSPOD "
 num_obj_type = len(obj_types)
@@ -306,6 +307,74 @@ def setup_env_from_grid(layout_grid,
 
         del mlp_planner, qmdp_planner
 
+    # Set up 6: rl random agent + greedy agent
+    elif (agent1_config["name"] == "rl_rand_agent" or agent1_config["name"]
+          == "rl_greedy_agent" or agent1_config["name"] == "rl_mix_agent") and agent2_config["name"] == "greedy_agent":
+        print("worker(%d): Pre-constructing graph..." % (worker_id))
+        # print(human_preference, human_adaptiveness)
+        mlp_planner = MediumLevelPlanner(mdp, BASE_PARAMS)
+        print("worker(%d): Planning..." % (worker_id))
+
+        agent2 = GreedyHumanModel(mlp_planner,
+                                  auto_unstuck=agent2_config["auto_unstuck"])
+
+        print("worker(%d): Pre-constructing qmdp plan..." % (worker_id))
+
+        qmdp_planner = HumanSubtaskQMDPPlanner.from_pickle_or_compute(
+            mdp, BASE_PARAMS, force_compute_all=True)
+
+        print("worker(%d): QMDP agent planning..." % (worker_id))
+
+        q = Qnet()
+        q.load_state_dict(torch.load(os.path.join(agent1_config["q_dir"], agent1_config["pth_file"])))
+        q.eval()
+
+        agent1 = HRLTrainingAgent(mdp, 
+            qmdp_planner, 
+            auto_unstuck=agent1_config["auto_unstuck"],
+            qnet=q)
+
+        print("worker(%d): Preprocess take %d seconds" %
+              (worker_id, time.time() - start_time))
+
+        agent1.set_mdp(mdp)
+        agent2.set_mdp(mdp)
+
+        del mlp_planner, qmdp_planner
+
+    elif (agent1_config["name"] == "rl_rand_agent" or agent1_config["name"]
+          == "rl_greedy_agent" or agent1_config["name"] == "rl_mix_agent") and agent2_config["name"] == "random_agent":
+        print("worker(%d): Pre-constructing graph..." % (worker_id))
+        # print(human_preference, human_adaptiveness)
+        mlp_planner = MediumLevelPlanner(mdp, BASE_PARAMS)
+        print("worker(%d): Planning..." % (worker_id))
+
+        agent2 = RandomAgent()
+
+        print("worker(%d): Pre-constructing qmdp plan..." % (worker_id))
+
+        qmdp_planner = HumanSubtaskQMDPPlanner.from_pickle_or_compute(
+            mdp, BASE_PARAMS, force_compute_all=True)
+
+        print("worker(%d): QMDP agent planning..." % (worker_id))
+
+        q = Qnet()
+        q.load_state_dict(torch.load(os.path.join(agent1_config["q_dir"], agent1_config["pth_file"])))
+        q.eval()
+
+        agent1 = HRLTrainingAgent(mdp, 
+            qmdp_planner, 
+            auto_unstuck=agent1_config["auto_unstuck"],
+            qnet=q)
+
+        print("worker(%d): Preprocess take %d seconds" %
+              (worker_id, time.time() - start_time))
+
+        agent1.set_mdp(mdp)
+        agent2.set_mdp(mdp)
+
+        del mlp_planner, qmdp_planner
+
     agent1.set_agent_index(0)
     agent2.set_agent_index(1)
 
@@ -338,7 +407,8 @@ def run_overcooked_game(ind,
                         agent_config,
                         render=True,
                         worker_id=0,
-                        num_iters=1,
+                        num_iters=1, 
+                        track_belief=False,
                         delay=500,
                         img_name=None):
     """
@@ -378,21 +448,13 @@ def run_overcooked_game(ind,
         # store all actions
         joint_actions = []
 
-        def maybe_render():
-            """Renders the env and saves an img of it if needed."""
-            nonlocal timestep, render, env, img_name
-
+        while not done:
             if render:
                 env.render()
-                if img_name is not None:
-                    cur_name = img_name(timestep)
-                    pygame.image.save(env.mdp.viewer, cur_name)
-                time.sleep(delay / 1000)
-
-        maybe_render()
-        while not done:
+                time.sleep(0.5)
             joint_action = (agent1.action(env.state)[0],
                             agent2.action(env.state)[0])
+            # print(joint_action)
             joint_actions.append(joint_action)
             next_state, timestep_sparse_reward, done, info = env.step(
                 joint_action)
@@ -404,7 +466,6 @@ def run_overcooked_game(ind,
 
             last_state = next_state
             timestep += 1
-            maybe_render()
 
         workloads = last_state.get_player_workload()
         concurr_active = last_state.cal_concurrent_active_sum()
@@ -416,6 +477,8 @@ def run_overcooked_game(ind,
         for timestep in reversed(checkpoints):
             fitness *= env.horizon
             fitness -= timestep
+
+        #print("fitness is: " + str(fitness))
 
         fitnesses.append(fitness)
         total_sparse_rewards.append(total_sparse_reward)

@@ -1,6 +1,6 @@
 import itertools, math, copy
 import numpy as np
-import random
+import random, torch
 from overcooked_ai_py.mdp.actions import Action, Direction
 from overcooked_ai_py.planning.planners import Heuristic
 from overcooked_ai_py.planning.search import SearchTree
@@ -197,6 +197,9 @@ class RandomAgent(Agent):
         self.all_actions = all_actions
         self.custom_wait_prob = custom_wait_prob
     
+    def get_model_name(self):
+        return 'random'
+
     def action(self, state):
         action_probs = np.zeros(Action.NUM_ACTIONS)
         legal_actions = list(Action.MOTION_ACTIONS)
@@ -382,6 +385,9 @@ class GreedyHumanModel(Agent):
     def reset(self):
         super().reset()
         self.prev_state = None
+
+    def get_model_name(self):
+        return 'greedy'
 
     def actions(self, states, agent_indices):
         actions_and_infos_n = []
@@ -1004,6 +1010,7 @@ class biasHumanModel(oneGoalHumanModel):
 
         return env_pref
 
+
 class MdpPlanningAgent(Agent):
 
     def __init__(self, other_agent, mdp_planner, env, delivery_horizon=1, logging_level=0):
@@ -1017,13 +1024,14 @@ class MdpPlanningAgent(Agent):
         state_str = self.mdp_planner.gen_state_dict_key(state)
 
         if state_str not in self.mdp_planner.state_idx_dict:
-            print('State = ', state_str, ';\nNot in dictionary. Action = North')
+            # print('State = ', state_str, ';\nNot in dictionary. Action = North')
             action = Action.ALL_ACTIONS[0]#random.choice(Action.ALL_ACTIONS)
         else:
             action_idx = self.mdp_planner.policy_matrix[self.mdp_planner.state_idx_dict[state_str]]
             action = Action.INDEX_TO_ACTION[action_idx]
 
         return action, {}
+
 
 class MediumMdpPlanningAgent(Agent):
 
@@ -1072,7 +1080,7 @@ class MediumMdpPlanningAgent(Agent):
         state_str = self.get_ml_states(state)
         action = []; chosen_action = []
         if state_str not in self.mdp_planner.state_idx_dict:
-            print('State = ', state_str, ';\nNot in dictionary. Action = North')
+            # print('State = ', state_str, ';\nNot in dictionary. Action = North')
             action = Action.ALL_ACTIONS[0]#random.choice(Action.ALL_ACTIONS)
             state.players[self.agent_index].active_log += [0]
         
@@ -1141,8 +1149,13 @@ class MediumMdpPlanningAgent(Agent):
         
         return chosen_action, action_probs
 
+
 class MediumQMdpPlanningAgent(Agent):
     def __init__(self, mdp_planner, greedy=False, other_agent=None, delivery_horizon=1, logging_level=0, auto_unstuck=False):
+        '''
+        AI agent index is 0. Human index is 1.
+        '''
+
         # self.other_agent = other_agent
         self.delivery_horizon = delivery_horizon
         self.mdp_planner = mdp_planner
@@ -1155,6 +1168,7 @@ class MediumQMdpPlanningAgent(Agent):
     def reset(self):
         super().reset()
         self.prev_state = None
+        self.track_belief = []
         self.prev_dist_to_feature = {}
         self.belief = np.full((len(self.mdp_planner.subtask_dict)), 1.0/len(self.mdp_planner.subtask_dict), dtype=float)
 
@@ -1180,8 +1194,8 @@ class MediumQMdpPlanningAgent(Agent):
                             action = action_plan[0]
         return action
 
-    def action(self, state):
-        LOW_LEVEL_ACTION = False
+    def action(self, state, track_belief=False):
+        LOW_LEVEL_ACTION = True
         num_item_in_pot = 0; pot_pos = []
         if state.objects is not None and len(state.objects) > 0:
             for obj_pos, obj_state in state.objects.items():
@@ -1192,7 +1206,7 @@ class MediumQMdpPlanningAgent(Agent):
 
         self.belief, self.prev_dist_to_feature = self.mdp_planner.belief_update(state, state.players[0], num_item_in_pot, state.players[1], self.belief, self.prev_dist_to_feature, greedy=self.greedy_known)
         mdp_state_keys = self.mdp_planner.world_to_state_keys(state, state.players[0], num_item_in_pot, state.players[1], self.belief)
-        action, action_object_pair, LOW_LEVEL_ACTION = self.mdp_planner.step(state, mdp_state_keys, self.belief, self.agent_index, low_level_action=True)
+        action, action_object_pair, LOW_LEVEL_ACTION = self.mdp_planner.step(state, mdp_state_keys, self.belief, self.agent_index, low_level_action=LOW_LEVEL_ACTION)
 
         if not LOW_LEVEL_ACTION:
             action = self.mdp_action_to_low_level_action(state, mdp_state_keys, action_object_pair)
@@ -1213,13 +1227,16 @@ class MediumQMdpPlanningAgent(Agent):
         # print('Belief =', self.belief)
         # print('Max belief =', list(self.mdp_planner.subtask_dict.keys())[np.argmax(self.belief)])
         # print('Action =', action, '\n')
+        if track_belief:
+            self.track_belief.append(self.belief)
 
         return action, {"action_probs": action_probs}
 
     def resolve_stuck(self, state, chosen_action, action_probs):
-        # HACK: if two agents get stuck, select an action at random that would
+        # HACK: if two agents get stuck and neither performing a pick or drop action, select an action at random that would
         # change the player positions if the other player were to move
-        if self.prev_state is not None and state.players_pos_and_or == self.prev_state.players_pos_and_or:
+        if self.prev_state is not None and state.players_pos_and_or == self.prev_state.players_pos_and_or and state.players[0].held_object == self.prev_state.players[0].held_object and state.players[1].held_object == self.prev_state.players[1].held_object:
+            # print('Resolving stuck...')
             joint_actions = list(itertools.product(Action.MOTION_ACTIONS, Action.MOTION_ACTIONS))
             unblocking_joint_actions = []
             for j_a in joint_actions:
@@ -1239,6 +1256,210 @@ class MediumQMdpPlanningAgent(Agent):
             state.players[self.agent_index].stuck_log += [0]
         
         return chosen_action, action_probs
+
+
+class HRLTrainingAgent(MediumQMdpPlanningAgent):
+    def __init__(self, mdp, mdp_planner, other_agent=None, delivery_horizon=1, logging_level=0, auto_unstuck=False, qnet=None):
+        super().__init__(mdp_planner, other_agent=other_agent, delivery_horizon=delivery_horizon, logging_level=logging_level, auto_unstuck=auto_unstuck)
+
+        self.mdp = mdp
+
+        self.state_idx_dict = None
+        self.state_dict = None
+        self.action_dict = None
+        self.action_idx_dict = None
+        self.subtask_dict = None
+        self.env_items = self.encode_env()
+        self.init_state_space()
+        self.qnet = qnet
+
+    def init_states(self, state_dict=None, state_idx_dict=None, order_list=None):
+        # player_obj, num_item_in_pot, order_list
+
+        if state_idx_dict is None:
+            objects = ['onion', 'soup', 'dish', 'None'] # 'tomato'
+            # common_actions = ['pickup', 'drop']
+            # addition_actions = [('soup','deliver'), ('soup', 'pickup'), ('dish', 'pickup'), ('None', 'None')]
+            # obj_action_pair = list(itertools.product(objects, common_actions)) + addition_actions
+
+            state_keys = []; state_obj = []; tmp_state_obj = []
+
+            for obj in objects:
+                tmp_state_obj.append(([obj]))
+
+            # include number of item in soup
+            objects_only_arr = [obj.copy() for obj in tmp_state_obj]
+            for i in range(self.mdp.num_items_for_soup+1):
+                tmp_keys = [val+'_'+str(i) for val in objects]
+                for obj in tmp_state_obj:
+                    obj.append(i)
+
+                state_keys = state_keys + tmp_keys
+                state_obj = state_obj + tmp_state_obj
+                tmp_state_obj = [obj.copy() for obj in objects_only_arr]
+
+            tmp_state_key = state_keys
+            tmp_state_obj = [obj.copy() for obj in state_obj]
+
+            # include order list items in state
+
+            for order in order_list:
+                prev_keys = tmp_state_key.copy()
+                tmp_keys = [i+'_'+order for i in prev_keys]
+                state_keys = state_keys + tmp_keys
+                tmp_state_key = tmp_keys
+
+                for obj in tmp_state_obj:
+                    obj.append(order)
+                state_obj = state_obj + [obj.copy() for obj in tmp_state_obj]
+
+            # print(state_keys, state_obj)
+
+            self.state_idx_dict = {k:i for i, k in enumerate(state_keys)}
+            self.state_dict = {key:obj for key, obj in zip(state_keys, state_obj)} 
+
+        else:
+            self.state_idx_dict = state_idx_dict
+            self.state_dict = state_dict
+
+        # print('Initialize states:', self.state_idx_dict.items())
+        return
+
+    def init_human_info_states(self, state_idx_dict=None, order_list=None):
+        """
+        States: agent 0 holding object, number of item in pot, order list, agent 1 (usually human) holding object
+        """
+
+        # set state dict as [p0_obj, num_item_in_pot, order_list]
+        self.init_states(order_list=order_list) 
+
+        # add [p1_obj] to [p0_obj, num_item_in_pot, order_list]
+        objects = ['onion', 'soup', 'dish', 'None'] # 'tomato'
+        original_state_dict = copy.deepcopy(self.state_dict)
+        self.state_dict.clear()
+        self.state_idx_dict.clear()
+        for i, obj in enumerate(objects):
+            for ori_key, ori_value in original_state_dict.items():
+                new_key = ori_key+'_'+obj
+                new_obj = original_state_dict[ori_key]+[obj]
+                self.state_dict[new_key] = new_obj # update value
+                self.state_idx_dict[new_key] = len(self.state_idx_dict)
+
+        # print('init_human_info_states dict =', self.state_dict)
+
+    def init_actions(self, actions=None, action_dict=None, action_idx_dict=None):
+        '''
+        action_dict = {'pickup_onion': ['pickup', 'onion'], 'pickup_dish': ['pickup', 'dish'], 'drop_onion': ['drop', 'onion'], 'drop_dish': ['drop', 'dish'], 'deliver_soup': ['deliver', 'soup'], 'pickup_soup': ['pickup', 'soup']}
+        '''
+        # print('In init_actions()...')
+
+        if actions is None:
+            objects = ['onion', 'dish'] # 'tomato'
+            common_actions = ['pickup', 'drop']
+            addition_actions = [['deliver','soup'], ['pickup', 'soup']]
+
+            common_action_obj_pair = list(itertools.product(common_actions, objects))
+            common_action_obj_pair = [list(i) for i in common_action_obj_pair]
+            actions = common_action_obj_pair + addition_actions
+            self.action_dict = {action[0]+'_'+action[1]:action for action in actions}
+            self.action_idx_dict = {action[0]+'_'+action[1]:i for i, action in enumerate(actions)}
+
+        else:
+            self.action_dict = action_dict
+            self.action_idx_dict = action_idx_dict
+
+        # print('Initialize actions:', self.action_dict)
+        
+        return
+    
+    def init_state_space(self):
+        self.init_human_info_states(order_list=self.mdp.start_order_list)
+        self.init_actions()
+
+    def encode_env(self):
+        onion_loc = self.mdp.get_onion_dispenser_locations()[0]
+        pot_loc = self.mdp.get_pot_locations()[0]
+        dish_loc = self.mdp.get_dish_dispenser_locations()[0]
+        serving = self.mdp.get_serving_locations()[0]
+
+        # create 4x2 matrix
+        env_items = [[onion_loc[0], onion_loc[1]],
+                    [pot_loc[0], pot_loc[1]],
+                    [dish_loc[0], dish_loc[1]],
+                    [serving[0], serving[1]]]
+
+        return np.array(env_items)
+
+    ### transition subtask actions to low level actions ###
+    def mdp_action_to_low_level_action(self, state, state_strs, action_object_pair):
+        # map back the medium level action to low level action
+        ai_agent_obj = state.players[0].held_object.name if state.players[0].held_object is not None else 'None'
+        # print(ai_agent_obj)
+        possible_motion_goals, WAIT = self.mdp_planner.map_action_to_location(state, state_strs[0], action_object_pair[0], action_object_pair[1], p0_obj=ai_agent_obj, player_idx=0, counter_drop=False, state_dict=self.state_dict)
+
+        # initialize
+        action = Action.STAY
+        minimum_cost = 100000.0
+        # print(state)
+        # print('possible_motion_goals =', possible_motion_goals)
+        if not WAIT:
+            for possible_location in possible_motion_goals:
+                motion_goal_locations = self.mdp_planner.mp.motion_goals_for_pos[possible_location]
+                for motion_goal_location in motion_goal_locations:
+                    if self.mdp_planner.mp.is_valid_motion_start_goal_pair((state.players[0].position, state.players[0].orientation), motion_goal_location):
+                        action_plan, _, cost = self.mdp_planner.mp._compute_plan((state.players[0].position, state.players[0].orientation), motion_goal_location)
+                        if cost < minimum_cost:
+                            minimum_cost = cost
+                            action = action_plan[0]
+        return action
+
+    def lstate_to_hstate(self, state, to_str=False):
+        # hstate: subtask state and key object position
+        objects = {'onion': 0, 'soup': 1, 'dish': 2, 'None': 3}
+
+        player = state.players[0]
+        other_player = state.players[1]
+        player_obj = None; other_player_obj = None
+        
+        if player.held_object is not None:
+            player_obj = player.held_object.name
+        if other_player.held_object is not None:
+            other_player_obj = other_player.held_object.name
+
+        order_str = None if len(state.order_list) == 0 else state.order_list[0]
+        for order in state.order_list[1:]:
+            order_str = order_str + '_' + str(order)
+
+        num_item_in_pot = 0
+        if state.objects is not None and len(state.objects) > 0:
+            for obj_pos, obj_state in state.objects.items():
+                if obj_state.name == 'soup' and obj_state.state[1] > num_item_in_pot:
+                    num_item_in_pot = obj_state.state[1]
+
+        state_vector = np.array([objects[str(player_obj)], num_item_in_pot, len(state.order_list[1:]), objects[str(other_player_obj)]])
+        
+        if to_str:
+            state_strs = str(player_obj)+'_'+str(num_item_in_pot)+'_'+ order_str + '_' + str(other_player_obj)
+            return np.array(state_vector), state_strs
+
+        return np.array(state_vector)
+
+    
+    def haction_to_laction(self, state, state_strs, a_idx):
+        laction = self.mdp_action_to_low_level_action(state, [state_strs], list(self.mdp_planner.subtask_dict.values())[a_idx])
+
+        return laction
+
+    def action(self, state, q=None, track_belief=False):
+        if q is None:
+            q = self.qnet
+        h_state, h_state_strs = self.lstate_to_hstate(state, to_str=True)
+        h_env_state = np.concatenate((h_state.reshape(4,1), self.env_items), axis=1)
+        a = q.sample_action(torch.from_numpy(h_env_state).float(), 0)
+        action = self.haction_to_laction(state, h_state_strs, a)
+
+        return action, {}
+
 
 class QMDPAgent(Agent):
     def __init__(self, mlp, env, delivery_horizon=2, heuristic=None):
@@ -1287,3 +1508,13 @@ class HumanPlayer(Agent):
     def reset(self):
         super().reset()
         self.prev_state = None
+
+class RLTrainingAgent(Agent):
+    """
+    Placeholder Agent used for RL training.
+    """
+    def __init__(self):
+        pass
+
+    def reset(self):
+        super().reset()
