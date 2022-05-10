@@ -8,7 +8,7 @@ multi_iter=true
 name="qmdp_agent"
 known=false
 auto_unstuck=true
-low_level_action=true
+low_level_action=false
 
 [Agent2]
 name="greedy_agent"

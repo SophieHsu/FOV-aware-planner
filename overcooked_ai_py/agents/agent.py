@@ -1151,7 +1151,7 @@ class MediumMdpPlanningAgent(Agent):
 
 
 class MediumQMdpPlanningAgent(Agent):
-    def __init__(self, mdp_planner, greedy=False, other_agent=None, delivery_horizon=1, logging_level=0, auto_unstuck=False):
+    def __init__(self, mdp_planner, greedy=False, other_agent=None, delivery_horizon=1, logging_level=0, auto_unstuck=False, low_level_action_flag=True):
         '''
         AI agent index is 0. Human index is 1.
         '''
@@ -1163,6 +1163,7 @@ class MediumQMdpPlanningAgent(Agent):
         self.auto_unstuck = auto_unstuck
         self.other_agent = other_agent
         self.greedy_known = greedy
+        self.low_level_action_flag = low_level_action_flag
         self.reset()
 
     def reset(self):
@@ -1195,7 +1196,7 @@ class MediumQMdpPlanningAgent(Agent):
         return action
 
     def action(self, state, track_belief=False):
-        LOW_LEVEL_ACTION = True
+        LOW_LEVEL_ACTION = self.low_level_action_flag
         num_item_in_pot = 0; pot_pos = []
         if state.objects is not None and len(state.objects) > 0:
             for obj_pos, obj_state in state.objects.items():

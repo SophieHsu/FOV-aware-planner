@@ -297,7 +297,8 @@ def setup_env_from_grid(layout_grid,
         agent1 = MediumQMdpPlanningAgent(
             qmdp_planner,
             greedy=agent1_config["known"],
-            auto_unstuck=agent1_config["auto_unstuck"])
+            auto_unstuck=agent1_config["auto_unstuck"],
+            low_level_action_flag=agent1_config["low_level_action"])
 
         print("worker(%d): Preprocess take %d seconds" %
               (worker_id, time.time() - start_time))
