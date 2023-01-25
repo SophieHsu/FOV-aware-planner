@@ -1,6 +1,7 @@
 import itertools, os
+from turtle import position
 import numpy as np
-import pickle, time, random, copy
+import pickle, time, random, copy, json
 import math
 from overcooked_ai_py.utils import pos_distance, manhattan_distance
 from overcooked_ai_py.planning.search import SearchTree, Graph
@@ -9,6 +10,7 @@ from overcooked_ai_py.mdp.overcooked_mdp import OvercookedState, PlayerState, Ob
 from overcooked_ai_py.mdp.overcooked_env import OvercookedEnv
 from overcooked_ai_py.data.planners import load_saved_action_manager, PLANNERS_DIR
 import pprint
+import pandas as pd
 
 # to measure exec time 
 from timeit import default_timer as timer
@@ -1070,6 +1072,7 @@ class MediumLevelActionManager(object):
                 possible_motion_goals.append(motion_goal)
         return possible_motion_goals
 
+
 class MediumLevelPlanner(object):
     """
     A planner that computes optimal plans for two agents to deliver a certain number of dishes 
@@ -1314,6 +1317,7 @@ class MediumLevelPlanner(object):
             assert False, "state {} \t action {}".format(state, action)
             successor_state = state
         return successor_state, joint_action
+
 
 class HighLevelAction:
     """A high level action is given by a set of subsequent motion goals"""
@@ -2820,7 +2824,6 @@ class HumanSubtaskQMDPPlanner(MediumLevelMdpPlanner):
     def world_state_to_mdp_state_key(self, state, player, other_player, subtask):
         # a0 pos, a0 dir, a0 hold, a1 pos, a1 dir, a1 hold, len(order_list)
 
-
         player_obj = None; other_player_obj = None
         if player.held_object is not None:
             player_obj = player.held_object.name
@@ -3080,7 +3083,7 @@ class HumanSubtaskQMDPPlanner(MediumLevelMdpPlanner):
         current low level state information.
 
         next_state_v: shape(len(belief), len(action_idx)). If the low_level_action is True, 
-            the action_dix will be representing the 6 low level action index (north, south...).
+            the action_dic will be representing the 6 low level action index (north, south...).
             If the low_level_action is False, it will be the action_dict (pickup_onion, pickup_soup...).
         """
         start_time = time.time()
@@ -3245,6 +3248,145 @@ class HumanSubtaskQMDPPlanner(MediumLevelMdpPlanner):
         # tmp = input()
         # self.save_to_file(output_mdp_path)
         return 
+
+
+# class AbstractQMDPPlanner(HumanSubtaskQMDPPlanner):
+#     def __init__(self, mdp, mlp_params, abstract_file, abstract_trans_file, map_world_to_state_file, state_dict={}, state_idx_dict={}, action_dict={}, action_idx_dict={}, transition_matrix=None, reward_matrix=None, policy_matrix=None, value_matrix=None, num_states=0, num_rounds=0, epsilon=0.01, discount=0.8):
+#         super().__init__(mdp, mlp_params, state_dict, state_idx_dict, action_dict, action_idx_dict, transition_matrix, reward_matrix, policy_matrix, value_matrix, num_states, num_rounds, epsilon, discount)
+
+#         self.abstract_states = self.read_abstract_state(abstract_file)
+#         self.abstract_trans = self.read_abstract_trans(abstract_trans_file)
+#         self.subtask_dict = self.decode_abstract_states()
+#         self.action_dict = self.abstract_states.copy()
+#         self.map_world_to_state = pickle.load(open(os.path.join(os.getcwd(), map_world_to_state_file, 'rb')))
+#         #### NEXT AR: link state_idx_dict with abstract state. Only need to deal with world info transfer to abstract state.
+
+
+#     def read_abstract_state(abstract_file):
+#         abstract_states = json.load(abstract_file)
+#         return abstract_states
+
+#     def read_abstract_trans(abstract_trans_file):
+#         abstract_trans = np.load(abstract_trans_file)
+#         return abstract_trans
+
+#     def decode_abstract_states(self):
+#         abstract_sub_states = {}
+#         for k,v in self.abstract_states.items():
+#             states = v.split('|')
+#             sub_state_dict = {}
+#             for s in states:
+#                 tmp = s.split(':')
+#                 sub_state_dict[tmp[0]] = tmp[1]
+#             abstract_sub_states[k] = sub_state_dict.copy()
+
+#         return abstract_sub_states
+
+#     def map_world_to_data_column(self, state, player, other_player, subtask):
+#         player_obj = None; other_player_obj = None
+#         if player.held_object is not None:
+#             player_obj = player.held_object.name
+#         if other_player.held_object is not None:
+#             other_player_obj = other_player.held_object.name
+
+#         order_str = None if len(state.order_list) == 0 else state.order_list[0]
+#         for order in state.order_list[1:]:
+#             order_str = order_str + '_' + str(order)
+
+#         num_item_in_pot = 0
+#         if state.objects is not None and len(state.objects) > 0:
+#             for obj_pos, obj_state in state.objects.items():
+#                 if obj_state.name == 'soup' and obj_state.state[1] > num_item_in_pot:
+#                     num_item_in_pot = obj_state.state[1]
+
+#         d = {}
+#         d['num_item_in_pot'] = num_item_in_pot
+#         d['agent_hold_onion'] = 1.00 if player_obj == 'onion' else 0.00
+#         d['agent_hold_soup'] = 1.00 if player_obj == 'soup' else 0.00
+#         d['agent_hold_dish'] = 1.00 if player_obj == 'dish' else 0.00
+
+#         d['onion_loc0_agent_pos'] = np.min(np.sum(self.mdp.get_onion_dispenser_locations() - player.position), axis=1)
+
+#         d['pot_loc0_agent_pos'] = np.min(np.sum(self.mdp.get_pot_locations() - player.position), axis=1)
+
+#         d['dish_loc0_agent_pos'] = np.min(np.sum(self.mdp.get_dish_dispenser_locations() - player.position), axis=1)
+
+#         d['serving_loc0_agent_pos'] = np.min(np.sum(self.mdp.get_serving_locations() - player.position), axis=1)
+
+#         return pd.DataFrame.from_dict(d)
+    
+# # Next AR: solve as new prob. 1. update belief 2. compute value 3. compute policy
+#     def belief_update(self, world_state, agent_player, soup_finish, human_player, belief_vector, prev_dist_to_feature, greedy=False):
+#         '''
+#         Map the observation into the abstract state through the classificiation network.
+#         The probability of the classification becomes the belief distribution.
+#         '''
+#         # get input to classification
+#         ### NEXT AR: map world to data column for belief update
+#         world_df = self.map_world_to_data_column(world_state)
+
+#         # classify
+#         subtask_belief = self.map_world_to_state.predict(world_df)
+
+#         # prediction results matching belief
+#         return subtask_belief
+
+#     def map_abstract_to_world(self, abstract_idx):
+
+
+#     def mdp_action_state_to_world_state(self, action_idx, ori_abstract_idx, ori_world_state, with_argmin=False):
+#         new_world_state = ori_world_state.deepcopy()
+#         # NEXT AR: include data for map_action_to_location for human
+
+#         possible_agent_motion_goals, AI_WAIT = self.map_abstract_to_world(ori_abstract_idx)
+#         possible_human_motion_goals, HUMAN_WAIT = self.map_action_to_location(ori_world_state, ori_mdp_state_key, self.action_dict[mdp_state_obj[-1]][0], self.action_dict[mdp_state_obj[-1]][1], p0_obj=mdp_state_obj[-2], player_idx=1) # get next world state from human subtask info (aka. mdp action translate into medium level goal position)
+
+#     def get_successor_states(self, start_world_state, start_state_key, debug=False):
+
+#         next_abs_state_idx_arr = np.where(self.abstract_trans[:, self.abstract_states[start_state_key]] > 0.000001)
+
+#         for next_abs_state_idx in next_abs_state_idx_arr:
+#             next_world_state, cost = self.mdp_action_state_to_world_state(next_abs_state_idx, next_abs_state_idx, start_world_state)
+#             successor_states.append((self.get_key_from_value(self.state_idx_dict, next_state_idx), next_world_state, cost))
+
+#     # def compute_V(subtask_belief):
+        
+
+#     def step(self, curr_world, curr_abs_states, belief):
+#         """
+#         Compute plan cost that starts from the next qmdp state defined as next_state_v().
+#         Compute the action cost of excuting a step towards the next qmdp state based on the
+#         current low level state information.
+#         action = abstract action (defined by the name of the end abs state)
+#         """
+        
+#         for curr_abs_idx, curr_abs in enumerate(curr_abs_states):
+#             abs_action_idxs = np.where(self.abstract_trans[curr_abs, :] > 0.000001)
+
+
+#             for abs_action_idx in abs_action_idxs:
+#                 next_abs_state_idx = abs_action_idx
+#                 # cost of current abstract state to next
+#                 ## map abstract to world for cost
+#                 after_action_world_state, cost, goals_pos = self.mdp_action_state_to_world_state(abs_action_idx, curr_abs_idx, curr_world, with_argmin=True)
+
+#                 next_abs_cost = self.compute_V(after_action_world_state, self.get_key_from_value(self.state_idx_dict, next_abs_state_idx), search_depth=100)
+
+#                 # cost of current world to abstract state
+#                 ## map abstract to world,
+#                 joint_action, one_step_cost = self.joint_action_cost(curr_world, after_action_world_state.players_pos_and_or)
+
+#                 next_state_v[i, action_idx] += (value_cost * self.transition_matrix[action_idx, mdp_state_idx, next_state_idx])
+#                 # print(next_state_v[i, action_idx])
+
+#                 ## compute one step cost with joint motion considered
+#                 action_cost[i, action_idx] -= (one_step_cost)*self.transition_matrix[action_idx, mdp_state_idx, next_state_idx]
+
+#         # compute Q and best action
+
+
+#         return action_idx
+
 
 
 class HumanMediumLevelPlanner(object):
@@ -3532,7 +3674,7 @@ class MdpPlanner(MediumLevelPlanner):
         return joint_actions
 
     def rev_joint_action_idx(self, joint_action_idx, agent_idx):
-        joint_actions = get_joint_action_array()
+        joint_actions = self.get_joint_action_array()
         return joint_actions[joint_action_idx][agent_idx]
 
     def overload_trans_matrix(self):

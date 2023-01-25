@@ -535,7 +535,6 @@ class GreedyHumanModel(Agent):
 
         counter_objects = self.mlp.mdp.get_counter_objects_dict(state, list(self.mlp.mdp.terrain_pos_dict['X']))
         pot_states_dict = self.mlp.mdp.get_pot_states(state)
-
         # NOTE: this most likely will fail in some tomato scenarios
         curr_order = state.curr_order
 
@@ -592,6 +591,180 @@ class GreedyHumanModel(Agent):
 
         return motion_goals
 
+class limitVisionHumanModel(GreedyHumanModel):
+    def __init__(self, mlp, hl_boltzmann_rational=False, ll_boltzmann_rational=False, hl_temp=1, ll_temp=1,
+                 auto_unstuck=True):
+        super().__init__(mlp, hl_boltzmann_rational, ll_boltzmann_rational, hl_temp, ll_temp,
+                 auto_unstuck)
+        self.other_player_states = None
+        self.pot_states = None
+
+    def get_vision_bound(self, state):
+        player = state.players[self.agent_index]
+
+        # get the two points first by assuming facing north
+        vision_width = np.radians(30)
+        right_pt = player.position + np.array([math.cos(vision_width), math.sin(vision_width)])
+        left_pt = player.position + np.array([-math.cos(vision_width), math.sin(vision_width)])
+
+        # angle based on the agent's facing
+        # theta = np.radians(0)
+        # ori = Direction.DIRECTION_TO_INDEX[player.orientation]
+        # if ori == 0: # north
+        #     theta = np.radians(180)
+        # elif ori == 2: # east
+        #     theta = np.radians(270)
+        # elif ori == 1: # south
+        #     theta = np.radians(0)
+        # elif ori == 3: # west
+        #     theta = np.radians(90)
+        
+        # c, s = np.cos(theta), np.sin(theta)
+        # R = np.array(((c, -s), (s, c)))
+        # right_pt = np.matmul(R,right_pt-player.position)+player.position
+        # left_pt = np.matmul(R,left_pt-player.position)+player.position
+
+        return right_pt, left_pt
+
+    def in_bound(self, loc, right_pt, left_pt, state):
+        '''
+        Use cross product to see if the point is on the left or right side of the vision bound edges.
+        '''
+        player = state.players[self.agent_index]
+        right_in_bound = False
+        left_in_bound = False
+        thresh = 1e-9
+
+        # angle based on the agent's facing
+        theta = None
+        ori = Direction.DIRECTION_TO_INDEX[player.orientation]
+        if ori == 1: # north
+            theta = np.radians(0)
+        elif ori == 2: # east
+            theta = np.radians(-270)
+        elif ori == 0: # south
+            theta = np.radians(180)
+        elif ori == 3: # west
+            theta = np.radians(-90)
+        
+        c, s = np.cos(theta), np.sin(theta)
+        R = np.array(((c, -s), (s, c)))
+        rot_loc = np.matmul(R,np.array(loc)-player.position)+player.position
+
+        # check right bound
+        right_val = ((right_pt[0] - player.position[0])*(rot_loc[1] - player.position[1]) - (right_pt[1] - player.position[1])*(rot_loc[0] - player.position[0]))
+        if right_val >= thresh: # left of line
+            right_in_bound = True
+        elif right_val <= -thresh: # right of line
+            right_in_bound = False
+        else: # on the line
+            right_in_bound = True
+
+        # check left bound
+        left_val = ((left_pt[0] - player.position[0])*(rot_loc[1] - player.position[1]) - (left_pt[1] - player.position[1])*(rot_loc[0] - player.position[0]))
+        if left_val >= thresh: # left of line
+            left_in_bound = False
+        elif left_val <= -thresh: # right of line
+            left_in_bound = True
+        else: # on the line
+            left_in_bound = True
+
+
+        return (left_in_bound and right_in_bound)
+
+    def update(self, state):
+        right_pt, left_pt = self.get_vision_bound(state)
+
+        # check if pots are in vision
+        valid_pot_pos = []
+        for pot_pos in self.mlp.mdp.get_pot_locations():
+            if self.in_bound(pot_pos, right_pt, left_pt, state):
+                # print('Pot ', pot_pos, ' in bound')
+                valid_pot_pos.append(pot_pos)
+
+        self.pot_states = self.mlp.mdp.get_pot_states(state, pots_states_dict=self.pot_states, valid_pos=valid_pot_pos)
+
+        # check if other player is in vision
+        other_player = state.players[1 - self.agent_index]
+        if self.in_bound(other_player.position, right_pt, left_pt, state):
+            # print('Other agent in bound')
+            self.other_player_states = other_player
+
+    def ml_action(self, state):
+        """
+        Selects a medium level action for the current state.
+        Motion goals can be thought of instructions of the form:
+            [do X] at location [Y]
+
+        In this method, X (e.g. deliver the soup, pick up an onion, etc) is chosen based on
+        a simple set of greedy heuristics based on the current state.
+
+        Effectively, will return a list of all possible locations Y in which the selected
+        medium level action X can be performed.
+        """
+
+        self.update(state)
+        player = state.players[self.agent_index]
+        other_player = state.players[1 - self.agent_index]
+        am = self.mlp.ml_action_manager
+
+        counter_objects = self.mlp.mdp.get_counter_objects_dict(state, list(self.mlp.mdp.terrain_pos_dict['X']))
+        pot_states_dict = self.pot_states
+        # NOTE: this most likely will fail in some tomato scenarios
+        curr_order = state.curr_order
+
+        if not player.has_object():
+
+            if curr_order == 'any':
+                ready_soups = pot_states_dict['onion']['ready'] + pot_states_dict['tomato']['ready']
+                cooking_soups = pot_states_dict['onion']['cooking'] + pot_states_dict['tomato']['cooking']
+            else:
+                ready_soups = pot_states_dict[curr_order]['ready']
+                cooking_soups = pot_states_dict[curr_order]['cooking']
+
+            soup_nearly_ready = len(ready_soups) > 0 or len(cooking_soups) > 0
+            other_has_dish = other_player.has_object() and other_player.get_object().name == 'dish'
+
+            if soup_nearly_ready and not other_has_dish:
+                motion_goals = am.pickup_dish_actions(counter_objects)
+            else:
+                next_order = None
+                if state.num_orders_remaining > 1:
+                    next_order = state.next_order
+
+                if next_order == 'onion':
+                    motion_goals = am.pickup_onion_actions(counter_objects)
+                elif next_order == 'tomato':
+                    motion_goals = am.pickup_tomato_actions(counter_objects)
+                elif next_order is None or next_order == 'any':
+                    motion_goals = am.pickup_onion_actions(counter_objects) + am.pickup_tomato_actions(counter_objects)
+
+        else:
+            player_obj = player.get_object()
+
+            if player_obj.name == 'onion':
+                motion_goals = am.put_onion_in_pot_actions(pot_states_dict)
+
+            elif player_obj.name == 'tomato':
+                motion_goals = am.put_tomato_in_pot_actions(pot_states_dict)
+
+            elif player_obj.name == 'dish':
+                motion_goals = am.pickup_soup_with_dish_actions(pot_states_dict, only_nearly_ready=True)
+
+            elif player_obj.name == 'soup':
+                motion_goals = am.deliver_soup_actions()
+
+            else:
+                raise ValueError()
+
+        motion_goals = [mg for mg in motion_goals if self.mlp.mp.is_valid_motion_start_goal_pair(player.pos_and_or, mg)]
+
+        if len(motion_goals) == 0:
+            motion_goals = am.go_to_closest_feature_actions(player)
+            motion_goals = [mg for mg in motion_goals if self.mlp.mp.is_valid_motion_start_goal_pair(player.pos_and_or, mg)]
+            assert len(motion_goals) != 0
+
+        return motion_goals
 
 class oneGoalHumanModel(Agent):
     """
@@ -1150,6 +1323,27 @@ class MediumMdpPlanningAgent(Agent):
         return chosen_action, action_probs
 
 
+# class AbstractPlanningAgent(Agent):
+#     def __init__(self, mdp_planner, greedy=False, other_agent=None, delivery_horizon=1, logging_level=0, auto_unstuck=False, low_level_action_flag=True):
+#         self.delivery_horizon = delivery_horizon
+
+#     def action(self, state, track_belief=False):
+#         '''
+#         Update current observation of the world and perform next action.
+#         Input: world state
+#         Output: 
+#         '''
+#         num_item_in_pot = 0
+#         # update the observation's pot status by looking at the pot status in the world
+#         if state.objects is not None and len(state.objects) > 0:
+#             for obj_pos, obj_state in state.objects.items():
+#                 # print(obj_state)
+#                 if obj_state.name == 'soup' and obj_state.state[1] > num_item_in_pot:
+#                     num_item_in_pot = obj_state.state[1]
+
+#         self.belief = self.mdp_planner.belief_update(state, num_item_in_pot)
+#         action = self.mdp_planner.step(state)
+
 class MediumQMdpPlanningAgent(Agent):
     def __init__(self, mdp_planner, greedy=False, other_agent=None, delivery_horizon=1, logging_level=0, auto_unstuck=False, low_level_action_flag=True):
         '''
@@ -1198,6 +1392,7 @@ class MediumQMdpPlanningAgent(Agent):
     def action(self, state, track_belief=False):
         LOW_LEVEL_ACTION = self.low_level_action_flag
         num_item_in_pot = 0; pot_pos = []
+        # update the observation's pot status by looking at the pot status in the world
         if state.objects is not None and len(state.objects) > 0:
             for obj_pos, obj_state in state.objects.items():
                 # print(obj_state)
@@ -1205,8 +1400,11 @@ class MediumQMdpPlanningAgent(Agent):
                     num_item_in_pot = obj_state.state[1]
                     pot_pos = obj_pos
 
+        # update the belief in a state by the result of observations
         self.belief, self.prev_dist_to_feature = self.mdp_planner.belief_update(state, state.players[0], num_item_in_pot, state.players[1], self.belief, self.prev_dist_to_feature, greedy=self.greedy_known)
+        # map abstract to low-level state
         mdp_state_keys = self.mdp_planner.world_to_state_keys(state, state.players[0], num_item_in_pot, state.players[1], self.belief)
+        # compute in low-level the action and cost
         action, action_object_pair, LOW_LEVEL_ACTION = self.mdp_planner.step(state, mdp_state_keys, self.belief, self.agent_index, low_level_action=LOW_LEVEL_ACTION)
 
         if not LOW_LEVEL_ACTION:

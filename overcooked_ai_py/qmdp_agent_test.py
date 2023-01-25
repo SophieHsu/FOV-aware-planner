@@ -152,7 +152,8 @@ if __name__ == "__main__" :
     # human_agent = agent.biasHumanModel(ml_action_manager, [0.5, (1.0-0.5)], 0.5, auto_unstuck=True)
 
     mlp = planners.MediumLevelPlanner.from_pickle_or_compute(scenario_1_mdp, NO_COUNTERS_PARAMS, force_compute=True)  
-    human_agent = agent.GreedyHumanModel(mlp)
+    human_agent = agent.limitVisionHumanModel(mlp)
+    # human_agent = agent.GreedyHumanModel(mlp)
     # human_agent = agent.CoupledPlanningAgent(mlp)
 
     qmdp_start_time = time.time()
@@ -169,7 +170,7 @@ if __name__ == "__main__" :
     agent_pair = agent.AgentPair(ai_agent, human_agent) # if use QMDP, the first agent has to be the AI agent
     print("It took {} seconds for planning".format(time.time() - start_time))
     total_t = 0
-    for i in range(100):
+    for i in range(1):
         game_start_time = time.time()
         s_t, joint_a_t, r_t, done_t = env.run_agents(agent_pair, include_final_state=True, display=DISPLAY)
         # print("It took {} seconds for qmdp to compute".format(game_start_time - qmdp_start_time))
@@ -180,7 +181,7 @@ if __name__ == "__main__" :
         total_t += len(s_t)
     print('Average timesteps =', total_t/10.0)
     t = 0
-    scenario_1_mdp = OvercookedGridworld.from_layout_name('10x15_test1', start_order_list=['onion','onion'], num_items_for_soup=2, cook_time=10)
+    scenario_1_mdp = OvercookedGridworld.from_layout_name('10x15_test1', start_order_list=['onion','onion'], num_items_for_soup=3, cook_time=10)
     env = OvercookedEnv.from_mdp(scenario_1_mdp, horizon = 100)
     while not done:
         if t >= 0 and t <= len(s_t):

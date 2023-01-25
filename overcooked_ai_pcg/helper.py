@@ -338,6 +338,66 @@ def setup_env_from_grid(layout_grid,
 
         del mlp_planner, qmdp_planner
 
+    elif agent1_config["name"] == "qmdp_agent" and agent2_config["name"] == "limit_vision_agent":
+        print("worker(%d): Pre-constructing graph..." % (worker_id))
+        # print(human_preference, human_adaptiveness)
+        mlp_planner = MediumLevelPlanner(mdp, BASE_PARAMS)
+        print("worker(%d): Planning..." % (worker_id))
+
+        agent2 = limitVisionHumanModel(mlp_planner,
+                                  auto_unstuck=agent2_config["auto_unstuck"])
+
+        print("worker(%d): Pre-constructing qmdp plan..." % (worker_id))
+
+        qmdp_planner = HumanSubtaskQMDPPlanner.from_pickle_or_compute(
+            mdp, BASE_PARAMS, force_compute_all=True)
+
+        print("worker(%d): QMDP agent planning..." % (worker_id))
+
+        agent1 = MediumQMdpPlanningAgent(
+            qmdp_planner,
+            greedy=agent1_config["known"],
+            auto_unstuck=agent1_config["auto_unstuck"],
+            low_level_action_flag=agent1_config["low_level_action"])
+
+        print("worker(%d): Preprocess take %d seconds" %
+              (worker_id, time.time() - start_time))
+
+        agent1.set_mdp(mdp)
+        agent2.set_mdp(mdp)
+
+        del mlp_planner, qmdp_planner
+
+    elif agent1_config["name"] == "mdp_agent" and agent2_config["name"] == "limit_vision_agent":
+        print("worker(%d): Pre-constructing graph..." % (worker_id))
+        # print(human_preference, human_adaptiveness)
+        mlp_planner = MediumLevelPlanner(mdp, BASE_PARAMS)
+        print("worker(%d): Planning..." % (worker_id))
+
+        agent2 = limitVisionHumanModel(mlp_planner,
+                                  auto_unstuck=agent2_config["auto_unstuck"])
+
+        print("worker(%d): Pre-constructing qmdp plan..." % (worker_id))
+
+        qmdp_planner = HumanSubtaskQMDPPlanner.from_pickle_or_compute(
+            mdp, BASE_PARAMS, force_compute_all=True)
+
+        print("worker(%d): QMDP agent planning..." % (worker_id))
+
+        agent1 = MediumQMdpPlanningAgent(
+            qmdp_planner,
+            greedy=agent1_config["known"],
+            auto_unstuck=agent1_config["auto_unstuck"])
+
+        print("worker(%d): Preprocess take %d seconds" %
+              (worker_id, time.time() - start_time))
+
+        agent1.set_mdp(mdp)
+        agent2.set_mdp(mdp)
+
+        del mlp_planner, qmdp_planner
+
+
     # Set up 6: rl random agent + greedy agent
     elif (agent1_config["name"] == "rl_rand_agent" or agent1_config["name"]
           == "rl_greedy_agent" or agent1_config["name"] == "rl_mix_agent") and agent2_config["name"] == "greedy_agent":

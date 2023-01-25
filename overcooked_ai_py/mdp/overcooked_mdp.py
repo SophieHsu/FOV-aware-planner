@@ -1078,7 +1078,7 @@ class OvercookedGridworld(object):
     def num_pots(self):
         return len(self.get_pot_locations())
 
-    def get_pot_states(self, state):
+    def get_pot_states(self, state, pots_states_dict=None, valid_pos=None):
         """Returns dict with structure:
         {
          empty: [ObjStates]
@@ -1091,19 +1091,39 @@ class OvercookedGridworld(object):
          tomato: same dict structure as above
         }
         """
-        pots_states_dict = {}
-        pots_states_dict['empty'] = []
-        pots_states_dict['onion'] = defaultdict(list)
-        pots_states_dict['tomato'] = defaultdict(list)
-        for pot_pos in self.get_pot_locations():
+        if pots_states_dict is None:
+            pots_states_dict = {}
+            pots_states_dict['empty'] = []
+            pots_states_dict['onion'] = defaultdict(list)
+            pots_states_dict['tomato'] = defaultdict(list)
+
+        get_pot_info = []
+        if valid_pos is not None:
+            for pot_pos in self.get_pot_locations():
+                if pot_pos in valid_pos:
+                    get_pot_info.append(pot_pos)
+        else:
+            get_pot_info = self.get_pot_locations()
+
+        for pot_pos in get_pot_info:
+            # reset
+            for k, v in pots_states_dict.items():
+                if type(v) == list:
+                    if pot_pos in v:
+                        v.remove(pot_pos)
+                else:
+                    for d_k, d_v in v.items():
+                        if pot_pos in d_v:
+                            d_v.remove(pot_pos)
+
             if not state.has_object(pot_pos):
                 pots_states_dict['empty'].append(pot_pos)
+
             else:
                 soup_obj = state.get_object(pot_pos)
                 soup_type, num_items, cook_time = soup_obj.state
                 if 0 < num_items < self.num_items_for_soup:
-                    pots_states_dict[soup_type]['{}_items'.format(
-                        num_items)].append(pot_pos)
+                    pots_states_dict[soup_type]['{}_items'.format(num_items)].append(pot_pos)
                 elif num_items == self.num_items_for_soup:
                     assert cook_time <= self.soup_cooking_time
                     if cook_time == self.soup_cooking_time:
@@ -1115,10 +1135,35 @@ class OvercookedGridworld(object):
                         self.num_items_for_soup))
 
                 if 0 < num_items < self.num_items_for_soup:
-                    pots_states_dict[soup_type]['partially_full'].append(
-                        pot_pos)
+                    pots_states_dict[soup_type]['partially_full'].append(pot_pos)
 
         return pots_states_dict
+
+    def get_pot_state(self, state, pot_pos):
+        """Returns pot status based on the position of the pot"""
+        pot_status = [None, None, None]
+
+        if not state.has_object(pot_pos):
+            pot_status = [None, 'empty', 0] # soup type, cooking status, num of items
+        else:
+            soup_obj = state.get_object(pot_pos)
+            soup_type, num_items, cook_time = soup_obj.state
+            if 0 < num_items < self.num_items_for_soup:
+                pot_status = [soup_type, None, num_items]
+            elif num_items == self.num_items_for_soup:
+                assert cook_time <= self.soup_cooking_time
+                if cook_time == self.soup_cooking_time:
+                    pot_status = [soup_type, 'ready', num_items]
+                else:
+                    pot_status = [soup_type, 'cooking', num_items]
+            else:
+                raise ValueError("Pot with more than {} items".format(
+                    self.num_items_for_soup))
+
+            if 0 < num_items < self.num_items_for_soup:
+                    pot_status = [soup_type, 'partially_full', num_items]
+
+        return pot_status
 
     def get_counter_objects_dict(self, state, counter_subset=None):
         """Returns a dictionary of pos:objects on counters by type"""
