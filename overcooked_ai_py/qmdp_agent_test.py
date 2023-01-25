@@ -139,7 +139,7 @@ if __name__ == "__main__" :
 
     # np.random.seed(0)
     start_time = time.time()
-    scenario_1_mdp = OvercookedGridworld.from_layout_name('10x15_test1', start_order_list=['onion','onion'], num_items_for_soup=2, cook_time=10)
+    scenario_1_mdp = OvercookedGridworld.from_layout_name('10x15_test1', start_order_list=['onion','onion'], num_items_for_soup=3, cook_time=10)
     # start_state = OvercookedState(
     #     [P((2, 1), s, Obj('onion', (2, 1))),
     #      P((3, 2), s)],
@@ -152,7 +152,8 @@ if __name__ == "__main__" :
     # human_agent = agent.biasHumanModel(ml_action_manager, [0.5, (1.0-0.5)], 0.5, auto_unstuck=True)
 
     mlp = planners.MediumLevelPlanner.from_pickle_or_compute(scenario_1_mdp, NO_COUNTERS_PARAMS, force_compute=True)  
-    human_agent = agent.limitVisionHumanModel(mlp)
+    human_agent = agent.limitVisionHumanModel(mlp, env.state,
+                                  explore=True)
     # human_agent = agent.GreedyHumanModel(mlp)
     # human_agent = agent.CoupledPlanningAgent(mlp)
 

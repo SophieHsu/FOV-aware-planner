@@ -13,4 +13,4 @@ low_level_action=true
 [Agent2]
 name="limit_vision_agent"
 auto_unstuck=true
-
+explore=false

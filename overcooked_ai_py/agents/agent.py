@@ -592,12 +592,13 @@ class GreedyHumanModel(Agent):
         return motion_goals
 
 class limitVisionHumanModel(GreedyHumanModel):
-    def __init__(self, mlp, hl_boltzmann_rational=False, ll_boltzmann_rational=False, hl_temp=1, ll_temp=1,
-                 auto_unstuck=True):
+    def __init__(self, mlp, start_state, hl_boltzmann_rational=False, ll_boltzmann_rational=False, hl_temp=1, ll_temp=1,
+                 auto_unstuck=True, explore=False):
         super().__init__(mlp, hl_boltzmann_rational, ll_boltzmann_rational, hl_temp, ll_temp,
                  auto_unstuck)
         self.other_player_states = None
-        self.pot_states = None
+        self.pot_states = self.mlp.mdp.get_pot_states(start_state)
+        self.explore = explore
 
     def get_vision_bound(self, state):
         player = state.players[self.agent_index]
@@ -760,9 +761,19 @@ class limitVisionHumanModel(GreedyHumanModel):
         motion_goals = [mg for mg in motion_goals if self.mlp.mp.is_valid_motion_start_goal_pair(player.pos_and_or, mg)]
 
         if len(motion_goals) == 0:
-            motion_goals = am.go_to_closest_feature_actions(player)
-            motion_goals = [mg for mg in motion_goals if self.mlp.mp.is_valid_motion_start_goal_pair(player.pos_and_or, mg)]
-            assert len(motion_goals) != 0
+            if self.explore: # explore to expand the vision.
+                # get four directions to explore
+                for o in Direction.ALL_DIRECTIONS:
+                    motion_goals.append((player.position, o))
+                motion_goals.remove(player.pos_and_or)
+                random.shuffle(motion_goals)
+                motion_goals = [mg for mg in motion_goals if self.mlp.mp.is_valid_motion_start_goal_pair(player.pos_and_or, mg)]
+                assert len(motion_goals) != 0
+            else: # get to the closest key object location
+                motion_goals = am.go_to_closest_feature_actions(player)
+                motion_goals = [mg for mg in motion_goals if self.mlp.mp.is_valid_motion_start_goal_pair(player.pos_and_or, mg)]
+                assert len(motion_goals) != 0
+
 
         return motion_goals
 

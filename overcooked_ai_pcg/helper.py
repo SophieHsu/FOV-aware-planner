@@ -183,7 +183,7 @@ def plot_err(average_errG_log, average_errD_log, average_errD_fake_log,
 
 
 def reset_env_from_mdp(mdp):
-    env = OvercookedEnv.from_mdp(mdp, info_level=0, horizon=100)
+    env = OvercookedEnv.from_mdp(mdp, info_level=0, horizon=120)
     return env
 
 
@@ -199,7 +199,7 @@ def setup_env_from_grid(layout_grid,
     """
 
     mdp = OvercookedGridworld.from_grid(layout_grid, CONFIG)
-    env = OvercookedEnv.from_mdp(mdp, info_level=0, horizon=100)
+    env = OvercookedEnv.from_mdp(mdp, info_level=0, horizon=120)
 
     start_time = time.time()
 
@@ -344,8 +344,9 @@ def setup_env_from_grid(layout_grid,
         mlp_planner = MediumLevelPlanner(mdp, BASE_PARAMS)
         print("worker(%d): Planning..." % (worker_id))
 
-        agent2 = limitVisionHumanModel(mlp_planner,
-                                  auto_unstuck=agent2_config["auto_unstuck"])
+        agent2 = limitVisionHumanModel(mlp_planner, env.state,
+                                  auto_unstuck=agent2_config["auto_unstuck"],
+                                  explore=agent2_config["explore"])
 
         print("worker(%d): Pre-constructing qmdp plan..." % (worker_id))
 
@@ -374,8 +375,9 @@ def setup_env_from_grid(layout_grid,
         mlp_planner = MediumLevelPlanner(mdp, BASE_PARAMS)
         print("worker(%d): Planning..." % (worker_id))
 
-        agent2 = limitVisionHumanModel(mlp_planner,
-                                  auto_unstuck=agent2_config["auto_unstuck"])
+        agent2 = limitVisionHumanModel(mlp_planner, env.state,
+                                  auto_unstuck=agent2_config["auto_unstuck"],
+                                  explore=agent2_config["explore"])
 
         print("worker(%d): Pre-constructing qmdp plan..." % (worker_id))
 
@@ -655,7 +657,7 @@ def init_env_and_agent(ind, agent_config, worker_id=0):
     return agent1, agent2, env, mdp
 
 
-def init_env(lvl_str, horizon=100):
+def init_env(lvl_str, horizon=120):
     grid = lvl_str2grid(lvl_str)
     mdp = OvercookedGridworld.from_grid(grid, CONFIG)
     env = OvercookedEnv.from_mdp(mdp, info_level=0, horizon=horizon)

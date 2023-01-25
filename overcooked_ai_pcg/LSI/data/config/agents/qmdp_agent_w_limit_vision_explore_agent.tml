@@ -5,12 +5,12 @@ num_iter=50
 multi_iter=true
 
 [Agent1]
-name="mdp_agent"
+name="qmdp_agent"
 known=false
 auto_unstuck=true
+low_level_action=true
 
 [Agent2]
 name="limit_vision_agent"
 auto_unstuck=true
-explore=false
-
+explore=true

@@ -12,5 +12,5 @@ auto_unstuck=true
 [Agent2]
 name="limit_vision_agent"
 auto_unstuck=true
-explore=false
+explore=true
 
