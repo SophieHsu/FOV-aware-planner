@@ -151,14 +151,14 @@ if __name__ == "__main__" :
     # hmlp = planners.HumanMediumLevelPlanner(scenario_1_mdp, ml_action_manager, [0.5, (1.0-0.5)], 0.5)
     # human_agent = agent.biasHumanModel(ml_action_manager, [0.5, (1.0-0.5)], 0.5, auto_unstuck=True)
 
-    mlp = planners.MediumLevelPlanner.from_pickle_or_compute(scenario_1_mdp, NO_COUNTERS_PARAMS, force_compute=True)  
+    mlp = planners.MediumLevelPlanner.from_pickle_or_compute(scenario_1_mdp, NO_COUNTERS_PARAMS, force_compute=False)  
     human_agent = agent.limitVisionHumanModel(mlp, env.state,
                                   explore=True)
     # human_agent = agent.GreedyHumanModel(mlp)
     # human_agent = agent.CoupledPlanningAgent(mlp)
 
     qmdp_start_time = time.time()
-    mdp_planner = planners.HumanSubtaskQMDPPlanner.from_pickle_or_compute(scenario_1_mdp, NO_COUNTERS_PARAMS, force_compute_all=True)
+    mdp_planner = planners.HumanSubtaskQMDPPlanner.from_pickle_or_compute(scenario_1_mdp, NO_COUNTERS_PARAMS, force_compute_all=False)
     ai_agent = agent.MediumQMdpPlanningAgent(mdp_planner, greedy=True, auto_unstuck=True)
     # ai_agent = agent.QMDPAgent(mlp, env)
 
@@ -187,7 +187,7 @@ if __name__ == "__main__" :
     while not done:
         if t >= 0 and t <= len(s_t):
             # env.render("blur")
-            env.render()
+            env.render("fog")
             time.sleep(0.1)
         agent1_action = s_t[t][1][0]
         agent2_action = s_t[t][1][1]

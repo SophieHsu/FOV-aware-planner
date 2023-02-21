@@ -96,7 +96,9 @@ def plot_bcs(num_idx, human_study_log_dir):
             autolabel(ax, rects_order)
 
             # plot_bar_graph([workloads[i, 0], workloads[i, 1], workloads[i, 2]], ["blue", "green", "orange"],series_labels=["diff_ingredient", "diff_plate", "diff_order"], plot_ylabel='Number of people', plot_title=category.replace("_", " ").capitalize())
-
+            # plt.bar(np.arange(len(workloads[0,0])), workloads[i,0], color="blue")
+            # plt.bar(np.arange(len(workloads[0,0])), workloads[i,1], color="green")
+            # plt.bar(np.arange(len(workloads[0,0])), workloads[i,2], color="orange")
         else:
             label_loc = np.arange(team_fluency.shape[2])
             rects_concurr = ax.bar(label_loc-bar_width/2, team_fluency[i%2, 0], bar_width, label="concurr_active")

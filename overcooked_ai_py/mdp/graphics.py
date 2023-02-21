@@ -106,7 +106,7 @@ def load_image(path):
     return pygame.transform.scale(obj, (SPRITE_LENGTH, SPRITE_LENGTH))
 
 
-def blit_terrain(x, y, terrain_mtx, viewer, mode="human"):
+def blit_terrain(x, y, terrain_mtx, viewer, mode="human", in_view=True):
     """
     Helper function to blit given position to specified terrain
 
@@ -119,6 +119,8 @@ def blit_terrain(x, y, terrain_mtx, viewer, mode="human"):
     # render the terrain
     terrain = terrain_mtx[y][x]
     terrain_pgobj = load_image(TERRAIN_TO_IMG[terrain])
+    if mode == 'fog' and not in_view:
+        terrain_pgobj.set_alpha(1)
     viewer.blit(terrain_pgobj, curr_pos)
 
 

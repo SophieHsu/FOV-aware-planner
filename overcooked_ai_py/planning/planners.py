@@ -2514,6 +2514,26 @@ class HumanSubtaskQMDPPlanner(MediumLevelMdpPlanner):
         self.subtask_idx_dict = {}
 
     @staticmethod
+    def from_qmdp_planner_file(filename):
+        with open(os.path.join(PLANNERS_DIR, filename), 'rb') as f:
+            return pickle.load(f)
+            # mdp = mdp_planner.mdp
+            # params = mdp_planner.params
+
+            # state_idx_dict = mdp_planner.state_idx_dict
+            # state_dict = mdp_planner.state_dict
+
+            # transition_matrix = mdp_planner.transition_matrix
+            # reward_matrix = mdp_planner.reward_matrix
+            # policy_matrix = mdp_planner.policy_matrix
+            # value_matrix = mdp_planner.value_matrix
+            
+            # num_states = mdp_planner.num_states
+            # num_rounds = mdp_planner.num_rounds
+            
+            # return HumanSubtaskQMDPPlanner(mdp, params, mlp_action_manager, state_dict, state_idx_dict, policy_matrix=policy_matrix)
+
+    @staticmethod
     def from_pickle_or_compute(mdp, mlp_params, custom_filename=None, force_compute_all=False, info=True, force_compute_more=False):
 
         assert isinstance(mdp, OvercookedGridworld)
@@ -2526,7 +2546,7 @@ class HumanSubtaskQMDPPlanner(MediumLevelMdpPlanner):
             return mdp_planner
         
         try:
-            mdp_planner = HumanSubtaskQMDPPlanner.from_mdp_planner_file(filename)
+            mdp_planner = HumanSubtaskQMDPPlanner.from_qmdp_planner_file(filename)
             
             if force_compute_more:
                 print("Stored mdp_planner computed ", str(mdp_planner.num_rounds), " rounds. Compute another " + str(TRAINNINGUNIT) + " more...")
@@ -3244,7 +3264,7 @@ class HumanSubtaskQMDPPlanner(MediumLevelMdpPlanner):
         # print('Total states =', self.num_states, '; Total actions =', self.num_actions)
 
         # print("It took {} seconds to create HumanSubtaskQMDPPlanner".format(time.time() - start_time))
-        # self.save_to_file(final_filepath)
+        self.save_to_file(final_filepath)
         # tmp = input()
         # self.save_to_file(output_mdp_path)
         return 

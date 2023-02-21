@@ -86,7 +86,7 @@ class OvercookedGame:
         self.human_player.set_agent_index(1 - self.agent_idx)
         self.human_player.set_mdp(self.env.mdp)
 
-        self.env.render("full")
+        self.env.render("fog")
         self._running = True
         np.random.seed(self.rand_seed)
 
@@ -154,7 +154,7 @@ class OvercookedGame:
         pass
 
     def on_render(self):
-        self.env.render(mode="full")
+        self.env.render(mode="fog")
 
     def on_cleanup(self):
         pygame.quit()
@@ -236,7 +236,7 @@ def replay_with_joint_actions(lvl_str, joint_actions, plot=True):
 
     while not done:
         if plot:
-            env.render()
+            env.render("fog")
             time.sleep(0.2)
         ai_agent.update_logs(env.state, joint_actions[i][0])
         player.update_logs(env.state, joint_actions[i][1])

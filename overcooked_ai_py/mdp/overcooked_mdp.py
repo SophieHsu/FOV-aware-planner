@@ -1476,6 +1476,33 @@ class OvercookedGridworld(object):
     # RENDER FUNCTION #
     ###################
 
+    def check_viewpoint(self, player_pos, player_ori, x, y, view_angle=120):
+        item_ang = np.arctan2((y-player_pos[1]), (x-player_pos[0]))*180/np.pi
+        ori = Direction.DIRECTION_TO_INDEX[player_ori]
+        if (x,y) == player_pos:
+            return True
+        if ori == 1: # north
+            if item_ang <= (90+(view_angle/2)) and (item_ang >= (90-(view_angle/2))):
+                return True
+            if player_pos[1] == y and ((player_pos[0] == x-1) or (player_pos[0] == x+1)):
+                return True
+        elif ori == 2: # east
+            if item_ang <= (0+(view_angle/2)) and (item_ang >= (0-(view_angle/2))):
+                return True
+            if player_pos[0] == x and ((player_pos[1] == y-1) or (player_pos[1] == y+1)):
+                return True
+        elif ori == 0: # south
+            if item_ang <= (-90+(view_angle/2)) and (item_ang >= (-90-(view_angle/2))):
+                return True
+            if player_pos[1] == y and ((player_pos[0] == x-1) or (player_pos[0] == x+1)):
+                return True
+        elif ori == 3: # west
+            if item_ang <= (-180+(view_angle/2)) or (item_ang >= (180-(view_angle/2))):
+                return True
+            if player_pos[0] == x and ((player_pos[1] == y-1) or (player_pos[1] == y+1)):
+                return True
+        return False
+
     def render(self, state, mode, time_step_left=None, time_passed=None):
         """
         Function that renders the game
@@ -1503,11 +1530,10 @@ class OvercookedGridworld(object):
             # create viewer
             self.viewer = pygame.display.set_mode(window_size)
             self.viewer.fill((255, 255, 255)) # white background
-
             # render the terrain
-            for y, terrain_row in enumerate(self.terrain_mtx):
-                for x, terrain in enumerate(terrain_row):
-                    blit_terrain(x, y, self.terrain_mtx, self.viewer, mode)
+        for y, terrain_row in enumerate(self.terrain_mtx):
+            for x, terrain in enumerate(terrain_row):
+                blit_terrain(x, y, self.terrain_mtx, self.viewer, mode)
 
         # remove the objects on the counters and pots
         if self.pre_objects_pos is not None:
@@ -1537,6 +1563,7 @@ class OvercookedGridworld(object):
                     # if soup is not ready
                     else:
                         soup_pgobj = get_object_sprite(soup_obj, on_pot=True)
+                    
                     self.viewer.blit(soup_pgobj, curr_pos)
                     objects_pos.append((x, y))
 
@@ -1548,9 +1575,11 @@ class OvercookedGridworld(object):
                         # align midbottom of the textbox to midbottom of
                         # current terrain
                         text_pos.midbottom = curr_pos.midbottom
+                        # if not self.check_viewpoint(state.players[1].position, state.players[1].orientation, text_pos.midbottom[0], text_pos.midbottom[1]):
+                        #     cook_time_text_surface.set_alpha(1)
                         self.viewer.blit(cook_time_text_surface, text_pos)
 
-        if mode == "human" or mode == "full":
+        if mode == "human" or mode == "full" or mode == "fog":
             # remove chefs from last state
             if self.pre_players_pos is not None:
                 for pos in self.pre_players_pos:
@@ -1581,7 +1610,7 @@ class OvercookedGridworld(object):
                            # time_step_left)
 
             self.viewer.blit(player_pgobj, curr_pos)
-            self.viewer.blit(player_hat_pgobj, curr_pos)
+            self.viewer.blit(player_hat_pgobj, curr_pos)                
 
         # update previous players and objects positions
         self.pre_players_pos = players_dict.keys()
@@ -1596,6 +1625,19 @@ class OvercookedGridworld(object):
                 self.viewer,
                 (self.width * SPRITE_LENGTH, self.height * SPRITE_LENGTH),
                 state.num_orders_remaining, time_passed)
+
+        if mode == "fog": # fog the terrain
+            for y, terrain_row in enumerate(self.terrain_mtx):
+                for x, terrain in enumerate(terrain_row):
+                    in_view = self.check_viewpoint(state.players[1].position, state.players[1].orientation, x, y)
+                    if not in_view:
+                        curr_pos = get_curr_pos(x, y, mode)
+                        blit_terrain(x, y, self.terrain_mtx, self.viewer, mode, in_view)
+                        fog_pgobj = pygame.Surface((50,50))
+                        fog_pgobj.fill((0,0,0))
+                        # load_image(os.path.join(ASSETS_DIR, TERRAIN_DIR, 'counter.png'))
+                        fog_pgobj.set_alpha(245)
+                        self.viewer.blit(fog_pgobj, curr_pos)
 
         # update display
         pygame.display.update()
