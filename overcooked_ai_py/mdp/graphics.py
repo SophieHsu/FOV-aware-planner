@@ -25,6 +25,9 @@ TERRAIN_TO_IMG = {
     'T': os.path.join(ASSETS_DIR, TERRAIN_DIR, 'tomatoes.png'),
     'D': os.path.join(ASSETS_DIR, TERRAIN_DIR, 'dishes.png'),
     'S': os.path.join(ASSETS_DIR, TERRAIN_DIR, 'serve.png'),
+    'M': os.path.join(ASSETS_DIR, TERRAIN_DIR, 'steaks.png'),
+    'W': os.path.join(ASSETS_DIR, TERRAIN_DIR, 'sink.png'),
+    'B': os.path.join(ASSETS_DIR, TERRAIN_DIR, 'board_knife.png'),
 }
 
 PLAYER_HAT_COLOR = {
@@ -165,7 +168,7 @@ def get_player_sprite(player, player_index):
     return load_image(player_img_path), load_image(hat_img_path)
 
 
-def get_object_sprite(obj, on_pot=False):
+def get_object_sprite(obj, on_pot=False, on=None, time=None):
     """
     Returns loaded image of object
 
@@ -175,7 +178,20 @@ def get_object_sprite(obj, on_pot=False):
     """
     obj_name = obj.name
 
-    if not on_pot:
+    if on_pot:
+        soup_type, num_items, cook_time = obj.state
+        obj_img_path = os.path.join(
+            ASSETS_DIR, OBJECT_DIR,
+            'soup-%s-%d-cooking.png' % (soup_type, num_items))
+    elif on == "board":
+        obj_img_path = os.path.join(
+            ASSETS_DIR, OBJECT_DIR,
+            'chopping.png')
+    elif on == "sink":
+        obj_img_path = os.path.join(
+            ASSETS_DIR, OBJECT_DIR,
+            'full_sink.png')
+    else:
         if obj_name == 'soup':
             soup_type = obj.state[0]
             obj_img_path = os.path.join(ASSETS_DIR, OBJECT_DIR,
@@ -183,11 +199,6 @@ def get_object_sprite(obj, on_pot=False):
         else:
             obj_img_path = os.path.join(ASSETS_DIR, OBJECT_DIR,
                                         '%s.png' % obj_name)
-    else:
-        soup_type, num_items, cook_time = obj.state
-        obj_img_path = os.path.join(
-            ASSETS_DIR, OBJECT_DIR,
-            'soup-%s-%d-cooking.png' % (soup_type, num_items))
     return load_image(obj_img_path)
 
 

@@ -1,9 +1,11 @@
 import itertools, math, copy
 import numpy as np
 import random, torch
+from collections import defaultdict
 from overcooked_ai_py.mdp.actions import Action, Direction
 from overcooked_ai_py.planning.planners import Heuristic
 from overcooked_ai_py.planning.search import SearchTree
+from overcooked_ai_py.mdp.overcooked_mdp import ObjectState
 
 
 class Agent(object):
@@ -596,9 +598,20 @@ class limitVisionHumanModel(GreedyHumanModel):
                  auto_unstuck=True, explore=False):
         super().__init__(mlp, hl_boltzmann_rational, ll_boltzmann_rational, hl_temp, ll_temp,
                  auto_unstuck)
-        self.other_player_states = None
-        self.pot_states = self.mlp.mdp.get_pot_states(start_state)
         self.explore = explore
+        self.init_knowledge_base(start_state)
+
+    def init_knowledge_base(self, start_state):
+        self.knowledge_base = {}
+        for obj in start_state.objects.values():
+            key = self.knowledge_base_key(obj)
+            self.knowledge_base[key] = obj
+        self.knowledge_base['pot_states'] = self.mlp.mdp.get_pot_states(start_state)
+        self.knowledge_base['other_player'] = None
+    
+    def knowledge_base_key(self, object):
+        key = '_'.join((str(object.position[0]), str(object.position[1]), str(object.name)))
+        return key
 
     def get_vision_bound(self, state):
         player = state.players[self.agent_index]
@@ -670,26 +683,27 @@ class limitVisionHumanModel(GreedyHumanModel):
         else: # on the line
             left_in_bound = True
 
-
         return (left_in_bound and right_in_bound)
 
     def update(self, state):
         right_pt, left_pt = self.get_vision_bound(state)
-
-        # check if pots are in vision
         valid_pot_pos = []
-        for pot_pos in self.mlp.mdp.get_pot_locations():
-            if self.in_bound(pot_pos, right_pt, left_pt, state):
-                # print('Pot ', pot_pos, ' in bound')
-                valid_pot_pos.append(pot_pos)
 
-        self.pot_states = self.mlp.mdp.get_pot_states(state, pots_states_dict=self.pot_states, valid_pos=valid_pot_pos)
+        for obj in state.objects.values():
+            if self.in_bound(obj.position, right_pt, left_pt, state):
+                key = self.knowledge_base_key(obj)
+                self.knowledge_base[key] = obj
+
+                # update the pot states based on the knowledge base
+                if obj.name == 'soup':
+                    valid_pot_pos.append(obj.position)
+                    self.knowledge_base['pot_states'] = self.mlp.mdp.get_pot_states(state, pots_states_dict=self.pot_states, valid_pos=valid_pot_pos)
 
         # check if other player is in vision
         other_player = state.players[1 - self.agent_index]
         if self.in_bound(other_player.position, right_pt, left_pt, state):
             # print('Other agent in bound')
-            self.other_player_states = other_player
+            self.knowledge_base['other_player'] = other_player
 
     def ml_action(self, state):
         """
@@ -710,7 +724,7 @@ class limitVisionHumanModel(GreedyHumanModel):
         am = self.mlp.ml_action_manager
 
         counter_objects = self.mlp.mdp.get_counter_objects_dict(state, list(self.mlp.mdp.terrain_pos_dict['X']))
-        pot_states_dict = self.pot_states
+        pot_states_dict = self.knowledge_base['pot_states']
         # NOTE: this most likely will fail in some tomato scenarios
         curr_order = state.curr_order
 
@@ -737,6 +751,8 @@ class limitVisionHumanModel(GreedyHumanModel):
                     motion_goals = am.pickup_onion_actions(counter_objects)
                 elif next_order == 'tomato':
                     motion_goals = am.pickup_tomato_actions(counter_objects)
+                elif next_order == 'steak':
+                    motion_goals = am.pickup_tomato_actions(counter_objects)
                 elif next_order is None or next_order == 'any':
                     motion_goals = am.pickup_onion_actions(counter_objects) + am.pickup_tomato_actions(counter_objects)
 
@@ -748,9 +764,15 @@ class limitVisionHumanModel(GreedyHumanModel):
 
             elif player_obj.name == 'tomato':
                 motion_goals = am.put_tomato_in_pot_actions(pot_states_dict)
+            
+            elif player_obj.name == 'meat':
+                motion_goals = am.put_meat_in_pot_actions(pot_states_dict)
 
             elif player_obj.name == 'dish':
-                motion_goals = am.pickup_soup_with_dish_actions(pot_states_dict, only_nearly_ready=True)
+                motion_goals = am.deliver_dish_actions()
+
+            elif player_obj.name == 'hot_plate':
+                motion_goals = am.pickup_steak_with_hot_plate_actions(pot_states_dict, only_nearly_ready=True)
 
             elif player_obj.name == 'soup':
                 motion_goals = am.deliver_soup_actions()
@@ -774,7 +796,226 @@ class limitVisionHumanModel(GreedyHumanModel):
                 motion_goals = [mg for mg in motion_goals if self.mlp.mp.is_valid_motion_start_goal_pair(player.pos_and_or, mg)]
                 assert len(motion_goals) != 0
 
+        return motion_goals
 
+class SteakLimitVisionHumanModel(limitVisionHumanModel):
+    def __init__(self, mlp, start_state, hl_boltzmann_rational=False, ll_boltzmann_rational=False, hl_temp=1, ll_temp=1, auto_unstuck=True, explore=False):
+        super().__init__(mlp, start_state, hl_boltzmann_rational, ll_boltzmann_rational, hl_temp, ll_temp, auto_unstuck, explore)
+
+    def init_knowledge_base(self, start_state):
+        self.knowledge_base = {}
+        for obj_loc in self.mlp.mdp.get_key_objects_locations():
+            # key = '_'.join(obj_loc)
+            if start_state.has_object(obj_loc):
+                self.knowledge_base[obj_loc] = start_state.get_object(obj_loc)
+            else:
+                self.knowledge_base[obj_loc] = None
+
+        self.knowledge_base['pot_states'] = self.mlp.mdp.get_pot_states(start_state)
+        self.knowledge_base['sink_states'] = self.mlp.mdp.get_sink_status(start_state)
+        self.knowledge_base['chop_states'] = self.mlp.mdp.get_chopping_board_status(start_state)
+        self.knowledge_base['other_player'] = None
+
+    def update(self, state):
+        right_pt, left_pt = self.get_vision_bound(state)
+
+        # for obj in state.objects.values():
+        #     if self.in_bound(obj.position, right_pt, left_pt, state):
+        #         key = self.knowledge_base_key(obj)
+        #         self.knowledge_base[key] = obj
+
+        for k, v in self.knowledge_base.items():
+            if type(k) == tuple:
+                if self.in_bound(k, right_pt, left_pt, state):
+                    if state.has_object(k):
+                        obj = state.get_object(k)
+                        self.knowledge_base[k] = obj
+                        if 'steak' in obj.name:
+                            item_name, item_num, cooking_time = obj.state
+                            if cooking_time < self.mlp.mdp.steak_cooking_time:
+                                if obj.position in self.knowledge_base['pot_states']['empty']:
+                                    self.knowledge_base['pot_states']['empty'].remove(obj.position)
+                                if obj.position in self.knowledge_base['pot_states'][obj.name]['empty']:
+                                    self.knowledge_base['pot_states'][obj.name]['empty'].remove(obj.position)
+                                if obj.position not in self.knowledge_base['pot_states'][obj.name]['cooking']:
+                                    self.knowledge_base['pot_states'][obj.name]['cooking'].append(obj.position)
+                            else:
+                                if obj.position in self.knowledge_base['pot_states'][obj.name]['cooking']:
+                                    self.knowledge_base['pot_states'][obj.name]['cooking'].remove(obj.position)
+                                if obj.position not in self.knowledge_base['pot_states'][obj.name]['ready']:
+                                    self.knowledge_base['pot_states'][obj.name]['ready'].append(obj.position)
+
+                        elif 'garnish' in obj.name:
+                            chop_time = obj.state
+                            if chop_time < self.mlp.mdp.chopping_time:
+                                if obj.position in self.knowledge_base['chop_states']['empty']:
+                                    self.knowledge_base['chop_states']['empty'].remove(obj.position)
+                                if obj.position not in self.knowledge_base['chop_states']['full']:
+                                    self.knowledge_base['chop_states']['full'].append(obj.position)
+                            else:
+                                if obj.position in self.knowledge_base['chop_states']['full']:
+                                    self.knowledge_base['chop_states']['full'].remove(obj.position)
+                                if obj.position not in self.knowledge_base['chop_states']['ready']:
+                                    self.knowledge_base['chop_states']['ready'].append(obj.position)
+
+                        elif 'hot_plate' in obj.name:
+                            wash_time = obj.state
+                            if wash_time < self.mlp.mdp.wash_time:
+                                if obj.position in self.knowledge_base['sink_states']['empty']:
+                                    self.knowledge_base['sink_states']['empty'].remove(obj.position)
+                                if obj.position not in self.knowledge_base['sink_states']['full']:
+                                    self.knowledge_base['sink_states']['full'].append(obj.position)
+                            else:
+                                if obj.position in self.knowledge_base['sink_states']['full']:
+                                    self.knowledge_base['sink_states']['full'].remove(obj.position)
+                                if obj.position not in self.knowledge_base['sink_states']['ready']:
+                                    self.knowledge_base['sink_states']['ready'].append(obj.position)
+                    else:
+                        self.knowledge_base[k] = None
+                        tile_type = self.mlp.mdp.get_terrain_type_at_pos(k)
+                        if tile_type == 'W':
+                            if k in self.knowledge_base['sink_states']['ready']:
+                                self.knowledge_base['sink_states']['ready'].remove(k)
+                            if k not in self.knowledge_base['sink_states']['empty']:
+                                self.knowledge_base['sink_states']['empty'].append(k)
+
+                        if tile_type == 'P':
+                            for pot_key in self.knowledge_base['pot_states'].keys():
+                                if pot_key != 'empty':
+                                    if k in self.knowledge_base['pot_states'][pot_key]['ready']:
+                                        self.knowledge_base['pot_states'][pot_key]['ready'].remove(k)
+                                    elif k not in self.knowledge_base['pot_states'][pot_key]['empty']:
+                                        self.knowledge_base['pot_states'][pot_key]['empty'].append(k)
+                                    if k not in self.knowledge_base['pot_states']['empty']:
+                                        self.knowledge_base['pot_states']['empty'].append(k)
+                                
+                        if tile_type == 'B':
+                            if k in self.knowledge_base['chop_states']['ready']:
+                                self.knowledge_base['chop_states']['ready'].remove(k)
+                            if k not in self.knowledge_base['chop_states']['empty']:
+                                self.knowledge_base['chop_states']['empty'].append(k)
+                                
+
+        # check if other player is in vision
+        other_player = state.players[1 - self.agent_index]
+        if self.in_bound(other_player.position, right_pt, left_pt, state):
+            # print('Other agent in bound')
+            self.knowledge_base['other_player'] = other_player
+
+        # print out knowledge base
+        for k, v in self.knowledge_base.items():
+            print(k, ':', v)
+
+    def ml_action(self, state):
+        """
+        Selects a medium level action for the current state.
+        Motion goals can be thought of instructions of the form:
+            [do X] at location [Y]
+
+        In this method, X (e.g. deliver the soup, pick up an onion, etc) is chosen based on
+        a simple set of greedy heuristics based on the current state.
+
+        Effectively, will return a list of all possible locations Y in which the selected
+        medium level action X can be performed.
+        """
+
+        self.update(state)
+        player = state.players[self.agent_index]
+        other_player = state.players[1 - self.agent_index]
+        am = self.mlp.ml_action_manager
+
+        counter_objects = self.mlp.mdp.get_counter_objects_dict(state, list(self.mlp.mdp.terrain_pos_dict['X']))
+        sink_status = self.knowledge_base['sink_states']
+        chopping_board_status = self.knowledge_base['chop_states']
+        pot_states_dict = self.knowledge_base['pot_states']
+        # NOTE: this most likely will fail in some tomato scenarios
+        curr_order = state.curr_order
+
+        if not player.has_object():
+
+            if curr_order == 'any':
+                ready_soups = pot_states_dict['onion']['ready'] + pot_states_dict['tomato']['ready']
+                cooking_soups = pot_states_dict['onion']['cooking'] + pot_states_dict['tomato']['cooking']
+            else:
+                ready_soups = pot_states_dict[curr_order]['ready']
+                cooking_soups = pot_states_dict[curr_order]['cooking']
+
+            steak_nearly_ready = len(ready_soups) > 0 or len(cooking_soups) > 0
+            other_has_dish = other_player.has_object() and other_player.get_object().name == 'dish'
+            other_has_hot_plate = other_player.has_object() and other_player.get_object().name == 'hot_plate'
+            other_has_steak = other_player.has_object() and other_player.get_object().name == 'steak'
+
+            garnish_ready = len(chopping_board_status['ready']) > 0
+            chopping = len(chopping_board_status['full']) > 0
+            board_empty = len(chopping_board_status['empty']) > 0
+            hot_plate_ready = len(sink_status['ready']) > 0
+            rinsing = len(sink_status['full']) > 0
+            sink_empty = len(sink_status['empty']) > 0
+
+            if not steak_nearly_ready and state.num_orders_remaining > 0:
+                motion_goals = am.pickup_meat_actions(counter_objects)
+            elif not chopping and not garnish_ready:
+                motion_goals = am.pickup_onion_actions(counter_objects)
+            elif chopping and not hot_plate_ready:
+                motion_goals = am.chop_onion_on_board_actions(state)
+            elif not rinsing and not hot_plate_ready:
+                motion_goals = am.pickup_plate_actions(counter_objects, state)
+            elif rinsing and not hot_plate_ready:
+                motion_goals = am.heat_plate_in_sink_actions(state)
+            elif garnish_ready and hot_plate_ready:
+                motion_goals = am.pickup_hot_plate_from_sink_actions(counter_objects,state)
+            else:
+                next_order = None
+                if state.num_orders_remaining > 1:
+                    next_order = state.next_order
+                if next_order == 'onion':
+                    motion_goals = am.pickup_onion_actions(counter_objects)
+                elif next_order == 'steak':
+                    motion_goals = am.pickup_meat_actions(counter_objects)
+                elif next_order is None or next_order == 'any':
+                    motion_goals = am.pickup_onion_actions(counter_objects) + am.pickup_tomato_actions(counter_objects) + am.pickup_meat_actions(counter_objects)
+
+        else:
+            player_obj = player.get_object()
+
+            if player_obj.name == 'onion':
+                motion_goals = am.put_onion_on_board_actions(counter_objects, state)
+            
+            elif player_obj.name == 'meat':
+                motion_goals = am.put_meat_in_pot_actions(pot_states_dict)
+
+            elif player_obj.name == "plate":
+                motion_goals = am.put_plate_in_sink_actions(counter_objects, state)
+
+            elif player_obj.name == 'hot_plate':
+                motion_goals = am.pickup_steak_with_hot_plate_actions(pot_states_dict, only_nearly_ready=True)
+
+            elif player_obj.name == 'steak':
+                motion_goals = am.add_garnish_to_steak_actions(state)
+
+            elif player_obj.name == 'dish':
+                motion_goals = am.deliver_dish_actions()
+
+            else:
+                raise ValueError()
+
+        motion_goals = [mg for mg in motion_goals if self.mlp.mp.is_valid_motion_start_goal_pair(player.pos_and_or, mg)]
+
+        if len(motion_goals) == 0:
+            if self.explore: # explore to expand the vision.
+                # get four directions to explore
+                for o in Direction.ALL_DIRECTIONS:
+                    motion_goals.append((player.position, o))
+                motion_goals.remove(player.pos_and_or)
+                random.shuffle(motion_goals)
+                motion_goals = [mg for mg in motion_goals if self.mlp.mp.is_valid_motion_start_goal_pair(player.pos_and_or, mg)]
+                assert len(motion_goals) != 0
+            else: # get to the closest key object location
+                motion_goals = am.go_to_closest_feature_actions(player)
+                motion_goals = [mg for mg in motion_goals if self.mlp.mp.is_valid_motion_start_goal_pair(player.pos_and_or, mg)]
+                assert len(motion_goals) != 0
+
+        print(motion_goals)
         return motion_goals
 
 class oneGoalHumanModel(Agent):

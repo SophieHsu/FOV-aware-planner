@@ -30,7 +30,12 @@ class ObjectState(object):
         self.position = tuple(position)
         if name == 'soup':
             assert len(state) == 3
-        self.state = None if state is None else tuple(state)
+        if state is None:
+            self.state = None 
+        elif type(state) is int:
+            self.state = state
+        else:
+            self.state = tuple(state)
 
     def is_valid(self):
         if self.name in ['onion', 'tomato', 'dish']:
@@ -41,6 +46,10 @@ class ObjectState(object):
             valid_item_num = (1 <= num_items <= 3)
             valid_cook_time = (0 <= cook_time)
             return valid_soup_type and valid_item_num and valid_cook_time
+        elif self.name in ['steak', 'garnish', 'hot_plate']:
+            prep_time = self.state
+            valid_prep_time = (0 <= prep_time)
+            return valid_prep_time
         # Unrecognized object
         return False
 
@@ -211,9 +220,9 @@ class OvercookedState(object):
             assert obj.position == pos
         self.players = tuple(players)
         self.objects = objects
-        if order_list is not None:
-            assert all(
-                [o in OvercookedGridworld.ORDER_TYPES for o in order_list])
+        # if order_list is not None:
+            # assert all(
+                # [o in OvercookedGridworld.ORDER_TYPES for o in order_list])
         self.order_list = order_list
 
     @property
@@ -466,11 +475,33 @@ EVENT_TYPES = [
     'useful_dish_pickup',
     'dish_drop',
     'useful_dish_drop',
+    'dish_delivery',
 
     # Soup events
     'soup_pickup',
     'soup_delivery',
-    'soup_drop'
+    'soup_drop',
+
+    # Meat events
+    'meat_pickup',
+    'meat_cooking',
+    'steak_cooking',
+    'steak_pickup',
+    'steak_drop',
+
+    # Plate events
+    'plate_pickup',
+    'plate_drop',
+    'plate_washing',
+    'plate_heating',
+
+    # Hot plate events
+    'hot_plate_pickup',
+
+    # Garnish events
+    'onion_chopping',
+    'garnish_pickup',
+    'garnish_drop',
 ]
 
 SIMPLE_EVENT_TYPES = [
@@ -487,11 +518,30 @@ SIMPLE_EVENT_TYPES = [
     # Dish events
     'dish_pickup',
     'dish_drop',
+    'dish_delivery',
 
     # Soup events
     'soup_pickup',
     'soup_delivery',
-    'soup_drop'
+    'soup_drop',
+
+    # Meat events
+    'meat_pickup',
+    'meat_cooking',
+    'steak_cooking',
+
+    # Plate events
+    'plate_pickup',
+    'plate_washing',
+    'plate_heating',
+
+    # Hot plate events
+    'hot_plate_pickup',
+
+    # Garnish events
+    'onion_chopping',
+    'garnish_pickup',
+    'garnish_drop',
 ]
 
 
@@ -1058,6 +1108,9 @@ class OvercookedGridworld(object):
 
     def get_dish_dispenser_locations(self):
         return list(self.terrain_pos_dict['D'])
+    
+    def get_plate_dispenser_locations(self):
+        return list(self.terrain_pos_dict['D'])
 
     def get_onion_dispenser_locations(self):
         return list(self.terrain_pos_dict['O'])
@@ -1073,6 +1126,9 @@ class OvercookedGridworld(object):
 
     def get_counter_locations(self):
         return list(self.terrain_pos_dict['X'])
+
+    def get_key_objects_locations(self):
+        return self.get_dish_dispenser_locations() + self.get_dish_dispenser_locations() + self.get_onion_dispenser_locations() + self.get_tomato_dispenser_locations() + self.get_serving_locations() + self.get_pot_locations()
 
     @property
     def num_pots(self):
@@ -1200,7 +1256,7 @@ class OvercookedGridworld(object):
         if not state.has_object(pos):
             return False
         obj = state.get_object(pos)
-        assert obj.name == 'soup', 'Object in pot was not soup'
+        assert obj.name in ['soup', 'steak'], 'Object in pot was not soup'
         _, num_items, cook_time = obj.state
         return num_items == self.num_items_for_soup and cook_time >= self.soup_cooking_time
 
@@ -1946,3 +2002,821 @@ class OvercookedGridworld(object):
                             1 - min(min_dist_to_s_new / max_dist, 1))
 
         return distance_based_shaped_reward
+
+class SteakHouseGridworld(OvercookedGridworld):
+    """
+    An MDP grid world extension of the Overcooked game.
+    TODO: clean the organization of this class further.
+    """
+    ORDER_TYPES = ObjectState.SOUP_TYPES + ['steak','any']
+
+    #########################
+    # INSTANTIATION METHODS #
+    #########################
+
+    def __init__(self, terrain, start_player_positions, start_order_list=None, cook_time=20, num_items_for_steak=1, chop_time=5, wash_time=5, delivery_reward=20, rew_shaping_params=None, layout_name="unnamed_layout"):
+        super().__init__(terrain, start_player_positions, start_order_list, cook_time, num_items_for_steak, delivery_reward, rew_shaping_params, layout_name)
+        self.steak_cooking_time = cook_time
+        self.chopping_time = chop_time
+        self.wash_time = wash_time
+        self.num_items_for_steak = num_items_for_steak
+
+
+
+    @staticmethod
+    def from_layout_name(layout_name, **params_to_overwrite):
+        """
+        Generates a SteakHouseGridworld instance from a layout file.
+
+        One can overwrite the default mdp configuration using partial_mdp_config.
+        """
+        params_to_overwrite = params_to_overwrite.copy()
+        base_layout_params = read_layout_dict(layout_name)
+
+        grid = base_layout_params['grid']
+        del base_layout_params['grid']
+        base_layout_params['layout_name'] = layout_name
+
+        # Clean grid
+        grid = [layout_row.strip() for layout_row in grid.split("\n")]
+        return SteakHouseGridworld.from_grid(grid, base_layout_params,
+                                             params_to_overwrite)
+    
+    @staticmethod
+    def from_grid(layout_grid,
+                base_layout_params={},
+                params_to_overwrite={},
+                debug=False):
+        """
+        Returns instance of SteakHouseGridworld with terrain and starting 
+        positions derived from layout_grid.
+        One can override default configuration parameters of the mdp in
+        partial_mdp_config.
+        """
+        mdp_config = base_layout_params.copy()
+
+        layout_grid = [[c for c in row] for row in layout_grid]
+        SteakHouseGridworld._assert_valid_grid(layout_grid)
+
+        player_positions = [None] * 9
+        for y, row in enumerate(layout_grid):
+            for x, c in enumerate(row):
+                if c in ['1', '2', '3', '4', '5', '6', '7', '8', '9']:
+                    layout_grid[y][x] = ' '
+
+                    # -1 is to account for fact that player indexing starts from 1 rather than 0
+                    assert player_positions[
+                        int(c) - 1] is None, 'Duplicate player in grid'
+                    player_positions[int(c) - 1] = (x, y)
+
+        num_players = len([x for x in player_positions if x is not None])
+        player_positions = player_positions[:num_players]
+
+        # After removing player positions from grid we have a terrain mtx
+        mdp_config["terrain"] = layout_grid
+        mdp_config["start_player_positions"] = player_positions
+
+        for k, v in params_to_overwrite.items():
+            curr_val = mdp_config[k]
+            if debug:
+                print(
+                    "Overwriting mdp layout standard config value {}:{} -> {}".
+                    format(k, curr_val, v))
+            mdp_config[k] = v
+
+        return SteakHouseGridworld(**mdp_config)
+    
+    #####################
+    # BASIC CLASS UTILS #
+    #####################
+
+    def __eq__(self, other):
+        return np.array_equal(self.terrain_mtx, other.terrain_mtx) and \
+                self.start_player_positions == other.start_player_positions and \
+                self.start_order_list == other.start_order_list and \
+                self.steak_cooking_time == other.steak_cooking_time and \
+                self.chopping_time == other.chopping_time and \
+                self.wash_time == other.wash_time and \
+                self.delivery_reward == other.delivery_reward and \
+                self.reward_shaping_params == other.reward_shaping_params and \
+                self.layout_name == other.layout_name
+    
+    def copy(self):
+        return SteakHouseGridworld(
+            terrain=self.terrain_mtx.copy(),
+            start_player_positions=self.start_player_positions,
+            start_order_list=None
+            if self.start_order_list is None else list(self.start_order_list),
+            cook_time=self.steak_cooking_time,
+            chop_time=self.chopping_time,
+            wash_time=self.wash_time,
+            delivery_reward=self.delivery_reward,
+            rew_shaping_params=copy.deepcopy(self.reward_shaping_params),
+            layout_name=self.layout_name)
+    
+    @property
+    def mdp_params(self):
+        return {
+            "layout_name": self.layout_name,
+            "terrain": self.terrain_mtx,
+            "start_player_positions": self.start_player_positions,
+            "start_order_list": self.start_order_list,
+            "cook_time": self.soup_cooking_time,
+            "chop_time": self.chopping_time,
+            "wash_time": self.wash_time,
+            "delivery_reward": self.delivery_reward,
+            "rew_shaping_params": copy.deepcopy(self.reward_shaping_params)
+        }
+    
+    ##############
+    # GAME LOGIC #
+    ##############
+
+    def resolve_interacts(self, new_state, joint_action, events_infos):
+        """
+        Resolve any INTERACT actions, if present.
+
+        Currently if two players both interact with a terrain, we resolve player 1's interact
+        first and then player 2's, without doing anything like collision checking.
+        """
+        pot_states = self.get_pot_states(new_state)
+        # We divide reward by agent to keep track of who contributed
+        sparse_reward, shaped_reward = [0] * self.num_players, [
+            0
+        ] * self.num_players
+
+        for player_idx, (player, action) in enumerate(
+                zip(new_state.players, joint_action)):
+
+            if action != Action.INTERACT:
+                continue
+
+            pos, o = player.position, player.orientation
+            i_pos = Action.move_in_direction(pos, o)
+            terrain_type = self.get_terrain_type_at_pos(i_pos)
+
+            # NOTE: we always log pickup/drop before performing it, as that's
+            # what the logic of determining whether the pickup/drop is useful assumes
+            if terrain_type == 'X':
+
+                if player.has_object() and not new_state.has_object(i_pos):
+                    obj_name = player.get_object().name
+                    self.log_object_drop(events_infos, new_state, obj_name,
+                                         pot_states, player_idx)
+
+                    # Drop object on counter
+                    obj = player.remove_object()
+                    new_state.add_object(obj, i_pos)
+
+                elif not player.has_object() and new_state.has_object(i_pos):
+                    obj_name = new_state.get_object(i_pos).name
+                    self.log_object_pickup(events_infos, new_state, obj_name,
+                                           pot_states, player_idx)
+
+                    # Pick up object from counter
+                    obj = new_state.remove_object(i_pos)
+                    player.set_object(obj)
+
+            elif terrain_type == 'O' and player.held_object is None:
+                self.log_object_pickup(events_infos, new_state, "onion",
+                                       pot_states, player_idx)
+
+                # Onion pickup from dispenser
+                player.set_object(ObjectState('onion', pos))
+                player.num_ingre_held += 1
+
+            elif terrain_type == 'M' and player.held_object is None:
+                self.log_object_pickup(events_infos, new_state, "meat",
+                                       pot_states, player_idx)
+
+                # Tomato pickup from dispenser
+                player.set_object(ObjectState('meat', pos))
+                player.num_ingre_held += 1
+
+            elif terrain_type == 'D' and player.held_object is None:
+                self.log_object_pickup(events_infos, new_state, "plate",
+                                       pot_states, player_idx)
+                player.num_plate_held += 1
+
+                # Give shaped reward if pickup is useful
+                # if self.is_plate_pickup_useful(new_state, pot_states):
+                    # shaped_reward[player_idx] += self.reward_shaping_params[
+                    #     "PLATE_PICKUP_REWARD"]
+
+                # Perform dish pickup from dispenser
+                obj = ObjectState('plate', pos)
+                player.set_object(obj)
+
+            elif terrain_type == 'W':
+                if player.held_object is None:
+                    # pick up clean plates
+                    if self.plate_hot_at_location(new_state, i_pos):
+                        self.log_object_pickup(events_infos, new_state, "hot_plate",
+                                        pot_states, player_idx)
+                        obj = new_state.remove_object(i_pos)
+                        player.set_object(obj)
+                        # Give shaped reward if pickup is useful
+                        # if self.is_plate_pickup_useful(new_state, pot_states):
+                            # shaped_reward[player_idx] += self.reward_shaping_params["PLATE_PICKUP_REWARD"]
+                        
+                        player.num_plate_held += 1
+                    
+                    # wash plates
+                    else:
+                        if new_state.has_object(i_pos):
+                            obj = new_state.get_object(i_pos)
+                            wash_time = obj.state
+                            if wash_time < self.wash_time:
+                                obj.state = wash_time + 1
+                                # shaped_reward[
+                                #     player_idx] += self.reward_shaping_params[
+                                #         "WASH_PLATE_REW"]
+
+                                # Log onion potting
+                                events_infos['plate_heating'][player_idx] = True
+
+                else: # sink is empty and put plate
+                    if player.get_object().name == "plate":  
+                        obj_name = player.get_object().name
+                        self.log_object_drop(events_infos, new_state, obj_name,
+                                            pot_states, player_idx)
+
+                        # Drop object on counter
+                        obj = player.remove_object()
+                        new_state.add_object(ObjectState('hot_plate', i_pos, 0), i_pos) # wash time = 0
+
+            elif terrain_type == 'P' and player.has_object():
+
+                if player.get_object(
+                ).name == 'hot_plate' and self.steak_ready_at_location(
+                        new_state, i_pos):
+                    self.log_object_pickup(events_infos, new_state, "steak",
+                                           pot_states, player_idx)
+
+                    # Pick up steak
+                    player.remove_object()  # Remove the hot plate
+                    obj = new_state.remove_object(i_pos)  # Get steak
+                    player.set_object(obj)
+                    # shaped_reward[player_idx] += self.reward_shaping_params[
+                        # "STEAK_PICKUP_REWARD"]
+                
+                elif player.get_object().name == 'meat':
+                    item_type = player.get_object().name
+
+                    if not new_state.has_object(i_pos):
+                        # Pot was empty, add meat to it
+                        player.remove_object()
+                        new_state.add_object(
+                            ObjectState('steak', i_pos, ('steak', 1, 0)),
+                            i_pos)
+                        shaped_reward[
+                            player_idx] += self.reward_shaping_params[
+                                "PLACEMENT_IN_POT_REW"]
+
+                        # Log meat cooking
+                        events_infos['steak_cooking'][player_idx] = True
+
+                    else:
+                        # Pot has already meat in it
+                        obj = new_state.get_object(i_pos)
+                        assert obj.name == 'steak', 'Object in pot was not steak'
+                        food_type, num_items, cook_time = obj.state
+                        if cook_time < self.steak_cooking_time:
+                            obj.state = food_type, num_items, cook_time + 1
+                            shaped_reward[
+                                player_idx] += self.reward_shaping_params[
+                                    "COOKING_STEAK_REW"]
+
+                            # Log onion potting
+                            events_infos['steak_cooking'][player_idx] = True
+
+                elif player.get_object().name in ['onion', 'tomato']:
+                    item_type = player.get_object().name
+
+                    if not new_state.has_object(i_pos):
+                        # Pot was empty, add onion to it
+                        player.remove_object()
+                        new_state.add_object(
+                            ObjectState('soup', i_pos, (item_type, 1, 0)),
+                            i_pos)
+                        shaped_reward[
+                            player_idx] += self.reward_shaping_params[
+                                "PLACEMENT_IN_POT_REW"]
+
+                        # Log onion potting
+                        events_infos['onion_potting'][player_idx] = True
+
+                    else:
+                        # Pot has already items in it, add if not full and of same type
+                        obj = new_state.get_object(i_pos)
+                        assert obj.name == 'soup', 'Object in pot was not soup'
+                        soup_type, num_items, cook_time = obj.state
+                        if num_items < self.num_items_for_soup and soup_type == item_type:
+                            player.remove_object()
+                            obj.state = (soup_type, num_items + 1, 0)
+                            shaped_reward[
+                                player_idx] += self.reward_shaping_params[
+                                    "PLACEMENT_IN_POT_REW"]
+
+                            # Log onion potting
+                            events_infos['onion_potting'][player_idx] = True
+
+            elif terrain_type == 'S' and player.has_object():
+                obj = player.get_object()
+                if obj.name == 'dish':
+                    new_state, delivery_rew = self.deliver_dish(
+                        new_state, player, obj)
+                    sparse_reward[player_idx] += delivery_rew
+                    player.num_served += 1
+
+                    # Log dish delivery
+                    events_infos['dish_delivery'][player_idx] = True
+
+                    # If last soup necessary was delivered, stop resolving interacts
+                    if new_state.order_list is not None and len(
+                            new_state.order_list) == 0:
+                        break
+
+            elif terrain_type == 'B':
+                if player.held_object is None:
+                    obj = new_state.get_object(i_pos)
+                    assert obj.name == 'garnish', 'Object on chopping board was not garnish'
+                    chop_time = obj.state
+                    if chop_time < self.chopping_time:
+                        obj.state = chop_time + 1
+                        # shaped_reward[
+                        #     player_idx] += self.reward_shaping_params[
+                        #         "CHOPPING_ONION_REW"]
+
+                        # Log onion chopping
+                        events_infos['onion_chopping'][player_idx] = True
+
+                elif player.get_object().name == 'onion' and not new_state.has_object(i_pos):
+                    # Chopping board was empty, add onion to it
+                    player.remove_object()
+                    new_state.add_object(
+                        ObjectState('garnish', i_pos, 0),
+                        i_pos)
+                    # shaped_reward[
+                        # player_idx] += self.reward_shaping_params[
+                            # "PLACEMENT_ON_BOARD_REW"]
+
+                    # Log onion potting
+                    events_infos['onion_chopping'][player_idx] = True
+
+                # Pick up garnish
+                elif player.get_object().name == 'steak' and self.garnish_ready_at_location(new_state, i_pos):
+                    player.remove_object() # Remove the hot plate
+                    self.log_object_pickup(events_infos, new_state, "dish",
+                                           pot_states, player_idx)
+
+                    _ = new_state.remove_object(i_pos)  # Get steak
+                    player.set_object(ObjectState('dish', pos))
+                    # shaped_reward[player_idx] += self.reward_shaping_params[
+                    #     "GARNISH_STEAK_REWARD"]
+
+        return sparse_reward, shaped_reward
+    
+    def deliver_dish(self, state, player, dish_obj):
+        """
+        Deliver the steak, and get reward if there is no order list
+        or if the type of the delivered steak matches the next order.
+        """
+        player.remove_object()
+
+        if state.order_list is None:
+            return state, self.delivery_reward
+
+        # If the delivered soup is the one currently required
+        assert not self.is_terminal(state)
+        current_order = state.order_list[0]
+        if dish_obj.name == 'dish' and 'steak' == current_order:
+            state.order_list = state.order_list[1:]
+            return state, self.delivery_reward
+
+        return state, 0
+    
+    def step_environment_effects(self, state):
+        for obj in state.objects.values():
+            if obj.name == 'soup':
+                x, y = obj.position
+                soup_type, num_items, cook_time = obj.state
+                # NOTE: cook_time is capped at self.soup_cooking_time
+                if self.terrain_mtx[y][x] == 'P' and \
+                    num_items == self.num_items_for_soup and \
+                    cook_time < self.soup_cooking_time:
+                    obj.state = soup_type, num_items, cook_time + 1
+
+            elif obj.name == 'steak':
+                x, y = obj.position
+                food_type, num_items, cook_time = obj.state
+                # NOTE: cook_time is capped at self.soup_cooking_time
+                if self.terrain_mtx[y][x] == 'P' and \
+                    cook_time < self.steak_cooking_time:
+                    obj.state = food_type, num_items, cook_time + 1
+    
+    #######################
+    # LAYOUT / STATE INFO #
+    #######################
+
+    def get_chopping_board_locations(self):
+        return list(self.terrain_pos_dict['B'])
+
+    def get_meat_dispenser_locations(self):
+        return list(self.terrain_pos_dict['M'])
+
+    def get_sink_locations(self):
+        return list(self.terrain_pos_dict['W'])
+    
+    def get_key_objects_locations(self):
+        return self.get_dish_dispenser_locations() + self.get_dish_dispenser_locations() + self.get_onion_dispenser_locations() + self.get_tomato_dispenser_locations() + self.get_serving_locations() + self.get_pot_locations() + self.get_chopping_board_locations() + self.get_meat_dispenser_locations() + self.get_sink_locations()
+    
+    def get_pot_states(self, state, pots_states_dict=None, valid_pos=None):
+        """Returns dict with structure:
+        {
+         empty: [ObjStates]
+         onion: {
+            'x_items': [soup objects with x items],
+            'cooking': [ready soup objs]
+            'ready': [ready soup objs],
+            'partially_full': [all non-empty and non-full soups]
+            }
+         tomato: same dict structure as above
+        }
+        """
+        if pots_states_dict is None:
+            pots_states_dict = {}
+            pots_states_dict['empty'] = []
+            pots_states_dict['onion'] = defaultdict(list)
+            pots_states_dict['tomato'] = defaultdict(list)
+            pots_states_dict['steak'] = defaultdict(list)
+
+        get_pot_info = []
+        if valid_pos is not None:
+            for pot_pos in self.get_pot_locations():
+                if pot_pos in valid_pos:
+                    get_pot_info.append(pot_pos)
+        else:
+            get_pot_info = self.get_pot_locations()
+
+        for pot_pos in get_pot_info:
+            # reset
+            for k, v in pots_states_dict.items():
+                if type(v) == list:
+                    if pot_pos in v:
+                        v.remove(pot_pos)
+                else:
+                    for d_k, d_v in v.items():
+                        if pot_pos in d_v:
+                            d_v.remove(pot_pos)
+
+            if not state.has_object(pot_pos):
+                pots_states_dict['empty'].append(pot_pos)
+
+            else:
+                soup_obj = state.get_object(pot_pos)
+                soup_type, num_items, cook_time = soup_obj.state
+                if 0 < num_items < self.num_items_for_soup:
+                    pots_states_dict[soup_type]['{}_items'.format(num_items)].append(pot_pos)
+                elif num_items == self.num_items_for_soup:
+                    assert cook_time <= self.soup_cooking_time
+                    if cook_time == self.soup_cooking_time:
+                        pots_states_dict[soup_type]['ready'].append(pot_pos)
+                    else:
+                        pots_states_dict[soup_type]['cooking'].append(pot_pos)
+                else:
+                    raise ValueError("Pot with more than {} items".format(
+                        self.num_items_for_soup))
+
+                if 0 < num_items < self.num_items_for_soup:
+                    pots_states_dict[soup_type]['partially_full'].append(pot_pos)
+
+        return pots_states_dict
+    
+    def get_ready_pots(self, pot_states):
+        return pot_states["steak"]["ready"] + pot_states["onion"]["ready"]
+
+    def get_cooking_pots(self, pot_states):
+        return pot_states["steak"]["cooking"] + pot_states["onion"]["cooking"]
+    
+    def get_partially_full_pots(self, pot_states):
+        return pot_states["steak"]["partially_full"] + pot_states["onion"][
+            "partially_full"]
+    
+    def get_sink_status(self, state):
+        empty_sink = []
+        full_sink = []
+        ready_sink = []
+        sink_locations = self.get_sink_locations()
+        for loc in sink_locations:
+            if not state.has_object(loc): # board is empty
+                empty_sink.append(loc)
+            else:
+                obj = state.get_object(loc)
+                if obj.state >= self.wash_time:
+                    ready_sink.append(loc)
+                else:
+                    full_sink.append(loc)
+        return {'empty': empty_sink, 'full': full_sink, 'ready': ready_sink}
+
+    def get_chopping_board_status(self, state):
+        empty_board = []
+        full_board = []
+        ready_board = []
+        board_locations = self.get_chopping_board_locations()
+        for loc in board_locations:
+            if not state.has_object(loc): # board is empty
+                empty_board.append(loc)
+            else:
+                obj = state.get_object(loc)
+                if obj.state >= self.chopping_time:
+                    ready_board.append(loc)
+                else:
+                    full_board.append(loc)
+        return {'empty': empty_board, 'full': full_board, 'ready': ready_board}
+
+    def steak_ready_at_location(self, state, pos):
+        if not state.has_object(pos):
+            return False
+        obj = state.get_object(pos)
+        assert obj.name == 'steak', 'Object in pan was not steak'
+        _, _, cook_time = obj.state
+        return cook_time >= self.steak_cooking_time
+    
+    def plate_hot_at_location(self, state, pos):
+        if not state.has_object(pos):
+            return False
+        obj = state.get_object(pos)
+        assert obj.name == 'hot_plate', 'Object in sink was not hot plate'
+        prep_time = obj.state
+        return prep_time >= self.wash_time
+    
+    def garnish_ready_at_location(self, state, pos):
+        if not state.has_object(pos):
+            return False
+        obj = state.get_object(pos)
+        assert obj.name == 'garnish', 'Object on chopping board was not garnish'
+        prep_time = obj.state
+        return prep_time >= self.chopping_time
+    
+    @staticmethod
+    def _assert_valid_grid(grid):
+        """Raises an AssertionError if the grid is invalid.
+
+        grid:  A sequence of sequences of spaces, representing a grid of a
+        certain height and width. grid[y][x] is the space at row y and column
+        x. A space must be either 'X' (representing a counter), ' ' (an empty
+        space), 'O' (onion supply), 'P' (pot), 'D' (dish supply), 'S' (serving
+        location), '1' (player 1) and '2' (player 2).
+        """
+        height = len(grid)
+        width = len(grid[0])
+
+        # Make sure the grid is not ragged
+        assert all(len(row) == width for row in grid), 'Ragged grid'
+
+        # Borders must not be free spaces
+        def is_not_free(c):
+            return c in 'XOPDSTMWB'
+
+        for y in range(height):
+            assert is_not_free(grid[y][0]), 'Left border must not be free'
+            assert is_not_free(grid[y][-1]), 'Right border must not be free'
+        for x in range(width):
+            assert is_not_free(grid[0][x]), 'Top border must not be free'
+            assert is_not_free(grid[-1][x]), 'Bottom border must not be free'
+
+        all_elements = [element for row in grid for element in row]
+        digits = ['1', '2', '3', '4', '5', '6', '7', '8', '9']
+        layout_digits = [e for e in all_elements if e in digits]
+        num_players = len(layout_digits)
+        assert num_players > 0, "No players (digits) in grid"
+        layout_digits = list(sorted(map(int, layout_digits)))
+        assert layout_digits == list(range(1, num_players +
+                                           1)), "Some players were missing"
+
+        assert all(c in 'XOPDSTWMB123456789 '
+                   for c in all_elements), 'Invalid character in grid'
+        assert all_elements.count('1') == 1, "'1' must be present exactly once"
+        assert all_elements.count(
+            'D') >= 1, "'D' must be present at least once"
+        assert all_elements.count(
+            'S') >= 1, "'S' must be present at least once"
+        assert all_elements.count(
+            'P') >= 1, "'P' must be present at least once"
+        assert all_elements.count('O') >= 1 or all_elements.count(
+            'T') >= 1, "'O' or 'T' must be present at least once"
+    
+    ################################
+    # EVENT LOGGING HELPER METHODS #
+    ################################
+
+    #####################
+    # TERMINAL GRAPHICS #
+    #####################
+
+    def state_string(self, state):
+        """String representation of the current state"""
+        # TODO
+        pass
+
+    ###################
+    # RENDER FUNCTION #
+    ###################
+
+    def render(self, state, mode, time_step_left=None, time_passed=None):
+        """
+        Function that renders the game
+
+        Args:
+            state(OvercookedState): state to render
+            mode (string): mode of rendering
+                           For "human", render the game without a info panel
+                           For "blur", render the game with trajectory of both
+                               players
+                           For "full", render the game with a info panel
+            time_step_left(int): timestep left for the game
+        """
+        players_dict = {player.position: player for player in state.players}
+        objects_pos = []  # list of positions of the objects
+
+        # set window size; SPRITE_LENGTH is the length of each squared sprite, which could be tuned in graphics.py
+        if mode == "full":
+            window_size = self.width*SPRITE_LENGTH,\
+                          self.height*SPRITE_LENGTH + INFO_PANEL_HEIGHT
+        else:
+            window_size = self.width*SPRITE_LENGTH, self.height*SPRITE_LENGTH
+
+        if self.viewer == None:
+            # create viewer
+            self.viewer = pygame.display.set_mode(window_size)
+            self.viewer.fill((255, 255, 255)) # white background
+            # render the terrain
+        for y, terrain_row in enumerate(self.terrain_mtx):
+            for x, terrain in enumerate(terrain_row):
+                blit_terrain(x, y, self.terrain_mtx, self.viewer, mode)
+
+        # remove the objects on the counters and pots
+        if self.pre_objects_pos is not None:
+            for pos in self.pre_objects_pos:
+                x, y = pos
+                blit_terrain(x, y, self.terrain_mtx, self.viewer, mode)
+
+        # render objects at the new locations
+        for y, terrain_row in enumerate(self.terrain_mtx):
+            for x, terrain in enumerate(terrain_row):
+                curr_pos = get_curr_pos(x, y, mode)
+                # there is object on a counter
+                if terrain == "X" and state.has_object((x, y)):
+                    state_obj = state.get_object((x, y))
+                    obj_pgobj = get_object_sprite(state_obj)
+                    self.viewer.blit(obj_pgobj, curr_pos)
+                    objects_pos.append((x, y))
+                # there is soup on a pot
+                elif terrain == "P" and state.has_object((x, y)):
+                    soup_obj = state.get_object((x, y))
+                    soup_type, num_items, cook_time = soup_obj.state
+                    # if soup is ready
+                    if self.soup_ready_at_location(state, (x, y)):
+                        soup_pgobj = load_image(
+                            os.path.join(ASSETS_DIR, OBJECT_DIR,
+                                         'soup-%s-cooked.png' % soup_type))
+                    # if soup is not ready
+                    else:
+                        soup_pgobj = get_object_sprite(soup_obj, on_pot=True)
+                    
+                    self.viewer.blit(soup_pgobj, curr_pos)
+                    objects_pos.append((x, y))
+
+                    # render cook time for current soup if cooking starts
+                    if num_items == self.num_items_for_soup:
+                        cook_time_text_surface = get_text_sprite(
+                            str(cook_time))
+                        text_pos = cook_time_text_surface.get_rect()
+                        # align midbottom of the textbox to midbottom of
+                        # current terrain
+                        text_pos.midbottom = curr_pos.midbottom
+                        # if not self.check_viewpoint(state.players[1].position, state.players[1].orientation, text_pos.midbottom[0], text_pos.midbottom[1]):
+                        #     cook_time_text_surface.set_alpha(1)
+                        self.viewer.blit(cook_time_text_surface, text_pos)
+
+                elif terrain == "B" and state.has_object((x, y)):
+                    chop_obj = state.get_object((x, y))
+                    chop_time = chop_obj.state
+                    # if soup is ready
+                    if self.garnish_ready_at_location(state, (x, y)):
+                        board_pgobj = load_image(
+                            os.path.join(ASSETS_DIR, OBJECT_DIR,
+                                         'chopped.png'))
+                    # if soup is not ready
+                    else:
+                        board_pgobj = get_object_sprite(chop_obj, on="board")
+                    
+                    self.viewer.blit(board_pgobj, curr_pos)
+                    objects_pos.append((x, y))
+
+                    # render cook time for current soup if cooking starts
+                    cook_time_text_surface = get_text_sprite(
+                        str(chop_time))
+                    text_pos = cook_time_text_surface.get_rect()
+                    # align midbottom of the textbox to midbottom of
+                    # current terrain
+                    text_pos.midbottom = curr_pos.midbottom
+                    # if not self.check_viewpoint(state.players[1].position, state.players[1].orientation, text_pos.midbottom[0], text_pos.midbottom[1]):
+                    #     cook_time_text_surface.set_alpha(1)
+                    self.viewer.blit(cook_time_text_surface, text_pos)
+
+                elif terrain == "W" and state.has_object((x, y)):
+                    sink_obj = state.get_object((x, y))
+                    wash_time = sink_obj.state
+                    sink_pgobj = get_object_sprite(sink_obj, on="sink")
+                    
+                    self.viewer.blit(sink_pgobj, curr_pos)
+                    objects_pos.append((x, y))
+
+                    # render cook time for current soup if cooking starts
+                    cook_time_text_surface = get_text_sprite(
+                        str(wash_time))
+                    text_pos = cook_time_text_surface.get_rect()
+                    # align midbottom of the textbox to midbottom of
+                    # current terrain
+                    text_pos.midbottom = curr_pos.midbottom
+                    # if not self.check_viewpoint(state.players[1].position, state.players[1].orientation, text_pos.midbottom[0], text_pos.midbottom[1]):
+                    #     cook_time_text_surface.set_alpha(1)
+                    self.viewer.blit(cook_time_text_surface, text_pos)
+
+        if mode == "human" or mode == "full" or mode == "fog":
+            # remove chefs from last state
+            if self.pre_players_pos is not None:
+                for pos in self.pre_players_pos:
+                    x, y = pos
+                    blit_terrain(x, y, self.terrain_mtx, self.viewer, mode)
+
+        # render the chefs at new location
+        for pos, player in players_dict.items():
+            x, y = pos
+            curr_pos = get_curr_pos(x, y, mode)
+
+            # check player position conflicts
+            player_idx_lst = [
+                i for i, p in enumerate(state.players)
+                if p.position == player.position
+            ]
+            assert len(player_idx_lst) == 1
+
+            player_pgobj, player_hat_pgobj = get_player_sprite(
+                player, player_idx_lst[0])
+
+            if mode == "blur":
+                transparent = (time_step_left+10)*5
+                print(transparent)
+                player_pgobj.set_alpha(transparent)
+                player_hat_pgobj.set_alpha(transparent)
+                # draw_arrow(self.viewer, player, player_idx_lst[0], curr_pos,
+                           # time_step_left)
+
+            self.viewer.blit(player_pgobj, curr_pos)
+            self.viewer.blit(player_hat_pgobj, curr_pos)                
+
+        # update previous players and objects positions
+        self.pre_players_pos = players_dict.keys()
+        if len(objects_pos) > 0:
+            self.pre_objects_pos = objects_pos
+        else:
+            self.pre_objects_pos = None
+
+        # render the game info panel
+        if mode == "full":
+            render_game_info_panel(
+                self.viewer,
+                (self.width * SPRITE_LENGTH, self.height * SPRITE_LENGTH),
+                state.num_orders_remaining, time_passed)
+
+        if mode == "fog": # fog the terrain
+            for y, terrain_row in enumerate(self.terrain_mtx):
+                for x, terrain in enumerate(terrain_row):
+                    in_view = self.check_viewpoint(state.players[1].position, state.players[1].orientation, x, y)
+                    if not in_view:
+                        curr_pos = get_curr_pos(x, y, mode)
+                        blit_terrain(x, y, self.terrain_mtx, self.viewer, mode, in_view)
+                        fog_pgobj = pygame.Surface((50,50))
+                        fog_pgobj.fill((0,0,0))
+                        # load_image(os.path.join(ASSETS_DIR, TERRAIN_DIR, 'counter.png'))
+                        fog_pgobj.set_alpha(245)
+                        self.viewer.blit(fog_pgobj, curr_pos)
+
+        # update display
+        pygame.display.update()
+
+    ###################
+    # STATE ENCODINGS #
+    ###################
+    #
+    # TODO
+
+    ##############
+    # DEPRECATED #
+    ##############
+    #
+    # TODO
+    

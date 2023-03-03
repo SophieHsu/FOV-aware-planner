@@ -7,7 +7,7 @@ import numpy as np
 import gc
 import time
 
-from overcooked_ai_py.mdp.overcooked_mdp import OvercookedGridworld, OvercookedState, Direction, Action, PlayerState, ObjectState
+from overcooked_ai_py.mdp.overcooked_mdp import OvercookedGridworld, SteakHouseGridworld, OvercookedState, Direction, Action, PlayerState, ObjectState
 from overcooked_ai_py.mdp.overcooked_env import OvercookedEnv
 import overcooked_ai_py.agents.agent as agent
 import overcooked_ai_py.planning.planners as planners
@@ -91,7 +91,7 @@ class App:
 
     def step_env(self, my_action):
         agent_action = self.agent.action(self.env.state)[0]
-        agent2_action = self.agent2.action(self.env.state)[0]
+        agent2_action = my_action #self.agent2.action(self.env.state)[0]
 
         if self.agent_idx == 0:
             joint_action = (agent_action, agent2_action)
@@ -139,7 +139,7 @@ if __name__ == "__main__" :
 
     # np.random.seed(0)
     start_time = time.time()
-    scenario_1_mdp = OvercookedGridworld.from_layout_name('10x15_test1', start_order_list=['onion','onion'], num_items_for_soup=3, cook_time=10)
+    scenario_1_mdp = SteakHouseGridworld.from_layout_name('10x15_steak', start_order_list=['steak','steak'])
     # start_state = OvercookedState(
     #     [P((2, 1), s, Obj('onion', (2, 1))),
     #      P((3, 2), s)],
@@ -152,7 +152,7 @@ if __name__ == "__main__" :
     # human_agent = agent.biasHumanModel(ml_action_manager, [0.5, (1.0-0.5)], 0.5, auto_unstuck=True)
 
     mlp = planners.MediumLevelPlanner.from_pickle_or_compute(scenario_1_mdp, NO_COUNTERS_PARAMS, force_compute=False)  
-    human_agent = agent.limitVisionHumanModel(mlp, env.state,
+    human_agent = agent.SteakLimitVisionHumanModel(mlp, env.state, auto_unstuck=False,
                                   explore=True)
     # human_agent = agent.GreedyHumanModel(mlp)
     # human_agent = agent.CoupledPlanningAgent(mlp)
@@ -182,7 +182,7 @@ if __name__ == "__main__" :
         total_t += len(s_t)
     print('Average timesteps =', total_t/10.0)
     t = 0
-    scenario_1_mdp = OvercookedGridworld.from_layout_name('10x15_steak', start_order_list=['onion','onion'], num_items_for_soup=3, cook_time=10)
+    scenario_1_mdp = SteakHouseGridworld.from_layout_name('10x15_steak', start_order_list=['steak','steak'])
     env = OvercookedEnv.from_mdp(scenario_1_mdp, horizon = 100)
     while not done:
         if t >= 0 and t <= len(s_t):

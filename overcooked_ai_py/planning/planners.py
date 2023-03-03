@@ -1000,13 +1000,25 @@ class MediumLevelActionManager(object):
         tomato_dispenser_locations = self.mdp.get_tomato_dispenser_locations()
         tomato_pickup_locations = tomato_dispenser_locations + counter_objects['tomato']
         return self._get_ml_actions_for_positions(tomato_pickup_locations)
-
+    
+    def pickup_meat_actions(self, counter_objects):
+        meat_dispenser_locations = self.mdp.get_meat_dispenser_locations()
+        meat_pickup_locations = meat_dispenser_locations + counter_objects['meat']
+        return self._get_ml_actions_for_positions(meat_pickup_locations)
+    
     def pickup_dish_actions(self, counter_objects, only_use_dispensers=False):
         """If only_use_dispensers is True, then only take dishes from the dispensers"""
         dish_pickup_locations = self.mdp.get_dish_dispenser_locations()
         if not only_use_dispensers:
             dish_pickup_locations += counter_objects['dish']
         return self._get_ml_actions_for_positions(dish_pickup_locations)
+    
+    def pickup_plate_actions(self, counter_objects, only_use_dispensers=False):
+        """If only_use_dispensers is True, then only take dishes from the dispensers"""
+        plate_pickup_locations = self.mdp.get_plate_dispenser_locations()
+        if not only_use_dispensers:
+            plate_pickup_locations += counter_objects['plate']
+        return self._get_ml_actions_for_positions(plate_pickup_locations)
 
     def pickup_counter_soup_actions(self, counter_objects):
         soup_pickup_locations = counter_objects['soup']
@@ -1020,6 +1032,10 @@ class MediumLevelActionManager(object):
     def deliver_soup_actions(self):
         serving_locations = self.mdp.get_serving_locations()
         return self._get_ml_actions_for_positions(serving_locations)
+    
+    def deliver_dish_actions(self): # dish here is a plate with fully garnished steak on it
+        serving_locations = self.mdp.get_serving_locations()
+        return self._get_ml_actions_for_positions(serving_locations)
 
     def put_onion_in_pot_actions(self, pot_states_dict):
         partially_full_onion_pots = pot_states_dict['onion']['partially_full']
@@ -1031,11 +1047,80 @@ class MediumLevelActionManager(object):
         fillable_pots = partially_full_tomato_pots + pot_states_dict['empty']
         return self._get_ml_actions_for_positions(fillable_pots)
     
+    def put_meat_in_pot_actions(self, pot_states_dict):
+        partially_full_steak_pots = pot_states_dict['steak']['partially_full']
+        fillable_pots = partially_full_steak_pots + pot_states_dict['empty']
+        return self._get_ml_actions_for_positions(fillable_pots)
+    
+    def put_onion_on_board_actions(self, counter_objects, state):
+        empty_boards = []
+        board_locations = self.mdp.get_chopping_board_locations()
+        for loc in board_locations:
+            if not state.has_object(loc): # board is empty
+                empty_boards.append(loc)
+        onion_on_counter = counter_objects['onion']
+        return self._get_ml_actions_for_positions(empty_boards + onion_on_counter)
+    
+    def chop_onion_on_board_actions(self, state):
+        full_boards = []
+        board_locations = self.mdp.get_chopping_board_locations()
+        for loc in board_locations:
+            if state.has_object(loc): # board is with onion
+                full_boards.append(loc)
+        return self._get_ml_actions_for_positions(full_boards)
+    
+    def put_plate_in_sink_actions(self, counter_objects, state):
+        empty_sink = []
+        sink_locations = self.mdp.get_sink_locations()
+        for loc in sink_locations:
+            if not state.has_object(loc): # board is empty
+                empty_sink.append(loc)
+        plate_on_counter = counter_objects['plate']
+        return self._get_ml_actions_for_positions(empty_sink + plate_on_counter) 
+    
+    def heat_plate_in_sink_actions(self, state):
+        heat_needed_loc = []
+        sink_locations = self.mdp.get_sink_locations()
+        for loc in sink_locations:
+            if state.has_object(loc):
+                if state.get_object(loc).state < self.mdp.wash_time:
+                    heat_needed_loc.append(loc)
+        return self._get_ml_actions_for_positions(heat_needed_loc)
+
+    def add_garnish_to_steak_actions(self, state):
+        garnish_chopped_loc = []
+        board_locations = self.mdp.get_chopping_board_locations()
+        for loc in board_locations:
+            if not state.get_object(loc) is None:
+                chop_time = state.get_object(loc).state
+                if chop_time >= self.mdp.chopping_time:
+                    garnish_chopped_loc.append(loc)
+        return self._get_ml_actions_for_positions(garnish_chopped_loc)
+    
+    def pickup_hot_plate_from_sink_actions(self, counter_objects, state):
+        hot_plate_loc = []
+        sink_locations = self.mdp.get_sink_locations()
+        for loc in sink_locations:
+            if state.has_object(loc):
+                wash_time = state.get_object(loc).state
+                if wash_time >= self.mdp.wash_time:
+                    hot_plate_loc.append(loc)
+        hot_plate_on_counter = counter_objects['hot_plate']
+        return self._get_ml_actions_for_positions(hot_plate_loc + hot_plate_on_counter)
+
     def pickup_soup_with_dish_actions(self, pot_states_dict, only_nearly_ready=False):
         ready_pot_locations = pot_states_dict['onion']['ready'] + pot_states_dict['tomato']['ready']
         nearly_ready_pot_locations = pot_states_dict['onion']['cooking'] + pot_states_dict['tomato']['cooking']
         if not only_nearly_ready:
             partially_full_pots = pot_states_dict['tomato']['partially_full'] + pot_states_dict['onion']['partially_full']
+            nearly_ready_pot_locations = nearly_ready_pot_locations + pot_states_dict['empty'] + partially_full_pots
+        return self._get_ml_actions_for_positions(ready_pot_locations + nearly_ready_pot_locations)
+    
+    def pickup_steak_with_hot_plate_actions(self, pot_states_dict, only_nearly_ready=False):
+        ready_pot_locations = pot_states_dict['steak']['ready']
+        nearly_ready_pot_locations = pot_states_dict['steak']['cooking']
+        if not only_nearly_ready:
+            partially_full_pots = pot_states_dict['steak']['partially_full']
             nearly_ready_pot_locations = nearly_ready_pot_locations + pot_states_dict['empty'] + partially_full_pots
         return self._get_ml_actions_for_positions(ready_pot_locations + nearly_ready_pot_locations)
 
