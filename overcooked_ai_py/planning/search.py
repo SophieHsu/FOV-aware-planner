@@ -74,7 +74,7 @@ class SearchTree(object):
         print("Successors for last node expanded: ", self.expand(curr_state))
         raise TimeoutError("A* graph search was unable to find any goal state.")
 
-    def bounded_A_star_graph_search(self, qmdp_root=None, info=False, cost_limit=10e8):
+    def bounded_A_star_graph_search(self, qmdp_root=None, info=False, cost_limit=10e8, gamma=False):
         """
         Performs a A* Graph Search to find a path to a goal state
         """
@@ -112,7 +112,10 @@ class SearchTree(object):
                     elapsed_time, iter_count, len(seen)/iter_count, iter_count/elapsed_time))
 
                 # print("in is goal:", curr_qmdp_state, curr_node.state, curr_node.backwards_cost)
-                return curr_node.state, curr_node.backwards_cost, False
+                if gamma:
+                    return curr_node.state, curr_node.gamma_cost, False
+                else:
+                    return curr_node.state, curr_node.backwards_cost, False
             
             successors = self.expand(curr_state, curr_qmdp_state)
             # print('length of successors = {}'.format(len(successors)))
@@ -151,13 +154,14 @@ class SearchNode(object):
         action_cost: Additional cost to get to this node from the parent
     """
 
-    def __init__(self, state, action, parent, action_cost, debug=False):
+    def __init__(self, state, action, parent, action_cost, debug=False, gamma=0.9):
         assert state is not None
         self.state = state
         # Action that led to this state
         self.action = action
         self.debug = debug
         self.discount_cost = 0.3
+        self.gamma = gamma
 
         # Parent SearchNode
         self.parent = parent
@@ -165,10 +169,12 @@ class SearchNode(object):
             self.depth = self.parent.depth + 1
             self.backwards_cost = self.parent.backwards_cost + action_cost
             self.discount_cost = self.parent.discount_cost*(1.0-self.discount_cost) + action_cost*self.discount_cost
+            self.gamma_cost = self.parent.gamma_cost*(self.gamma) + action_cost
         else:
             self.depth = 0
             self.backwards_cost = 0
             self.discount_cost = 0.0
+            self.gamma_cost = 0.0
 
     def __lt__(self, other):
         return self.backwards_cost < other.backwards_cost

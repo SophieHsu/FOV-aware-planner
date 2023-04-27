@@ -126,41 +126,41 @@ class App:
         self.on_cleanup()
 
 
-COUNTERS_PARAMS = {
-    'start_orientations': True,
-    'wait_allowed': True,
-    'counter_goals': [],
-    'counter_drop': [(0, 1), (6, 2), (2, 4), (0, 4), (3, 4), (0, 0), (3, 1), (6, 1), (0, 3), (6, 4), (3, 0), (0, 2), (5, 0), (6, 0), (1, 0), (3, 2), (6, 3)],
-    'counter_pickup': [(0, 1), (6, 2), (2, 4), (0, 4), (3, 4), (0, 0), (3, 1), (6, 1), (0, 3), (6, 4), (3, 0), (0, 2), (5, 0), (6, 0), (1, 0), (3, 2), (6, 3)],
-    'same_motion_goals': True
-}
-
 if __name__ == "__main__" :
 
     # np.random.seed(0)
     start_time = time.time()
-    scenario_1_mdp = SteakHouseGridworld.from_layout_name('10x15_steak', start_order_list=['steak','steak'])
+    scenario_1_mdp = SteakHouseGridworld.from_layout_name('steak_test',  num_items_for_steak=1, chop_time=2, wash_time=2, start_order_list=['steak', 'steak'])
     # start_state = OvercookedState(
     #     [P((2, 1), s, Obj('onion', (2, 1))),
     #      P((3, 2), s)],
     #     {}, order_list=['onion','onion'])
-    env = OvercookedEnv.from_mdp(scenario_1_mdp, horizon = 100)
+    env = OvercookedEnv.from_mdp(scenario_1_mdp, horizon = 200)
+
+    COUNTERS_PARAMS = {
+        'start_orientations': True,
+        'wait_allowed': True,
+        'counter_goals': [],
+        'counter_drop': scenario_1_mdp.terrain_pos_dict['X'],
+        'counter_pickup': [(0, 1), (6, 2), (2, 4), (0, 4), (3, 4), (0, 0), (3, 1), (6, 1), (0, 3), (6, 4), (3, 0), (0, 2), (5, 0), (6, 0), (1, 0), (3, 2), (6, 3)],
+        'same_motion_goals': True
+    }
 
     # ml_action_manager = planners.MediumLevelActionManager(scenario_1_mdp, NO_COUNTERS_PARAMS)
 
     # hmlp = planners.HumanMediumLevelPlanner(scenario_1_mdp, ml_action_manager, [0.5, (1.0-0.5)], 0.5)
     # human_agent = agent.biasHumanModel(ml_action_manager, [0.5, (1.0-0.5)], 0.5, auto_unstuck=True)
-
-    mlp = planners.MediumLevelPlanner.from_pickle_or_compute(scenario_1_mdp, NO_COUNTERS_PARAMS, force_compute=False)  
-    human_agent = agent.SteakLimitVisionHumanModel(mlp, env.state, auto_unstuck=False,
-                                  explore=True)
-    # human_agent = agent.GreedyHumanModel(mlp)
+    VISION_LIMIT = True
+    mlp = planners.MediumLevelPlanner.from_pickle_or_compute(scenario_1_mdp, COUNTERS_PARAMS, force_compute=True)  
+    human_agent = agent.SteakLimitVisionHumanModel(mlp, env.state, auto_unstuck=True, explore=False, vision_limit=VISION_LIMIT)
+    # human_agent = agent.GreedySteakHumanModel(mlp)
     # human_agent = agent.CoupledPlanningAgent(mlp)
 
     qmdp_start_time = time.time()
-    mdp_planner = planners.HumanSubtaskQMDPPlanner.from_pickle_or_compute(scenario_1_mdp, NO_COUNTERS_PARAMS, force_compute_all=False)
-    ai_agent = agent.MediumQMdpPlanningAgent(mdp_planner, greedy=True, auto_unstuck=True)
+    mdp_planner = planners.SteakHumanSubtaskQMDPPlanner.from_pickle_or_compute(scenario_1_mdp, COUNTERS_PARAMS, force_compute_all=True, jmp = mlp.ml_action_manager.joint_motion_planner, vision_limited_human=human_agent)
+    ai_agent = agent.MediumQMdpPlanningAgent(mdp_planner, greedy=True, auto_unstuck=True, low_level_action_flag=False, vision_limit=VISION_LIMIT)
     # ai_agent = agent.QMDPAgent(mlp, env)
+    # ai_agent = agent.GreedySteakHumanModel(mlp)
 
     ai_agent.set_agent_index(0)
     human_agent.set_agent_index(1)
@@ -173,7 +173,7 @@ if __name__ == "__main__" :
     total_t = 0
     for i in range(1):
         game_start_time = time.time()
-        s_t, joint_a_t, r_t, done_t = env.run_agents(agent_pair, include_final_state=True, display=DISPLAY)
+        s_t, joint_a_t, r_t, done_t = env.run_agents(agent_pair, include_final_state=True, display=True)
         # print("It took {} seconds for qmdp to compute".format(game_start_time - qmdp_start_time))
         # print("It took {} seconds for playing the entire level".format(time.time() - game_start_time))
         # print("It took {} seconds to plan".format(time.time() - start_time))
@@ -182,12 +182,12 @@ if __name__ == "__main__" :
         total_t += len(s_t)
     print('Average timesteps =', total_t/10.0)
     t = 0
-    scenario_1_mdp = SteakHouseGridworld.from_layout_name('10x15_steak', start_order_list=['steak','steak'])
-    env = OvercookedEnv.from_mdp(scenario_1_mdp, horizon = 100)
+    scenario_1_mdp = SteakHouseGridworld.from_layout_name('steak_test',  num_items_for_steak=1, chop_time=2, wash_time=2, start_order_list=['steak', 'steak'])
+    env = OvercookedEnv.from_mdp(scenario_1_mdp, horizon = 200)
     while not done:
         if t >= 0 and t <= len(s_t):
-            # env.render("blur")
             env.render("fog")
+            # env.render()
             time.sleep(0.1)
         agent1_action = s_t[t][1][0]
         agent2_action = s_t[t][1][1]

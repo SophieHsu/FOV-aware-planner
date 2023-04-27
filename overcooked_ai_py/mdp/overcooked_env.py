@@ -149,6 +149,13 @@ class OvercookedEnv(object):
         is just to print the Env object
         """
         return self.mdp.state_string(self.state)
+    
+    def __str__(self):
+        """
+        Standard way to view the state of an environment programatically
+        is just to print the Env object
+        """
+        return self.mdp.state_string(self.state)
 
     def display_states(self, *states):
         old_state = self.state
@@ -318,7 +325,9 @@ class OvercookedEnv(object):
         trajectory = []
         done = False
         start_time = time.time()
-        if display: print(self)
+        if display: 
+            self.render()
+            time.sleep(0.1)
 
         while not done:
             s_t = self.state
@@ -339,7 +348,9 @@ class OvercookedEnv(object):
                 break
 
             # print("Time spent: {}".format(time.time()-start_time))
-            # tmp = input()
+            if display: 
+                self.render()
+                time.sleep(0.1)
 
         assert len(trajectory) == self.t, "{} vs {}".format(
             len(trajectory), self.t)

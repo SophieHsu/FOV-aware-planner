@@ -2014,7 +2014,7 @@ class SteakHouseGridworld(OvercookedGridworld):
     # INSTANTIATION METHODS #
     #########################
 
-    def __init__(self, terrain, start_player_positions, start_order_list=None, cook_time=20, num_items_for_steak=1, chop_time=5, wash_time=5, delivery_reward=20, rew_shaping_params=None, layout_name="unnamed_layout"):
+    def __init__(self, terrain, start_player_positions, start_order_list=None, cook_time=20, num_items_for_steak=1, chop_time=3, wash_time=3, delivery_reward=20, rew_shaping_params=None, layout_name="unnamed_layout"):
         super().__init__(terrain, start_player_positions, start_order_list, cook_time, num_items_for_steak, delivery_reward, rew_shaping_params, layout_name)
         self.steak_cooking_time = cook_time
         self.chopping_time = chop_time
@@ -2176,6 +2176,22 @@ class SteakHouseGridworld(OvercookedGridworld):
                     # Pick up object from counter
                     obj = new_state.remove_object(i_pos)
                     player.set_object(obj)
+                
+                elif player.has_object() and new_state.has_object(i_pos):
+                    obj_name = player.get_object().name
+                    player_obj = player.remove_object()
+
+                    # Pick up object from counter
+                    self.log_object_pickup(events_infos, new_state, obj_name,
+                                           pot_states, player_idx)
+                    obj = new_state.remove_object(i_pos)
+                    player.set_object(obj)
+
+                    # Drop object on counter
+                    self.log_object_drop(events_infos, new_state, obj_name,
+                                         pot_states, player_idx)
+                    new_state.add_object(player_obj, i_pos)
+
 
             elif terrain_type == 'O' and player.held_object is None:
                 self.log_object_pickup(events_infos, new_state, "onion",
@@ -2611,6 +2627,16 @@ class SteakHouseGridworld(OvercookedGridworld):
     # EVENT LOGGING HELPER METHODS #
     ################################
 
+    def log_object_drop(self, events_infos, state, obj_name, pot_states,
+                        player_index):
+        """Player dropped the object on a counter"""
+        obj_drop_key = obj_name + "_drop"
+        if obj_drop_key not in events_infos:
+            # TODO: add support for tomato event logging
+            if obj_name in ["meat", "hot_plate", "steak", "garnish"]:
+                return
+            raise ValueError("Unknown event {}".format(obj_drop_key))
+
     #####################
     # TERMINAL GRAPHICS #
     #####################
@@ -2618,7 +2644,7 @@ class SteakHouseGridworld(OvercookedGridworld):
     def state_string(self, state):
         """String representation of the current state"""
         # TODO
-        pass
+        return ''
 
     ###################
     # RENDER FUNCTION #
