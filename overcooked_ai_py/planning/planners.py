@@ -994,11 +994,16 @@ class MediumLevelActionManager(object):
         player_actions = list(filter(is_valid_goal_given_start, player_actions))
         return player_actions
 
-    def pickup_onion_actions(self, counter_objects, only_use_dispensers=False):
+    def pickup_onion_actions(self, counter_objects, only_use_dispensers=False, knowledge_base=None):
         """If only_use_dispensers is True, then only take onions from the dispensers"""
         onion_pickup_locations = self.mdp.get_onion_dispenser_locations()
         if not only_use_dispensers:
             onion_pickup_locations += counter_objects['onion']
+        if knowledge_base is not None:
+            for pos, obj in knowledge_base.items():
+                if (obj is not None) and pos not in ['pot_states', 'chop_states', 'sink_states', 'other_player']:
+                    if obj.name == 'onion':
+                        onion_pickup_locations += [pos]
         return self._get_ml_actions_for_positions(onion_pickup_locations)
 
     def pickup_tomato_actions(self, counter_objects):
@@ -1006,23 +1011,38 @@ class MediumLevelActionManager(object):
         tomato_pickup_locations = tomato_dispenser_locations + counter_objects['tomato']
         return self._get_ml_actions_for_positions(tomato_pickup_locations)
     
-    def pickup_meat_actions(self, counter_objects):
+    def pickup_meat_actions(self, counter_objects, knowledge_base=None):
         meat_dispenser_locations = self.mdp.get_meat_dispenser_locations()
         meat_pickup_locations = meat_dispenser_locations + counter_objects['meat']
+        if knowledge_base is not None:
+            for pos, obj in knowledge_base.items():
+                if (obj is not None) and pos not in ['pot_states', 'chop_states', 'sink_states', 'other_player']:
+                    if obj.name in 'meat':
+                        meat_pickup_locations += [pos]
         return self._get_ml_actions_for_positions(meat_pickup_locations)
     
-    def pickup_dish_actions(self, counter_objects, only_use_dispensers=False):
+    def pickup_dish_actions(self, counter_objects, only_use_dispensers=False, knowledge_base=None):
         """If only_use_dispensers is True, then only take dishes from the dispensers"""
         dish_pickup_locations = self.mdp.get_dish_dispenser_locations()
         if not only_use_dispensers:
             dish_pickup_locations += counter_objects['dish']
+            if knowledge_base is not None:
+                for pos, obj in knowledge_base.items():
+                    if (obj is not None) and pos not in ['pot_states', 'chop_states', 'sink_states', 'other_player']:
+                        if obj.name == 'dish':
+                            dish_pickup_locations += [pos]
         return self._get_ml_actions_for_positions(dish_pickup_locations)
     
-    def pickup_plate_actions(self, counter_objects, only_use_dispensers=False):
+    def pickup_plate_actions(self, counter_objects, only_use_dispensers=False, knowledge_base=None):
         """If only_use_dispensers is True, then only take dishes from the dispensers"""
         plate_pickup_locations = self.mdp.get_plate_dispenser_locations()
         if not only_use_dispensers:
             plate_pickup_locations += counter_objects['plate']
+            if knowledge_base is not None:
+                for pos, obj in knowledge_base.items():
+                    if (obj is not None) and pos not in ['pot_states', 'chop_states', 'sink_states', 'other_player']:
+                        if obj.name == 'plate':
+                            plate_pickup_locations += [pos]
         return self._get_ml_actions_for_positions(plate_pickup_locations)
 
     def pickup_counter_soup_actions(self, counter_objects):
@@ -1057,60 +1077,83 @@ class MediumLevelActionManager(object):
         fillable_pots = partially_full_steak_pots + pot_states_dict['empty']
         return self._get_ml_actions_for_positions(fillable_pots)
     
-    def put_onion_on_board_actions(self, counter_objects, state):
+    def put_onion_on_board_actions(self, state, knowledge_base=None):
         empty_boards = []
-        board_locations = self.mdp.get_chopping_board_locations()
-        for loc in board_locations:
-            if not state.has_object(loc): # board is empty
-                empty_boards.append(loc)
-        onion_on_counter = counter_objects['onion']
-        return self._get_ml_actions_for_positions(empty_boards + onion_on_counter)
+        if knowledge_base is not None:
+            empty_boards += knowledge_base['chop_states']['empty']
+        else:
+            board_locations = self.mdp.get_chopping_board_locations()
+            for loc in board_locations:
+                if not state.has_object(loc): # board is empty
+                    empty_boards.append(loc)
+        return self._get_ml_actions_for_positions(empty_boards)
     
-    def chop_onion_on_board_actions(self, state):
+    def chop_onion_on_board_actions(self, state, knowledge_base=None):
         full_boards = []
-        board_locations = self.mdp.get_chopping_board_locations()
-        for loc in board_locations:
-            if state.has_object(loc): # board is with onion
-                full_boards.append(loc)
+        if knowledge_base is not None:
+            full_boards += knowledge_base['chop_states']['full']
+        else:
+            board_locations = self.mdp.get_chopping_board_locations()
+            for loc in board_locations:
+                if state.has_object(loc): # board is with onion
+                    full_boards.append(loc)
         return self._get_ml_actions_for_positions(full_boards)
     
-    def put_plate_in_sink_actions(self, counter_objects, state):
+    def put_plate_in_sink_actions(self, counter_objects, state, knowledge_base=None):
         empty_sink = []
-        sink_locations = self.mdp.get_sink_locations()
-        for loc in sink_locations:
-            if not state.has_object(loc): # board is empty
-                empty_sink.append(loc)
-        plate_on_counter = counter_objects['plate']
-        return self._get_ml_actions_for_positions(empty_sink + plate_on_counter) 
+        plate_on_counter = []
+        if knowledge_base is not None:
+            empty_sink = knowledge_base['sink_states']['empty']
+        else:
+            sink_locations = self.mdp.get_sink_locations()
+            for loc in sink_locations:
+                if not state.has_object(loc): # board is empty
+                    empty_sink.append(loc)
+            plate_on_counter = counter_objects['plate']
+        return self._get_ml_actions_for_positions(empty_sink) 
     
-    def heat_plate_in_sink_actions(self, state):
+    def heat_plate_in_sink_actions(self, state, knowledge_base=None):
         heat_needed_loc = []
-        sink_locations = self.mdp.get_sink_locations()
-        for loc in sink_locations:
-            if state.has_object(loc):
-                if state.get_object(loc).state < self.mdp.wash_time:
-                    heat_needed_loc.append(loc)
+        if knowledge_base is not None:
+            heat_needed_loc = knowledge_base['sink_states']['full']
+        else:
+            sink_locations = self.mdp.get_sink_locations()
+            for loc in sink_locations:
+                if state.has_object(loc):
+                    if state.get_object(loc).state < self.mdp.wash_time:
+                        heat_needed_loc.append(loc)
         return self._get_ml_actions_for_positions(heat_needed_loc)
 
-    def add_garnish_to_steak_actions(self, state):
+    def add_garnish_to_steak_actions(self, state, knowledge_base=None):
         garnish_chopped_loc = []
-        board_locations = self.mdp.get_chopping_board_locations()
-        for loc in board_locations:
-            if state.has_object(loc):
-                chop_time = state.get_object(loc).state
-                if chop_time >= self.mdp.chopping_time:
-                    garnish_chopped_loc.append(loc)
+        if knowledge_base is not None:
+            garnish_chopped_loc = knowledge_base['chop_states']['ready']
+        else:
+            board_locations = self.mdp.get_chopping_board_locations()
+            for loc in board_locations:
+                if state.has_object(loc):
+                    chop_time = state.get_object(loc).state
+                    if chop_time >= self.mdp.chopping_time:
+                        garnish_chopped_loc.append(loc)
         return self._get_ml_actions_for_positions(garnish_chopped_loc)
     
-    def pickup_hot_plate_from_sink_actions(self, counter_objects, state):
+    def pickup_hot_plate_from_sink_actions(self, counter_objects, state, knowledge_base=None):
         hot_plate_loc = []
-        sink_locations = self.mdp.get_sink_locations()
-        for loc in sink_locations:
-            if state.has_object(loc):
-                wash_time = state.get_object(loc).state
-                if wash_time >= self.mdp.wash_time:
-                    hot_plate_loc.append(loc)
-        hot_plate_on_counter = counter_objects['hot_plate']
+        hot_plate_on_counter = []
+        if knowledge_base is not None:
+            hot_plate_loc = knowledge_base['sink_states']['ready']
+            for pos, obj in knowledge_base.items():
+                if (obj is not None) and pos not in ['pot_states', 'chop_states', 'sink_states', 'other_player']:
+                    if obj.name == 'hot_plate':
+                        hot_plate_on_counter += [pos]
+        else:
+            sink_locations = self.mdp.get_sink_locations()
+            for loc in sink_locations:
+                if state.has_object(loc):
+                    wash_time = state.get_object(loc).state
+                    if wash_time >= self.mdp.wash_time:
+                        hot_plate_loc.append(loc)
+            hot_plate_on_counter = counter_objects['hot_plate']
         return self._get_ml_actions_for_positions(hot_plate_loc + hot_plate_on_counter)
 
     def pickup_soup_with_dish_actions(self, pot_states_dict, only_nearly_ready=False):
@@ -1134,6 +1177,12 @@ class MediumLevelActionManager(object):
                             self.mdp.get_pot_locations() + self.mdp.get_dish_dispenser_locations()
         closest_feature_pos = self.motion_planner.min_cost_to_feature(player.pos_and_or, feature_locations, with_argmin=True)[1]
         return self._get_ml_actions_for_positions([closest_feature_pos])
+    
+    def get_closest_counter(self, state, player):
+        all_empty_counters = set(self.mdp.get_empty_counter_locations(state))
+        valid_empty_counters = [c_pos for c_pos in self.counter_drop if c_pos in all_empty_counters]
+        closest_empty_counter = self.motion_planner.min_cost_to_feature(player.pos_and_or, valid_empty_counters, with_argmin=True)[1]
+        return self._get_ml_actions_for_positions([closest_empty_counter])
 
     def go_to_closest_feature_or_counter_to_goal(self, goal_pos_and_or, goal_location):
         """Instead of going to goal_pos_and_or, go to the closest feature or counter to this goal, that ISN'T the goal itself"""
@@ -4849,14 +4898,18 @@ class  SteakHumanSubtaskQMDPPlanner(SteakMediumLevelMDPPlanner):
                 # calculate next states for p1 (a.k.a. human)
                 p1_nxt_states, p1_nxt_world_info = self.human_state_subtask_transition(p1_state, world_info)
 
+                # append original state of p1 (human) to represent unfinished subtask state transition
+                p1_nxt_states.append([p1_state])
+                p1_nxt_world_info += [world_info]
+
                 # calculate next states for p0 (conditioned on p1 (a.k.a. human))
-                for p1_nxt_state in p1_nxt_states:
-                    action, next_state_key = self.state_transition(p0_state, p1_nxt_world_info, human_state=p1_nxt_state)
-                    # for action, next_state_key in zip(actions, next_state_keys):
-                        # print(p0_state, p1_nxt_world_info, p1_nxt_state, action, next_state_keys)
-                    if action_key == action:
-                        next_state_idx= self.state_idx_dict[next_state_key]
-                        self.transition_matrix[action_idx, state_idx, next_state_idx] += 1.0
+                for i, p1_nxt_state in enumerate(p1_nxt_states):
+                    actions, next_state_keys = self.stochastic_state_transition(p0_state, p1_nxt_world_info[i], human_state=p1_nxt_state)
+                    for action, next_state_key in zip(actions, next_state_keys):
+                        # print(p0_state, p1_nxt_world_info[i], p1_nxt_state, action, next_state_keys)
+                        if action_key == action:
+                            next_state_idx= self.state_idx_dict[next_state_key]
+                            self.transition_matrix[action_idx, state_idx, next_state_idx] += 1.0
 
                 if np.sum(self.transition_matrix[action_idx, state_idx]) > 0.0:
                     self.transition_matrix[action_idx, state_idx] /= np.sum(self.transition_matrix[action_idx, state_idx])
@@ -4930,9 +4983,10 @@ class  SteakHumanSubtaskQMDPPlanner(SteakMediumLevelMDPPlanner):
                 return False
         return True
 
-    def _is_valid_object_subtask_pair(self, subtask, num_item_in_pot, chop_time, wash_time, vision_limit=False, human_obj=None):
+    def _is_valid_object_subtask_pair(self, subtask, num_item_in_pot, chop_time, wash_time, vision_limit=False, human_obj=None, other_agent_holding=None):
         '''
         Since we do not consider the other agent's action for the human's subtask initialization, we mainly just care about whether the object the human is holding pairs with the subtask. Also, since the other agent may change the world, we forgo that the world as constraints on the subtasks.
+        When considering belief update, we need to consider how the robot's holding object effects the human when the human is a robot-aware human model.
         '''
         if chop_time == 'None' or chop_time == None:
             chop_time = -1
@@ -4955,20 +5009,23 @@ class  SteakHumanSubtaskQMDPPlanner(SteakMediumLevelMDPPlanner):
             obj = human_obj
 
         if obj == 'None':
-            if subtask == 'pickup_onion' and chop_time < 0:
+            if subtask == 'pickup_onion' and chop_time < 0 and other_agent_holding != 'onion':
                 return True
-            elif subtask == 'pickup_meat' and num_item_in_pot < self.mdp.num_items_for_steak:
+            elif subtask == 'pickup_meat' and num_item_in_pot < self.mdp.num_items_for_steak and other_agent_holding != 'meat':
                 return True
-            elif subtask == 'pickup_plate' and wash_time < 0:
+            elif subtask == 'pickup_plate' and wash_time < 0 and other_agent_holding != 'plate':
                 return True
-            elif subtask == 'pickup_hot_plate' and wash_time >= self.mdp.wash_time:
+            elif subtask == 'pickup_hot_plate' and wash_time >= self.mdp.wash_time:# and other_agent_holding != 'hot_plate':# and other_agent_holding != 'steak':
                 return True
             elif subtask == 'heat_hot_plate' and wash_time >= 0 and wash_time < self.mdp.wash_time:
                 return True
             elif subtask == 'chop_onion' and chop_time >= 0 and chop_time < self.mdp.chopping_time:
                 return True
-            else:
-                return False
+            else: # this is an instance that will be triggered when there are no other things to pick up.
+                if (subtask == 'pickup_meat' and other_agent_holding != 'meat') or (subtask == 'pickup_onion' and other_agent_holding != 'onion') or (subtask == 'pickup_plate' and other_agent_holding != 'plate'):
+                    return True
+                else:
+                    return False
         else:
             if obj == 'onion' and subtask == 'drop_onion':# and chop_time < 0:
                 return True
@@ -4998,7 +5055,8 @@ class  SteakHumanSubtaskQMDPPlanner(SteakMediumLevelMDPPlanner):
             wash_time = -1
             
         next_subtasks = []
-        next_num_item_in_pot = num_item_in_pot; next_chop_time = chop_time; next_wash_time = wash_time;
+        nxt_world_info = []
+        next_num_item_in_pot = num_item_in_pot; next_chop_time = chop_time; next_wash_time = wash_time
 
         subtask_action = subtask.split('_')[0]
         subtask_obj = '_'.join(subtask.split('_')[1:])
@@ -5152,7 +5210,7 @@ class  SteakHumanSubtaskQMDPPlanner(SteakMediumLevelMDPPlanner):
             elif subtask == 'pickup_steak' and num_item_in_pot < self.mdp.num_items_for_steak:
                 next_obj = 'None'
                 next_subtasks.append('drop_hot_plate')
-
+                
             elif subtask == 'deliver_dish':
                 next_obj = 'None'
                 if num_item_in_pot < self.mdp.num_items_for_steak:
@@ -5182,20 +5240,7 @@ class  SteakHumanSubtaskQMDPPlanner(SteakMediumLevelMDPPlanner):
         p1_nxt_states = []
         for next_subtask in next_subtasks:
             p1_nxt_states.append([next_subtask])
-
-        if next_chop_time < 0:
-            next_chop_time == 'None'
-        elif next_chop_time > self.mdp.chopping_time:
-            next_chop_time = self.mdp.chopping_time
-        
-        if next_wash_time < 0:
-            next_wash_time == 'None'
-        elif next_wash_time > self.mdp.wash_time:
-            next_wash_time = self.mdp.wash_time
-
-        nxt_world_info = [next_num_item_in_pot, next_chop_time, next_wash_time]
-        for order in orders:
-            nxt_world_info.append(order)
+            nxt_world_info += self.gen_world_info_list(next_chop_time, next_wash_time, next_num_item_in_pot, orders)
 
         return p1_nxt_states, nxt_world_info
     
@@ -5313,6 +5358,144 @@ class  SteakHumanSubtaskQMDPPlanner(SteakMediumLevelMDPPlanner):
 
         return actions, next_state_keys
     
+    def stochastic_state_transition(self, player_obj, world_info, human_state=None):
+        # game logic: but consider that the human subtask in human_state is not yet executed
+        num_item_in_pot = world_info[0]; chop_time = world_info[1]; wash_time = world_info[2]; orders = [] if len(world_info) < 4 else world_info[3:]
+        # other_obj = human_state[0]; 
+        subtask = human_state[0]
+        
+        if wash_time == 'None':
+            wash_time = -1
+        if chop_time == 'None':
+            chop_time = -1
+
+        actions = []
+        next_state_keys = []
+        next_obj = player_obj; next_num_item_in_pot = num_item_in_pot; next_chop_time = chop_time; next_wash_time = wash_time
+
+        subtask_action = subtask.split('_')[0]
+        subtask_obj = '_'.join(subtask.split('_')[1:])
+        if (subtask_action in ['pickup', 'chop', 'heat']) and (subtask_obj not in ['steak', 'garnish']):
+            human_obj = 'None'
+        elif subtask == 'pickup_steak':
+            human_obj = 'hot_plate'
+        elif subtask == 'pickup_garnish':
+            human_obj = 'steak'
+        else:
+            human_obj = subtask_obj
+
+        if player_obj == 'None':
+            if (num_item_in_pot < self.mdp.num_items_for_steak) and (human_obj != 'meat'):
+                actions += ['pickup_meat']
+                next_state_keys += self.gen_state_key('meat', next_chop_time, next_wash_time, next_num_item_in_pot, orders, subtask)
+            if (chop_time < 0) and (human_obj != 'onion'):
+                actions += ['pickup_onion']
+                next_state_keys += self.gen_state_key('onion', next_chop_time, next_wash_time, next_num_item_in_pot, orders, subtask)
+            if (wash_time < 0) and (human_obj != 'plate'):
+                actions += ['pickup_plate']
+                next_state_keys += self.gen_state_key('plate', next_chop_time, next_wash_time, next_num_item_in_pot, orders, subtask)
+            if ((chop_time >= 0) and (chop_time < self.mdp.chopping_time) and (subtask != 'chop_onion')) or ((chop_time < 0) and (human_obj == 'onion')):
+                actions += ['chop_onion']
+                next_state_keys += self.gen_state_key('None', next_chop_time + 1, next_wash_time, next_num_item_in_pot, orders, subtask)
+            if ((wash_time >= 0) and (wash_time < self.mdp.wash_time) and (subtask != 'heat_hot_plate')) or ((wash_time < 0) and (human_obj == 'plate')):
+                actions += ['heat_hot_plate']
+                next_state_keys += self.gen_state_key('None', next_chop_time, next_wash_time + 1, next_num_item_in_pot, orders, subtask)
+            if ((chop_time >= self.mdp.chopping_time) or (subtask == 'chop_onion')) and ((wash_time >= self.mdp.wash_time) or (subtask == 'heat_hot_plate')) and (subtask != 'pickup_hot_plate'):
+                actions += ['pickup_hot_plate']
+                next_state_keys += self.gen_state_key('hot_plate', next_chop_time, -1, next_num_item_in_pot, orders, subtask)
+            
+            if len(actions) == 0:
+                actions += ['pickup_meat']
+                next_state_keys += self.gen_state_key('meat', next_chop_time, next_wash_time, next_num_item_in_pot, orders, subtask)
+
+        else:
+            if player_obj == 'onion':
+                actions += ['drop_onion']
+                if chop_time < 0: # doesn't change since no avaliable board to drop
+                    next_state_keys += self.gen_state_key('None', 0, next_wash_time, next_num_item_in_pot, orders, subtask)
+                else:
+                    next_state_keys += self.gen_state_key('None', next_chop_time, next_wash_time, next_num_item_in_pot, orders, subtask)
+
+            elif player_obj == 'meat':
+                actions += ['drop_meat']
+                next_state_keys += self.gen_state_key('None', next_chop_time, next_wash_time, 1, orders, subtask)
+
+            elif player_obj == 'plate':
+                actions += ['drop_plate']
+                if wash_time < 0: # doesn't change since no avaliable sink to drop
+                    next_state_keys += self.gen_state_key('None', next_chop_time, 0, next_num_item_in_pot, orders, subtask)
+                else:
+                    next_state_keys += self.gen_state_key('None', next_chop_time, next_wash_time, next_num_item_in_pot, orders, subtask)
+
+            elif (player_obj == 'hot_plate') and (num_item_in_pot == self.mdp.num_items_for_steak):
+                actions += ['pickup_steak']
+                next_state_keys += self.gen_state_key('steak', next_chop_time, next_wash_time, 0, orders, subtask)
+
+            elif (player_obj == 'hot_plate') and (num_item_in_pot < self.mdp.num_items_for_steak):
+                actions += ['drop_hot_plate']
+                next_state_keys += self.gen_state_key('None', next_chop_time, next_wash_time, next_num_item_in_pot, orders, subtask)
+
+            elif (player_obj == 'steak') and (chop_time == self.mdp.chopping_time):
+                actions += ['pickup_garnish']
+                next_state_keys += self.gen_state_key('dish', -1, next_wash_time, next_num_item_in_pot, orders, subtask)
+
+            elif (player_obj == 'steak') and (chop_time < self.mdp.chopping_time):
+                # actions = 'drop_steak'
+                # next_obj = 'None'
+                actions += ['pickup_garnish']
+                next_state_keys += self.gen_state_key('dish', -1, next_wash_time, next_num_item_in_pot, orders, subtask)
+
+            elif (player_obj == 'dish'):
+                actions += ['deliver_dish']
+                if len(orders) >= 1:
+                    # next_orders = orders[:-1]
+                    orders.pop(0)
+                #     next_state_keys += self.gen_state_key('None', next_chop_time, next_wash_time, next_num_item_in_pot, next_orders, subtask)
+                # else:
+                next_state_keys += self.gen_state_key('None', next_chop_time, next_wash_time, next_num_item_in_pot, orders, subtask)
+
+            else:
+                print(player_obj, world_info, subtask)
+                raise ValueError()
+
+        return actions, next_state_keys
+    
+    def gen_world_info_list(self, next_chop_time, next_wash_time, next_num_item_in_pot, orders):
+        if next_chop_time < 0:
+            next_chop_time = 'None'
+        elif next_chop_time > self.mdp.chopping_time:
+            next_chop_time = self.mdp.chopping_time
+
+        if next_wash_time < 0:
+            next_wash_time = 'None'
+        elif next_wash_time > self.mdp.wash_time:
+            next_wash_time = self.mdp.wash_time
+
+        nxt_world = [next_num_item_in_pot, next_chop_time, next_wash_time]
+        for order in orders:
+            nxt_world.append(order)
+
+        return [nxt_world]
+    
+    def gen_state_key(self, next_obj, next_chop_time, next_wash_time, next_num_item_in_pot, orders, subtask):
+        if next_chop_time < 0:
+            next_chop_time = 'None'
+        elif next_chop_time > self.mdp.chopping_time:
+            next_chop_time = self.mdp.chopping_time
+
+        if next_wash_time < 0:
+            next_wash_time = 'None'
+        elif next_wash_time > self.mdp.wash_time:
+            next_wash_time = self.mdp.wash_time
+
+        next_state_keys = next_obj + '_' + str(next_num_item_in_pot) + '_' + str(next_chop_time) + '_' + str(next_wash_time)
+        for order in orders:
+            next_state_keys = next_state_keys + '_' + order
+
+        next_state_keys = next_state_keys + '_' + subtask
+
+        return [next_state_keys]
+    
     def world_state_to_mdp_state_key(self, state, player, other_player, subtask):
         state_str = super().gen_state_dict_key(state, player, other_player=other_player)
         
@@ -5355,9 +5538,9 @@ class  SteakHumanSubtaskQMDPPlanner(SteakMediumLevelMDPPlanner):
         counter_obj = self.mdp.get_counter_objects_dict(world_state, list(self.mdp.terrain_pos_dict['X']))
         if action == 'pickup' and obj in ['onion', 'plate', 'meat', 'hot_plate']:
             if p0_obj != 'None' and counter_drop:
-                location = self.drop_item(world_state)
+                location += self.drop_item(world_state)
             else:
-                location = counter_obj[obj]
+                location += counter_obj[obj]
                 if obj == 'onion':
                     location += self.mdp.get_onion_dispenser_locations()
                 elif obj == 'plate':
@@ -5369,91 +5552,90 @@ class  SteakHumanSubtaskQMDPPlanner(SteakMediumLevelMDPPlanner):
 
                     if len(location) == 0:
                         WAIT = True
-                        location = self.mdp.get_sink_status(world_state)['empty']
-                        return location, WAIT
+                        location += self.mdp.get_sink_status(world_state)['empty']
                     
         elif action == 'pickup' and obj == 'garnish':
             if p0_obj != 'steak' and p0_obj != 'None' and counter_drop:
-                location = self.drop_item(world_state)
+                location += self.drop_item(world_state)
             else:
-                location = counter_obj[obj]
+                location += counter_obj[obj]
                 location += (self.mdp.get_chopping_board_status(world_state)['full'] + self.mdp.get_chopping_board_status(world_state)['ready'])
 
                 if len(location) == 0:
                     WAIT = True
-                    location = self.mdp.get_chopping_board_status(world_state)['empty']
+                    location += self.mdp.get_chopping_board_status(world_state)['empty']
                     return location, WAIT
             
         elif action == 'pickup' and obj == 'steak':
             if p0_obj != 'hot_plate' and p0_obj != 'None' and counter_drop:
-                location = self.drop_item(world_state)
+                location += self.drop_item(world_state)
             else:
-                location = counter_obj[obj]
+                location += counter_obj[obj]
                 location += (self.mdp.get_cooking_pots(pots_states_dict) + self.mdp.get_ready_pots(pots_states_dict) + self.mdp.get_full_pots(pots_states_dict))
 
                 if len(location) == 0:
                     WAIT = True
-                    location = self.mdp.get_empty_pots(pots_states_dict)
+                    location += self.mdp.get_empty_pots(pots_states_dict)
                     return location, WAIT
 
         elif action == 'drop':
             if p0_obj == obj:
                 if obj == 'meat':
-                    location = self.mdp.get_empty_pots(pots_states_dict)
+                    location += self.mdp.get_empty_pots(pots_states_dict)
                     if len(location) == 0 and other_obj != 'meat':
                         WAIT = True
-                        location = self.mdp.get_ready_pots(pots_states_dict) + self.mdp.get_cooking_pots(pots_states_dict) + self.mdp.get_full_pots(pots_states_dict)
-                        return location, WAIT
+                        location += self.mdp.get_ready_pots(pots_states_dict) + self.mdp.get_cooking_pots(pots_states_dict) + self.mdp.get_full_pots(pots_states_dict)
+
                 elif obj == 'onion':
-                    location = self.mdp.get_chopping_board_status(world_state)['empty']
+                    location += self.mdp.get_chopping_board_status(world_state)['empty']
                     if len(location) == 0 and other_obj != 'onion':
                         WAIT = True
-                        location = self.mdp.get_chopping_board_status(world_state)['ready']+ self.mdp.get_chopping_board_status(world_state)['full']
-                        return location, WAIT
+                        location += self.mdp.get_chopping_board_status(world_state)['ready']+ self.mdp.get_chopping_board_status(world_state)['full']
+
                 elif obj == 'plate':
-                    location = self.mdp.get_sink_status(world_state)['empty']
+                    location += self.mdp.get_sink_status(world_state)['empty']
                     if len(location) == 0 and other_obj != 'plate':
                         WAIT = True
-                        location = self.mdp.get_sink_status(world_state)['ready'] + self.mdp.get_sink_status(world_state)['full']
-                        return location, WAIT
+                        location += self.mdp.get_sink_status(world_state)['ready'] + self.mdp.get_sink_status(world_state)['full']
+
                 elif (obj == 'hot_plate' or obj == 'steak') and counter_drop:
-                    location = self.drop_item(world_state)
+                    location += self.drop_item(world_state)
 
             else:
                 WAIT = True
             
-            if len(location) == 0 and counter_drop:
-                location = self.drop_item(world_state)
+            if (len(location) == 0 or WAIT) and counter_drop:
+                location += self.drop_item(world_state)
             
         elif action == 'deliver':
             if p0_obj != 'dish' and p0_obj != 'None':
-                location = self.drop_item(world_state)
+                location += self.drop_item(world_state)
             elif  p0_obj == 'None':
                 WAIT = True
-                location = counter_obj[obj]
+                location += counter_obj[obj]
                 if len(location) == 0:
-                    location = self.mdp.get_key_objects_locations()
+                    location += self.mdp.get_key_objects_locations()
             else:
-                location = self.mdp.get_serving_locations()
+                location += self.mdp.get_serving_locations()
 
         elif action == 'chop' and obj == 'onion':
             if p0_obj != 'None':
-                location = self.drop_item(world_state)
+                location += self.drop_item(world_state)
             else:
-                location = self.mdp.get_chopping_board_status(world_state)['full']
+                location += self.mdp.get_chopping_board_status(world_state)['full']
                     
                 if len(location) == 0:
                     WAIT = True
-                    location = self.mdp.get_chopping_board_status(world_state)['empty'] + self.mdp.get_chopping_board_status(world_state)['ready'] 
+                    location += self.mdp.get_chopping_board_status(world_state)['empty'] + self.mdp.get_chopping_board_status(world_state)['ready'] 
             
         elif action == 'heat' and obj == 'hot_plate':
             if p0_obj != 'None':
-                location = self.drop_item(world_state)
+                location += self.drop_item(world_state)
             else:
-                location = self.mdp.get_sink_status(world_state)['full']
+                location += self.mdp.get_sink_status(world_state)['full']
                 if len(location) == 0:
                     WAIT = True
-                    location = self.mdp.get_sink_status(world_state)['empty'] + self.mdp.get_sink_status(world_state)['ready'] 
+                    location += self.mdp.get_sink_status(world_state)['empty'] + self.mdp.get_sink_status(world_state)['ready'] 
         else:
             print(p0_obj, action, obj)
             ValueError()
@@ -5531,11 +5713,13 @@ class  SteakHumanSubtaskQMDPPlanner(SteakMediumLevelMDPPlanner):
 
     def world_to_state_keys(self, world_state, player, other_player, belief):
         mdp_state_keys = []
+        used_belief = []
         for i, b in enumerate(belief):
             mdp_state_key = self.world_state_to_mdp_state_key(world_state, player, other_player, self.get_key_from_value(self.subtask_idx_dict, i))
             if self.get_mdp_state_idx(mdp_state_key) is not None:
                 mdp_state_keys.append(self.world_state_to_mdp_state_key(world_state, player, other_player, self.get_key_from_value(self.subtask_idx_dict, i)))
-        return mdp_state_keys
+                used_belief.append(i)
+        return [mdp_state_keys, used_belief]
 
     def joint_action_cost(self, world_state, goal_pos_and_or, COST_OF_STAY=1):
         joint_action_plan, end_motion_state, plan_costs = self.jmp.get_low_level_action_plan(world_state.players_pos_and_or, goal_pos_and_or, merge_one=True)
@@ -5550,7 +5734,7 @@ class  SteakHumanSubtaskQMDPPlanner(SteakMediumLevelMDPPlanner):
 
         return joint_action_plan[0], max(plan_costs)# num_of_non_stay_actions+num_of_stay_actions*COST_OF_STAY # in rss paper is max(plan_costs)
 
-    def step(self, world_state, mdp_state_keys, belief, agent_idx, low_level_action=False, observation=None):
+    def step(self, world_state, mdp_state_keys_and_belief, belief, agent_idx, low_level_action=False, observation=None):
         """
         Compute plan cost that starts from the next qmdp state defined as next_state_v().
         Compute the action cost of excuting a step towards the next qmdp state based on the
@@ -5576,16 +5760,19 @@ class  SteakHumanSubtaskQMDPPlanner(SteakMediumLevelMDPPlanner):
         nxt_possible_mdp_state = []
         nxt_possible_world_state = []
         ml_action_to_low_action = []
+
+        mdp_state_keys = mdp_state_keys_and_belief[0]
+        used_belief = mdp_state_keys_and_belief[1]
         for i, mdp_state_key in enumerate(mdp_state_keys):
             mdp_state_idx = self.get_mdp_state_idx(mdp_state_key)
-            if mdp_state_idx is not None:
+            if mdp_state_idx is not None and belief[used_belief[i]] > 0.01:
                 agent_action_idx_arr, next_mdp_state_idx_arr = np.where(self.transition_matrix[:, mdp_state_idx] > 0.000001) # returns array(action idx), array(next_state_idx)
                 nxt_possible_mdp_state.append([agent_action_idx_arr, next_mdp_state_idx_arr])
                 for j, action_idx in enumerate(agent_action_idx_arr): # action_idx is encoded subtask action
                     # print('action_idx =', action_idx)
                     next_state_idx = next_mdp_state_idx_arr[j]
                     after_action_world_state, cost, goals_pos = self.mdp_action_state_to_world_state(action_idx, mdp_state_idx, world_state, with_argmin=True)
-                    value_cost = self.compute_V(after_action_world_state, self.get_key_from_value(self.state_idx_dict, next_state_idx), search_depth=100)
+                    value_cost = self.compute_V(after_action_world_state, self.get_key_from_value(self.state_idx_dict, next_state_idx), belief_prob=belief, belief_idx=used_belief[i], search_depth=25, search_time_limit=0.01)
                     joint_action, one_step_cost = self.joint_action_cost(world_state, after_action_world_state.players_pos_and_or)  
                     if one_step_cost > 1000000:
                         one_step_cost = 1000000
@@ -5614,14 +5801,14 @@ class  SteakHumanSubtaskQMDPPlanner(SteakMediumLevelMDPPlanner):
         print('action_cost:', action_cost)
         action_idx = self.get_best_action(q)
         print('get_best_action =', action_idx, '=', self.get_key_from_value(self.action_idx_dict, action_idx))
-        # print("It took {} seconds for this step".format(time.time() - start_time))
+        print("It took {} seconds for this step".format(time.time() - start_time))
         if low_level_action:
             return Action.INDEX_TO_ACTION[action_idx], None, low_level_action
         return action_idx, self.action_dict[self.get_key_from_value(self.action_idx_dict, action_idx)], low_level_action
     
-    def observe(self, world_state):
+    def observe(self, world_state, robot_agent, human_agent):
         num_item_in_pot, chop_state, sink_state = 0, -1, -1
-
+        robot_agent_obj, human_agent_obj = None, None
         for obj in world_state.objects.values():
             if obj.name == 'hot_plate':
                 wash_time = obj.state
@@ -5641,7 +5828,12 @@ class  SteakHumanSubtaskQMDPPlanner(SteakMediumLevelMDPPlanner):
         if sink_state < 0:
             sink_state = None
 
-        return [num_item_in_pot, chop_state, sink_state]
+        if robot_agent.held_object is not None:
+            robot_agent_obj = robot_agent.held_object.name
+        if human_agent.held_object is not None:
+            human_agent_obj = human_agent.held_object.name
+
+        return [num_item_in_pot, chop_state, sink_state], robot_agent_obj, human_agent_obj
 
     def belief_update(self, world_state, agent_player, observed_info, human_player, belief_vector, prev_dist_to_feature, greedy=False, vision_limit=False):
         """
@@ -5680,12 +5872,15 @@ class  SteakHumanSubtaskQMDPPlanner(SteakMediumLevelMDPPlanner):
                     wash_time = self.sim_human_model.knowledge_base[non_empty_sink[0]].state
                 else:
                     wash_time = self.mdp.wash_time
+
+            robot_obj = self.sim_human_model.knowledge_base['other_player'].held_object.name if self.sim_human_model.knowledge_base['other_player'].held_object is not None else 'None'
             
             print('Robot understanding of human obs = ', num_item_in_pot, chop_time, wash_time)
         else:
             num_item_in_pot = world_num_item_in_pot
             chop_time = world_chop_time
             wash_time = world_wash_time
+            robot_obj = agent_player.held_object.name if agent_player.held_object is not None else 'None'
 
         start_time = time.time()
 
@@ -5702,7 +5897,7 @@ class  SteakHumanSubtaskQMDPPlanner(SteakMediumLevelMDPPlanner):
         print('subtasks:', self.subtask_dict.keys())
         for i, belief in enumerate(belief_vector):
             ## estimating next subtask based on game logic
-            game_logic_prob[i] = self._is_valid_object_subtask_pair(subtask_key[i], num_item_in_pot, chop_time, wash_time, vision_limit=vision_limit, human_obj=human_obj)*1.0
+            game_logic_prob[i] = self._is_valid_object_subtask_pair(subtask_key[i], num_item_in_pot, chop_time, wash_time, vision_limit=vision_limit, human_obj=human_obj, other_agent_holding=robot_obj)*1.0
     
             ## tune subtask estimation based on current human's position and action (use minimum distance between features)
             possible_motion_goals, WAIT = self.map_action_to_location(world_state, None, self.subtask_dict[subtask_key[i]][0], self.subtask_dict[subtask_key[i]][1], p0_obj=human_obj, player_idx=1, counter_drop=True) 
@@ -5755,17 +5950,31 @@ class  SteakHumanSubtaskQMDPPlanner(SteakMediumLevelMDPPlanner):
         new_belief = new_belief*0.7 + dist_belief_prob*0.3
 
         new_belief /= new_belief.sum()
-        new_belief[new_belief <= 0.000001] = 0.000001
+        count_small = len(new_belief[new_belief <= 0.01])
+        new_belief[new_belief > 0.01] -= (0.01*count_small)
+        new_belief[new_belief <= 0.01] = 0.01
         print('new_belief =', new_belief)
         print('max belif =', list(self.subtask_dict.keys())[np.argmax(new_belief)])
         # print("It took {} seconds for belief update".format(time.time() - start_time))
 
         return new_belief, prev_dist_to_feature
 
-    def compute_V(self, next_world_state, mdp_state_key, search_depth=100):
+    def compute_V(self, next_world_state, mdp_state_key, belief_prob=None, belief_idx=None, search_depth=100, search_time_limit=10):
+        start_time = time.time()
         next_world_state_str = str(next_world_state)
-        if next_world_state_str not in self.world_state_cost_dict:
-
+        flag = False
+        if (next_world_state_str not in self.world_state_cost_dict):
+            flag = True
+            # save computation: if belief is low, no need to compute next state value since later in comput Q value, the row will have a small value
+            if belief_prob is not None:
+                if belief_prob[belief_idx] <= 0.01:
+                    self.world_state_cost_dict[next_world_state_str] = 0
+                    return self.world_state_cost_dict[next_world_state_str]
+                    
+        elif (self.world_state_cost_dict[next_world_state_str] == 0):
+            flag = True
+            
+        if flag:                    
             delivery_horizon=2
             debug=False
             h_fn=Steak_Heuristic(self.mp).simple_heuristic
@@ -5780,7 +5989,7 @@ class  SteakHumanSubtaskQMDPPlanner(SteakMediumLevelMDPPlanner):
             heuristic_fn = lambda state: h_fn(state)
 
             search_problem = SearchTree(start_world_state, goal_fn, expand_fn, heuristic_fn, debug=debug)
-            path_end_state, cost, over_limit = search_problem.bounded_A_star_graph_search(qmdp_root=mdp_state_key, info=False, cost_limit=search_depth)
+            path_end_state, cost, over_limit = search_problem.bounded_A_star_graph_search(qmdp_root=mdp_state_key, info=False, cost_limit=search_depth, time_limit=search_time_limit)
 
             if over_limit:
                 cost = self.optimal_plan_cost(path_end_state, cost)
@@ -5788,7 +5997,8 @@ class  SteakHumanSubtaskQMDPPlanner(SteakMediumLevelMDPPlanner):
             self.world_state_cost_dict[next_world_state_str] = cost
 
         # print('self.world_state_cost_dict length =', len(self.world_state_cost_dict))            
-        return (self.mdp.height*self.mdp.width)*2 - self.world_state_cost_dict[next_world_state_str]
+        print("It took {} seconds for computing value, {}, and {}".format((time.time() - start_time), next_world_state, mdp_state_key))
+        return max((self.mdp.height*self.mdp.width)*2 - self.world_state_cost_dict[next_world_state_str], 0)
 
     def optimal_plan_cost(self, start_world_state, start_cost):
         self.world_state_to_mdp_state_key(start_world_state, start_world_state.players[0], start_world_state.players[1], subtask)

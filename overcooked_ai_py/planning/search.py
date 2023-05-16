@@ -74,7 +74,7 @@ class SearchTree(object):
         print("Successors for last node expanded: ", self.expand(curr_state))
         raise TimeoutError("A* graph search was unable to find any goal state.")
 
-    def bounded_A_star_graph_search(self, qmdp_root=None, info=False, cost_limit=10e8, gamma=False):
+    def bounded_A_star_graph_search(self, qmdp_root=None, info=False, cost_limit=10e8, gamma=False, time_limit=10e8):
         """
         Performs a A* Graph Search to find a path to a goal state
         """
@@ -105,9 +105,9 @@ class SearchTree(object):
             if iter_count > self.max_iter_count:
                 print("Expanded more than the maximum number of allowed states")
                 raise TimeoutError("Too many states expanded expanded")
-
-            if self.is_goal(curr_qmdp_state):
-                elapsed_time = time.time() - start_time
+            
+            elapsed_time = time.time() - start_time
+            if self.is_goal(curr_qmdp_state) or elapsed_time > time_limit:
                 if info: print("Found goal after: \t{:.2f} seconds,   \t{} state expanded ({:.2f} unique) \t ~{:.2f} expansions/s".format(
                     elapsed_time, iter_count, len(seen)/iter_count, iter_count/elapsed_time))
 

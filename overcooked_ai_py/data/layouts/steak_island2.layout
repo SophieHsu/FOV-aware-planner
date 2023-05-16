@@ -1,0 +1,20 @@
+{
+    "grid":  """XXXXXXXXXXXXXXX
+                XXXPXXXXXXXXXXX
+                XX           OX
+                XX       1   MX
+                XD   XBXWX   XX
+                XX   XXXXX   XX
+                XX        2  XX
+                XS           XX
+                XXXXXXXXXXXXXXX
+                XXXXXXXXXXXXXXX""",
+    "start_order_list": 'steak, steak',
+    "cook_time": 15,
+    "delivery_reward": 20,
+    'num_items_for_steak': 1,
+    'chop_time': 5,
+    'wash_time': 5,
+    "rew_shaping_params": None
+}
+

@@ -1692,7 +1692,7 @@ class OvercookedGridworld(object):
                         fog_pgobj = pygame.Surface((50,50))
                         fog_pgobj.fill((0,0,0))
                         # load_image(os.path.join(ASSETS_DIR, TERRAIN_DIR, 'counter.png'))
-                        fog_pgobj.set_alpha(245)
+                        fog_pgobj.set_alpha(252)
                         self.viewer.blit(fog_pgobj, curr_pos)
 
         # update display
