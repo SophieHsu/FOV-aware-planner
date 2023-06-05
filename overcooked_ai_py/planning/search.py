@@ -25,7 +25,7 @@ class SearchTree(object):
         self.heuristic_fn = heuristic_fn
         self.max_iter_count = max_iter_count
 
-    def A_star_graph_search(self, info=False):
+    def A_star_graph_search(self, info=False, time_limit=10e8):
         """
         Performs a A* Graph Search to find a path to a goal state
         """
@@ -56,14 +56,64 @@ class SearchTree(object):
             if iter_count > self.max_iter_count:
                 print("Expanded more than the maximum number of allowed states")
                 raise TimeoutError("Too many states expanded expanded")
-
-            if self.is_goal(curr_state):
-                elapsed_time = time.time() - start_time
+            
+            elapsed_time = time.time() - start_time
+            if self.is_goal(curr_state) or elapsed_time > time_limit:
                 if info: print("Found goal after: \t{:.2f} seconds,   \t{} state expanded ({:.2f} unique) \t ~{:.2f} expansions/s".format(
                     elapsed_time, iter_count, len(seen)/iter_count, iter_count/elapsed_time))
                 return curr_node.get_path(), curr_node.backwards_cost
             
             successors = self.expand(curr_state)
+
+            for action, child, cost in successors:
+                child_node = SearchNode(child, action, parent=curr_node, action_cost=cost, debug=self.debug)
+                pq.push(child_node, self.estimated_total_cost(child_node))
+
+        print("Path for last node expanded: ", [p[0] for p in curr_node.get_path()])
+        print("State of last node expanded: ", curr_node.state)
+        print("Successors for last node expanded: ", self.expand(curr_state))
+        raise TimeoutError("A* graph search was unable to find any goal state.")
+    
+    def coupled_A_star_graph_search(self, info=False, time_limit=10e8, path_limit=100):
+        """
+        Performs a A* Graph Search to find a path to a goal state
+        """
+        if info: print('A_star_graph_search')
+        start_time = time.time()
+        iter_count = 0
+        seen = set()
+        pq = PriorityQueue()
+        kb_prob_track = {}
+
+        root_node = SearchNode(self.root, action=None, parent=None, action_cost=0, debug=self.debug)
+        pq.push(root_node, self.estimated_total_cost(root_node))
+        while not pq.isEmpty():
+            curr_node = pq.pop()
+            iter_count += 1
+
+            if self.debug and iter_count % 1000 == 0:
+                print([p[0] for p in curr_node.get_path()])
+                print(iter_count)
+
+            curr_state = curr_node.state
+            # print(iter_count, curr_state, curr_node.backwards_cost)
+            # print(iter_count, curr_state.num_orders_remaining)
+
+            if curr_state in seen:
+                continue
+            
+            seen.add(curr_state)
+            if iter_count > self.max_iter_count:
+                print("Expanded more than the maximum number of allowed states")
+                raise TimeoutError("Too many states expanded expanded")
+            
+            elapsed_time = time.time() - start_time
+            if self.is_goal(curr_state) or elapsed_time > time_limit or curr_node.cost >= path_limit:
+                if info: print("Found goal after: \t{:.2f} seconds,   \t{} state expanded ({:.2f} unique) \t ~{:.2f} expansions/s".format(
+                    elapsed_time, iter_count, len(seen)/iter_count, iter_count/elapsed_time))
+                return curr_node.get_path(), curr_node.backwards_cost
+            
+            successors = self.expand(curr_state, depth=curr_node.cost)
 
             for action, child, cost in successors:
                 child_node = SearchNode(child, action, parent=curr_node, action_cost=cost, debug=self.debug)
@@ -142,6 +192,68 @@ class SearchTree(object):
             float: h(s) + g(s), where g is the total backwards cost
         """
         return node.backwards_cost + self.heuristic_fn(node.state)
+
+    def bfs(self, kb_key_root=None, info=False, time_limit=10e8, path_limit=100, search_depth=10):
+        """
+        Performs a bfs
+        """
+        if info: print('BFS')
+        start_time = time.time()
+        iter_count = 0
+        seen = set()
+        pq = []
+        kb_prob_track = {}
+
+        root_node = SearchNode(self.root, action=kb_key_root, parent=None, action_cost=0, debug=self.debug)
+        pq.append([root_node, self.estimated_total_cost(root_node)])
+        while not len(pq) == 0:
+            [curr_node, _] = pq.pop()
+            iter_count += 1
+
+            if self.debug and iter_count % 1000 == 0:
+                print([p[0] for p in curr_node.get_path()])
+                print(iter_count)
+
+            curr_state = curr_node.state
+            curr_kb_key = curr_node.action
+            # print(iter_count, curr_state, curr_node.backwards_cost)
+            # print(iter_count, curr_state.num_orders_remaining)
+
+            if curr_state in seen:
+                continue
+            
+            seen.add(curr_state)
+
+            if curr_kb_key not in kb_prob_track.keys():
+                kb_prob_track[curr_kb_key] = 1
+            else:
+                kb_prob_track[curr_kb_key] += 1
+
+            if iter_count > self.max_iter_count:
+                print("Expanded more than the maximum number of allowed states")
+                raise TimeoutError("Too many states expanded expanded")
+            
+            elapsed_time = time.time() - start_time
+            if curr_node.depth > search_depth or curr_node.depth > path_limit:#or elapsed_time > time_limit: # the exit condition is set to be larger than search_depth is due to the fact that this is a FIFO queue, hence when the layer explored first exceeds the serach_depth, then it means all nodes of the search_depth layer are explored. 
+                if info: print("Found goal after: \t{:.2f} seconds,   \t{} state expanded ({:.2f} unique) \t ~{:.2f} expansions/s".format(
+                    elapsed_time, iter_count, len(seen)/iter_count, iter_count/elapsed_time))
+                
+                for k in kb_prob_track.keys():
+                    kb_prob_track[k] /= len(seen)
+
+                return curr_node.get_path(), curr_node.backwards_cost, kb_prob_track 
+            
+            successors = self.expand(curr_state, depth=curr_node.depth)
+
+            for kb_key, child, cost in successors:
+                child_node = SearchNode(child, kb_key, parent=curr_node, action_cost=cost, debug=self.debug)
+                pq.append([child_node, self.estimated_total_cost(child_node)])
+
+        print("Path for last node expanded: ", [p[0] for p in curr_node.get_path()])
+        print("State of last node expanded: ", curr_node.state)
+        print("Successors for last node expanded: ", self.expand(curr_state))
+        raise TimeoutError("A* graph search was unable to find any goal state.")
+
 
 class SearchNode(object):
     """

@@ -730,25 +730,31 @@ class limitVisionHumanModel(GreedyHumanModel):
 
         # get the two points first by assuming facing north
         vision_width = np.radians(90-half_bound)
+        player_back = [player.position[0], player.position[1]]
 
-        right_pt = player.position + np.array([math.cos(vision_width), math.sin(vision_width)])
-        left_pt = player.position + np.array([-math.cos(vision_width), math.sin(vision_width)])
+        ori = Direction.DIRECTION_TO_INDEX[player.orientation]
+        if ori == 0: # north
+            # right_pt[0] = math.ceil(right_pt[0])
+            # left_pt[0] = math.ceil(left_pt[0])
+            player_back[1] += 1
+        elif ori == 2: # east
+            # right_pt[1] = math.floor(right_pt[1])
+            # left_pt[1] = math.floor(left_pt[1])
+            player_back[0] -= 1
+        elif ori == 1: # south
+            # right_pt[0] = math.floor(right_pt[0])
+            # left_pt[0] = math.floor(left_pt[0])
+            player_back[1] -= 1
+        elif ori == 3: # west
+            # right_pt[1] = math.ceil(right_pt[1])
+            # left_pt[1] = math.ceil(left_pt[1])
+            player_back[0] += 1
+
+        right_pt = player_back + np.array([-math.cos(vision_width), math.sin(vision_width)])
+        left_pt = player_back + np.array([math.cos(vision_width), math.sin(vision_width)])
 
         # angle based on the agent's facing
         # theta = np.radians(0)
-        ori = Direction.DIRECTION_TO_INDEX[player.orientation]
-        if ori == 0: # north
-            right_pt[0] = math.ceil(right_pt[0])
-            left_pt[0] = math.ceil(left_pt[0])
-        elif ori == 2: # east
-            right_pt[1] = math.floor(right_pt[1])
-            left_pt[1] = math.floor(left_pt[1])
-        elif ori == 1: # south
-            right_pt[0] = math.floor(right_pt[0])
-            left_pt[0] = math.floor(left_pt[0])
-        elif ori == 3: # west
-            right_pt[1] = math.ceil(right_pt[1])
-            left_pt[1] = math.ceil(left_pt[1])
         
         # c, s = np.cos(theta), np.sin(theta)
         # R = np.array(((c, -s), (s, c)))
@@ -774,52 +780,49 @@ class limitVisionHumanModel(GreedyHumanModel):
         ori = Direction.DIRECTION_TO_INDEX[player.orientation]
         if ori == 1: # south
             theta = np.radians(0)
+            bount_theta = np.radians(0)
             player_back[1] -= 1
         elif ori == 2: # east
-            theta = np.radians(-270)
+            theta = np.radians(-90)
+            bount_theta = np.radians(180)
             player_back[0] -= 1
         elif ori == 0: # north
-            theta = np.radians(180)
+            theta = np.radians(0)
+            bount_theta = np.radians(180)
             player_back[1] += 1
         elif ori == 3: # west
-            theta = np.radians(-90)
+            theta = np.radians(-270)
+            bount_theta = np.radians(180)
             player_back[0] += 1
 
-        # if ori == 1: # south
-        #     theta = np.radians(180)
-        #     player_back[1] -= 1
-        # elif ori == 2: # east
-        #     theta = np.radians(-90)
-        #     player_back[0] -= 1
-        # elif ori == 0: # north
-        #     theta = np.radians(0)
-        #     player_back[1] += 1
-        # elif ori == 3: # west
-        #     theta = np.radians(90)
-        #     player_back[0] += 1
-        
         c, s = np.cos(theta), np.sin(theta)
         R = np.array(((c, -s), (s, c)))
         rot_loc = np.matmul(R,np.array(loc)-player_back)+player_back
 
+        rot_left_pt = np.matmul(np.array(((np.cos(bount_theta), -np.sin(bount_theta)), (np.sin(bount_theta), np.cos(bount_theta)))), np.array(left_pt)-player_back)+player_back
+        rot_right_pt = np.matmul(np.array(((np.cos(bount_theta), -np.sin(bount_theta)), (np.sin(bount_theta), np.cos(bount_theta)))), np.array(right_pt)-player_back)+player_back
+
         # check right bound
-        right_val = ((right_pt[0] - player_back[0])*(rot_loc[1] - player_back[1]) - (right_pt[1] - player_back[1])*(rot_loc[0] - player_back[0]))
-        if right_val >= thresh: # left of line
-            right_in_bound = True
-        elif right_val <= -thresh: # right of line
+        right_val = ((rot_right_pt[0] - player_back[0])*(rot_loc[1] - player_back[1]) - (rot_right_pt[1] - player_back[1])*(rot_loc[0] - player_back[0]))
+        if right_val >= thresh: # above of line
             right_in_bound = False
+        elif right_val <= -thresh: # below of line
+            right_in_bound = True
         else: # on the line
             right_in_bound = True
 
         # check left bound
-        left_val = ((left_pt[0] - player_back[0])*(rot_loc[1] - player_back[1]) - (left_pt[1] - player_back[1])*(rot_loc[0] - player_back[0]))
-        if left_val >= thresh: # left of line
-            left_in_bound = False
-        elif left_val <= -thresh: # right of line
+        left_val = ((rot_left_pt[0] - player_back[0])*(rot_loc[1] - player_back[1]) - (rot_left_pt[1] - player_back[1])*(rot_loc[0] - player_back[0]))
+        if left_val >= thresh: # above of line
             left_in_bound = True
+        elif left_val <= -thresh: # below of line
+            left_in_bound = False
         else: # on the line
             left_in_bound = True
 
+        if (rot_loc == player_back).all():
+            return False
+        
         return (left_in_bound and right_in_bound)
 
     def update(self, state):
@@ -842,6 +845,27 @@ class limitVisionHumanModel(GreedyHumanModel):
             # print('Other agent in bound')
             self.knowledge_base['other_player'] = other_player
 
+    def get_knowledge_base(self, state):
+        right_pt, left_pt = self.get_vision_bound(state)
+        valid_pot_pos = []
+        new_knowledge_base = self.knowledge_base.copy()
+        for obj in state.objects.values():
+            if self.in_bound(obj.position, right_pt, left_pt, state):
+                key = self.knowledge_base_key(obj)
+                new_knowledge_base[key] = obj
+
+                # update the pot states based on the knowledge base
+                if obj.name == 'soup':
+                    valid_pot_pos.append(obj.position)
+                    new_knowledge_base['pot_states'] = self.mlp.mdp.get_pot_states(state, pots_states_dict=self.pot_states, valid_pos=valid_pot_pos)
+
+        # check if other player is in vision
+        other_player = state.players[1 - self.agent_index]
+        if self.in_bound(other_player.position, right_pt, left_pt, state):
+            # print('Other agent in bound')
+            new_knowledge_base['other_player'] = other_player
+
+        return new_knowledge_base
 
     def ml_action(self, state):
         """
@@ -941,6 +965,14 @@ class SteakLimitVisionHumanModel(limitVisionHumanModel):
     def __init__(self, mlp, start_state, hl_boltzmann_rational=False, ll_boltzmann_rational=False, hl_temp=1, ll_temp=1, auto_unstuck=True, explore=False, vision_limit=True, robot_aware=False):
         super().__init__(mlp, start_state, hl_boltzmann_rational, ll_boltzmann_rational, hl_temp, ll_temp, auto_unstuck, explore, vision_limit=vision_limit)
         self.robot_aware = robot_aware
+
+    def deepcopy(self, world_state):
+        new_human_model = SteakLimitVisionHumanModel(self.mlp, world_state, auto_unstuck=self.auto_unstuck, explore=self.explore, vision_limit=self.vision_limit)
+        
+        for k, v in self.knowledge_base.items():
+            new_human_model.knowledge_base[k] = v
+
+        return new_human_model
 
     def init_knowledge_base(self, start_state):
         self.knowledge_base = {}

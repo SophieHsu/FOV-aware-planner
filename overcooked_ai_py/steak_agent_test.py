@@ -156,15 +156,16 @@ if __name__ == "__main__" :
     human_agent = agent.SteakLimitVisionHumanModel(mlp, env.state, auto_unstuck=True, explore=EXPLORE, vision_limit=VISION_LIMIT)
     # human_agent = agent.GreedySteakHumanModel(mlp)
     # human_agent = agent.CoupledPlanningAgent(mlp)
+    human_agent.set_agent_index(1)
 
     qmdp_start_time = time.time()
-    mdp_planner = planners.SteakHumanSubtaskQMDPPlanner.from_pickle_or_compute(scenario_1_mdp, COUNTERS_PARAMS, force_compute_all=True, jmp = mlp.ml_action_manager.joint_motion_planner, vision_limited_human=human_agent)
-    ai_agent = agent.MediumQMdpPlanningAgent(mdp_planner, greedy=True, auto_unstuck=True, low_level_action_flag=False, vision_limit=VISION_LIMIT)
+    # mdp_planner = planners.SteakHumanSubtaskQMDPPlanner.from_pickle_or_compute(scenario_1_mdp, COUNTERS_PARAMS, force_compute_all=True, jmp = mlp.ml_action_manager.joint_motion_planner, vision_limited_human=human_agent)
+    mdp_planner = planners.SteakKnowledgeBasePlanner.from_pickle_or_compute(scenario_1_mdp, COUNTERS_PARAMS, force_compute_all=True, jmp = mlp.ml_action_manager.joint_motion_planner, vision_limited_human=human_agent)
+    ai_agent = agent.MediumQMdpPlanningAgent(mdp_planner, greedy=True, auto_unstuck=True, low_level_action_flag=True, vision_limit=VISION_LIMIT)
     # ai_agent = agent.QMDPAgent(mlp, env)
     # ai_agent = agent.GreedySteakHumanModel(mlp)
 
     ai_agent.set_agent_index(0)
-    human_agent.set_agent_index(1)
 
     del mlp, mdp_planner
     gc.collect()
