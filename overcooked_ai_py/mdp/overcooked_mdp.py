@@ -2355,17 +2355,18 @@ class SteakHouseGridworld(OvercookedGridworld):
 
             elif terrain_type == 'B':
                 if player.held_object is None:
-                    obj = new_state.get_object(i_pos)
-                    assert obj.name == 'garnish', 'Object on chopping board was not garnish'
-                    chop_time = obj.state
-                    if chop_time < self.chopping_time:
-                        obj.state = chop_time + 1
-                        # shaped_reward[
-                        #     player_idx] += self.reward_shaping_params[
-                        #         "CHOPPING_ONION_REW"]
+                    if new_state.has_object(i_pos):
+                        obj = new_state.get_object(i_pos)
+                        assert obj.name == 'garnish', 'Object on chopping board was not garnish'
+                        chop_time = obj.state
+                        if chop_time < self.chopping_time:
+                            obj.state = chop_time + 1
+                            # shaped_reward[
+                            #     player_idx] += self.reward_shaping_params[
+                            #         "CHOPPING_ONION_REW"]
 
-                        # Log onion chopping
-                        events_infos['onion_chopping'][player_idx] = True
+                            # Log onion chopping
+                            events_infos['onion_chopping'][player_idx] = True
 
                 elif player.get_object().name == 'onion' and not new_state.has_object(i_pos):
                     # Chopping board was empty, add onion to it
