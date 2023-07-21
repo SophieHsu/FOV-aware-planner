@@ -133,13 +133,16 @@ class SearchTree(object):
         iter_count = 0
         seen = set()
         pq = PriorityQueue()
+        pq_min_depth = cost_limit
 
         root_node = SearchNode(self.root, action=qmdp_root, parent=None, action_cost=0, debug=self.debug)
-        pq.push(root_node, self.estimated_total_cost(root_node))
+        pq.push(root_node, self.estimated_total_cost(root_node, gamma=gamma))
         # print('\n\n')
         while not pq.isEmpty():
             curr_node = pq.pop()
             iter_count += 1
+            # if curr_node.depth < pq_min_depth:
+            #     pq_min_depth = curr_node.depth
 
             if self.debug and iter_count % 1000 == 0:
                 print([p[0] for p in curr_node.get_path()])
@@ -157,31 +160,32 @@ class SearchTree(object):
                 raise TimeoutError("Too many states expanded expanded")
             
             elapsed_time = time.time() - start_time
-            if self.is_goal(curr_qmdp_state) or elapsed_time > time_limit or curr_node.backwards_cost > cost_limit:
+            if self.is_goal(curr_qmdp_state) or curr_node.depth > cost_limit: #or elapsed_time > time_limit 
                 if info: print("Found goal after: \t{:.2f} seconds,   \t{} state expanded ({:.2f} unique) \t ~{:.2f} expansions/s".format(
                     elapsed_time, iter_count, len(seen)/iter_count, iter_count/elapsed_time))
 
                 # print("in is goal:", curr_qmdp_state, curr_node.state, curr_node.backwards_cost)
                 if gamma:
-                    return curr_node.state, curr_node.gamma_cost, False
+                    return curr_node.state, curr_node.gamma_cost, False, curr_node.action
                 else:
                     return curr_node.state, curr_node.backwards_cost, False
             
             successors = self.expand(curr_state, curr_qmdp_state)
             # print('length of successors = {}'.format(len(successors)))
+            # pq_min_depth = curr_node.depth
 
             for qmdp_state, child, cost in successors:
                 # print(qmdp_state, child, cost)
                 child_node = SearchNode(child, qmdp_state, parent=curr_node, action_cost=cost, debug=self.debug)
-                est_total_cost = self.estimated_total_cost(child_node)
-                pq.push(child_node, self.estimated_total_cost(child_node))
+                # est_total_cost = self.estimated_total_cost(child_node)
+                pq.push(child_node, self.estimated_total_cost(child_node, gamma=gamma))
 
         print("Path for last node expanded: ", [p[0] for p in curr_node.get_path()])
         print("State of last node expanded: ", curr_node.state)
         print("Successors for last node expanded: ", self.expand(curr_state, curr_qmdp_state))
         raise TimeoutError("A* graph search was unable to find any goal state.")
 
-    def estimated_total_cost(self, node):
+    def estimated_total_cost(self, node, gamma=False):
         """
         Calculates the estimated total cost of going from node to goal
         
@@ -191,6 +195,9 @@ class SearchTree(object):
         Returns:
             float: h(s) + g(s), where g is the total backwards cost
         """
+        if gamma:
+            return node.gamma_cost + self.heuristic_fn(node.state)
+        
         return node.backwards_cost + self.heuristic_fn(node.state)
 
     def bfs(self, kb_key_root=None, info=False, time_limit=10e8, path_limit=100, search_depth=10):
@@ -295,7 +302,8 @@ class SearchNode(object):
             self.depth = self.parent.depth + 1
             self.backwards_cost = self.parent.backwards_cost + action_cost
             self.discount_cost = self.parent.discount_cost*(1.0-self.discount_cost) + action_cost*self.discount_cost
-            self.gamma_cost = self.parent.gamma_cost*(self.gamma) + action_cost
+            # self.gamma_cost = self.parent.gamma_cost*(self.gamma) + action_cost
+            self.gamma_cost = self.parent.gamma_cost + action_cost*(pow(self.gamma, self.depth))
         else:
             self.depth = 0
             self.backwards_cost = 0
