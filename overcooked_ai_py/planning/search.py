@@ -135,7 +135,7 @@ class SearchTree(object):
         pq = PriorityQueue()
         pq_min_depth = cost_limit
 
-        root_node = SearchNode(self.root, action=qmdp_root, parent=None, action_cost=0, debug=self.debug)
+        root_node = SearchNode(self.root, action=qmdp_root, parent=None, action_cost=0, debug=self.debug, gamma=0.95)
         pq.push(root_node, self.estimated_total_cost(root_node, gamma=gamma))
         # print('\n\n')
         while not pq.isEmpty():
@@ -163,7 +163,11 @@ class SearchTree(object):
             if self.is_goal(curr_qmdp_state) or curr_node.depth > cost_limit: #or elapsed_time > time_limit 
                 if info: print("Found goal after: \t{:.2f} seconds,   \t{} state expanded ({:.2f} unique) \t ~{:.2f} expansions/s".format(
                     elapsed_time, iter_count, len(seen)/iter_count, iter_count/elapsed_time))
-
+                tmp_node = curr_node
+                while (tmp_node.parent is not None):
+                    print(tmp_node.parent.action, tmp_node.parent.gamma_cost, end='/')
+                    tmp_node = tmp_node.parent
+                print('')
                 # print("in is goal:", curr_qmdp_state, curr_node.state, curr_node.backwards_cost)
                 if gamma:
                     return curr_node.state, curr_node.gamma_cost, False, curr_node.action
@@ -275,6 +279,77 @@ class SearchTree(object):
         print("Successors for last node expanded: ", self.expand(curr_state, depth=curr_state.depth))
         raise TimeoutError("A* graph search was unable to find any goal state.")
 
+    def bfs_track_path(self, kb_key_root=None, info=False, time_limit=10e8, path_limit=100, search_depth=10):
+        """
+        Performs a bfs
+        """
+        if info: print('BFS')
+        start_time = time.time()
+        iter_count = 0
+        seen = set()
+        pq = []
+        kb_prob_track = {}
+
+        root_node = SearchNode(self.root, action=kb_key_root, parent=None, action_cost=0, debug=self.debug)
+        pq.append([root_node, self.estimated_total_cost(root_node)])
+        root_flag = True
+        while not len(pq) == 0:
+            [curr_node, _] = pq.pop()
+            iter_count += 1
+
+            if self.debug and iter_count % 1000 == 0:
+                print([p[0] for p in curr_node.get_path()])
+                print(iter_count)
+
+            curr_state = curr_node.state
+            curr_kb_key = curr_node.action
+            # print(iter_count, curr_state, curr_node.backwards_cost)
+            # print(iter_count, curr_state.num_orders_remaining)
+            
+            if not root_flag:
+                if curr_kb_key not in kb_prob_track.keys():
+                    # we only track the largest probability when a change is seen so that later when we mulitply it on the state value, it gives the max possible value.
+                    kb_prob_track[curr_kb_key] = 1.0/curr_node.depth 
+                # else:
+                #     kb_prob_track[curr_kb_key] += 1
+
+            if curr_state in seen:
+                continue
+            
+            seen.add(curr_state)
+
+            if iter_count > self.max_iter_count:
+                print("Expanded more than the maximum number of allowed states")
+                raise TimeoutError("Too many states expanded expanded")
+            
+            elapsed_time = time.time() - start_time
+            # if len(pq) == 0:# or curr_node.depth > path_limit:#or elapsed_time > time_limit: # the exit condition is set to be larger than search_depth is due to the fact that this is a FIFO queue, hence when the layer explored first exceeds the serach_depth, then it means all nodes of the search_depth layer are explored. 
+            #     if info: print("Found goal after: \t{:.2f} seconds,   \t{} state expanded ({:.2f} unique) \t ~{:.2f} expansions/s".format(
+            #         elapsed_time, iter_count, len(seen)/iter_count, iter_count/elapsed_time))
+                
+            #     for k in kb_prob_track.keys():
+            #         kb_prob_track[k] /= len(seen)
+
+            #     return curr_node.get_path(), curr_node.backwards_cost, kb_prob_track 
+
+            if curr_node.depth < search_depth:
+                successors = self.expand(curr_state, depth=curr_node.depth)
+
+                for kb_key, child, cost in successors:
+                    child_node = SearchNode(child, kb_key, parent=curr_node, action_cost=cost, debug=self.debug)
+                    if child_node.depth <= search_depth:
+                        pq.append([child_node, self.estimated_total_cost(child_node)])
+
+            root_flag = False
+
+        if info: print("Found goal after: \t{:.2f} seconds,   \t{} state expanded ({:.2f} unique) \t ~{:.2f} expansions/s".format(elapsed_time, iter_count, len(seen)/iter_count, iter_count/elapsed_time))
+        
+        return curr_node.get_path(), curr_node.backwards_cost, kb_prob_track 
+    
+        print("Path for last node expanded: ", [p[0] for p in curr_node.get_path()])
+        print("State of last node expanded: ", curr_node.state)
+        print("Successors for last node expanded: ", self.expand(curr_state, depth=curr_state.depth))
+        raise TimeoutError("A* graph search was unable to find any goal state.")
 
 class SearchNode(object):
     """

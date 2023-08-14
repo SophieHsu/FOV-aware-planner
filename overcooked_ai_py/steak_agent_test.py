@@ -150,7 +150,7 @@ if __name__ == "__main__" :
 
     # hmlp = planners.HumanMediumLevelPlanner(scenario_1_mdp, ml_action_manager, [0.5, (1.0-0.5)], 0.5)
     # human_agent = agent.biasHumanModel(ml_action_manager, [0.5, (1.0-0.5)], 0.5, auto_unstuck=True)
-    VISION_LIMIT = True
+    VISION_LIMIT = False
     EXPLORE = True
     mlp = planners.MediumLevelPlanner.from_pickle_or_compute(scenario_1_mdp, COUNTERS_PARAMS, force_compute=True)  
     human_agent = agent.SteakLimitVisionHumanModel(mlp, env.state, auto_unstuck=True, explore=EXPLORE, vision_limit=VISION_LIMIT)
@@ -160,7 +160,7 @@ if __name__ == "__main__" :
 
     qmdp_start_time = time.time()
     # mdp_planner = planners.SteakHumanSubtaskQMDPPlanner.from_pickle_or_compute(scenario_1_mdp, COUNTERS_PARAMS, force_compute_all=True, jmp = mlp.ml_action_manager.joint_motion_planner, vision_limited_human=human_agent)
-    mdp_planner = planners.SteakKnowledgeBasePlanner.from_pickle_or_compute(scenario_1_mdp, COUNTERS_PARAMS, force_compute_all=True, jmp = mlp.ml_action_manager.joint_motion_planner, vision_limited_human=human_agent)
+    mdp_planner = planners.SteakKnowledgeBasePlanner.from_pickle_or_compute(scenario_1_mdp, COUNTERS_PARAMS, force_compute_all=True, jmp = mlp.ml_action_manager.joint_motion_planner, vision_limited_human=human_agent)# if VISION_LIMIT else None)
     ai_agent = agent.MediumQMdpPlanningAgent(mdp_planner, greedy=True, auto_unstuck=True, low_level_action_flag=True, vision_limit=VISION_LIMIT)
     # ai_agent = agent.QMDPAgent(mlp, env)
     # ai_agent = agent.GreedySteakHumanModel(mlp)

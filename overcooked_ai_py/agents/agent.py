@@ -1167,8 +1167,8 @@ class SteakLimitVisionHumanModel(limitVisionHumanModel):
                     next_order = state.next_order
                 if next_order == 'onion':
                     motion_goals = am.pickup_onion_actions(counter_objects, knowledge_base=self.knowledge_base)
-                elif next_order == 'steak':
-                    motion_goals = am.pickup_meat_actions(counter_objects, knowledge_base=self.knowledge_base)
+                elif next_order == 'steak': #pick up plate first since that is the first empty key object when in the plating stage
+                    motion_goals = am.pickup_plate_actions(counter_objects, knowledge_base=self.knowledge_base)
                 elif next_order is None or next_order == 'any':
                     motion_goals = am.pickup_onion_actions(counter_objects, knowledge_base=self.knowledge_base) + am.pickup_tomato_actions(counter_objects) + am.pickup_meat_actions(counter_objects, knowledge_base=self.knowledge_base)
 
