@@ -1540,26 +1540,26 @@ class OvercookedGridworld(object):
         if ori == 1: # north
             if item_ang <= (90+(view_angle/2)) and (item_ang >= (90-(view_angle/2))):
                 return True
-            if player_pos[1] == y and ((player_pos[0] == x-1) or (player_pos[0] == x+1)):
+            if player_pos[1] == y and ((player_pos[0] == x-1) or (player_pos[0] == x+1)) and view_angle >= 120:
                 return True
         elif ori == 2: # east
             if item_ang <= (0+(view_angle/2)) and (item_ang >= (0-(view_angle/2))):
                 return True
-            if player_pos[0] == x and ((player_pos[1] == y-1) or (player_pos[1] == y+1)):
+            if player_pos[0] == x and ((player_pos[1] == y-1) or (player_pos[1] == y+1)) and view_angle >= 120:
                 return True
         elif ori == 0: # south
             if item_ang <= (-90+(view_angle/2)) and (item_ang >= (-90-(view_angle/2))):
                 return True
-            if player_pos[1] == y and ((player_pos[0] == x-1) or (player_pos[0] == x+1)):
+            if player_pos[1] == y and ((player_pos[0] == x-1) or (player_pos[0] == x+1)) and view_angle >= 120:
                 return True
         elif ori == 3: # west
             if item_ang <= (-180+(view_angle/2)) or (item_ang >= (180-(view_angle/2))):
                 return True
-            if player_pos[0] == x and ((player_pos[1] == y-1) or (player_pos[1] == y+1)):
+            if player_pos[0] == x and ((player_pos[1] == y-1) or (player_pos[1] == y+1)) and view_angle >= 120:
                 return True
         return False
 
-    def render(self, state, mode, time_step_left=None, time_passed=None):
+    def render(self, state, mode, time_step_left=None, time_passed=None, view_angle=120):
         """
         Function that renders the game
 
@@ -1685,7 +1685,7 @@ class OvercookedGridworld(object):
         if mode == "fog": # fog the terrain
             for y, terrain_row in enumerate(self.terrain_mtx):
                 for x, terrain in enumerate(terrain_row):
-                    in_view = self.check_viewpoint(state.players[1].position, state.players[1].orientation, x, y)
+                    in_view = self.check_viewpoint(state.players[1].position, state.players[1].orientation, x, y, view_angle=view_angle)
                     if not in_view:
                         curr_pos = get_curr_pos(x, y, mode)
                         blit_terrain(x, y, self.terrain_mtx, self.viewer, mode, in_view)
@@ -2252,11 +2252,12 @@ class SteakHouseGridworld(OvercookedGridworld):
                                 events_infos['plate_heating'][player_idx] = True
 
                 else: # sink is empty and put plate
-                    if player.get_object().name == "plate":  
+                    if player.get_object().name == "plate" and not new_state.has_object(i_pos):  
                         obj_name = player.get_object().name
                         self.log_object_drop(events_infos, new_state, obj_name,
                                             pot_states, player_idx)
 
+                    
                         # Drop object on counter
                         obj = player.remove_object()
                         new_state.add_object(ObjectState('hot_plate', i_pos, 0), i_pos) # wash time = 0
@@ -2651,7 +2652,7 @@ class SteakHouseGridworld(OvercookedGridworld):
     # RENDER FUNCTION #
     ###################
 
-    def render(self, state, mode, time_step_left=None, time_passed=None):
+    def render(self, state, mode, time_step_left=None, time_passed=None, view_angle=120):
         """
         Function that renders the game
 
@@ -2822,7 +2823,7 @@ class SteakHouseGridworld(OvercookedGridworld):
         if mode == "fog": # fog the terrain
             for y, terrain_row in enumerate(self.terrain_mtx):
                 for x, terrain in enumerate(terrain_row):
-                    in_view = self.check_viewpoint(state.players[1].position, state.players[1].orientation, x, y)
+                    in_view = self.check_viewpoint(state.players[1].position, state.players[1].orientation, x, y, view_angle=view_angle)
                     if not in_view:
                         curr_pos = get_curr_pos(x, y, mode)
                         blit_terrain(x, y, self.terrain_mtx, self.viewer, mode, in_view)

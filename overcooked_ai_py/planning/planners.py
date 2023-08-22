@@ -5054,13 +5054,17 @@ class  SteakHumanSubtaskQMDPPlanner(SteakMediumLevelMDPPlanner):
 
     def human_state_subtask_transition(self, subtask, world_info):
         # player_obj = human_state[0] 
-        num_item_in_pot = world_info[0]; chop_time = world_info[1]; wash_time = world_info[2]; orders = [] if len(world_info) < 4 else world_info[3:]
+        num_item_in_pot = int(world_info[0]); chop_time = world_info[1]; wash_time = world_info[2]; orders = [] if len(world_info) < 4 else world_info[3:]
         # next_obj = player_obj; 
 
         if chop_time == 'None':
             chop_time = -1
+        else:
+            chop_time = int(chop_time)
         if wash_time == 'None':
             wash_time = -1
+        else:
+            wash_time = int(wash_time)
             
         next_subtasks = []
         nxt_world_info = []
@@ -5879,7 +5883,7 @@ class  SteakHumanSubtaskQMDPPlanner(SteakMediumLevelMDPPlanner):
         new_world_states = []
         if mdp_state_obj == next_mdp_state_obj:
             if with_argmin:
-                new_world_states.append([ori_world_state, 0, [ori_world_state[0].get_pos_and_or(), ori_world_state[1].get_pos_and_or()]])
+                new_world_states.append([ori_world_state, 0, [ori_world_state.players[0].get_pos_and_or(), ori_world_state.players[1].get_pos_and_or()]])
             else:
                 new_world_states.append([ori_world_state, 0])
 
@@ -5932,7 +5936,7 @@ class  SteakHumanSubtaskQMDPPlanner(SteakMediumLevelMDPPlanner):
             #     total_cost = agent_cost + human_cost + ((self.mdp.width-1)+(self.mdp.height-1))/2
 
             if with_argmin:
-                new_world_states.append([new_world_state, total_cost, [new_agent_pos, new_human_pos]])
+                new_world_states.append([new_world_state, total_cost, [new_agent_pos, new_human_pos], [AI_WAIT, HUMAN_WAIT]])
                 # return new_world_state, total_cost, [new_agent_pos, new_human_pos]
             else:
                 new_world_states.append([new_world_state, total_cost])
@@ -5963,7 +5967,13 @@ class  SteakHumanSubtaskQMDPPlanner(SteakMediumLevelMDPPlanner):
         if PLAN_COST == 'short':
             total_cost = min(plan_costs)
         elif PLAN_COST == 'average':
-            total_cost = sum(plan_costs)/2
+            total_cost = sum(plan_costs)/2 if sum(plan_costs) > 0 else 0
+        elif PLAN_COST == 'max':
+            total_cost = max(plan_costs)
+        elif PLAN_COST == 'robot':
+            total_cost = plan_costs[0]
+        elif PLAN_COST == 'human':
+            total_cost = plan_costs[1]
         else:
             total_cost = max(plan_costs)
         
@@ -6210,7 +6220,7 @@ class  SteakHumanSubtaskQMDPPlanner(SteakMediumLevelMDPPlanner):
         flag = False
         
         if belief_prob is not None:
-            if belief_prob[belief_idx] <= 0.01:
+            if belief_prob[belief_idx] <= 0.03:
                 return 0
                 
         if ((next_world_state_str, mdp_state_key) not in self.world_state_cost_dict):
@@ -6261,29 +6271,36 @@ class  SteakHumanSubtaskQMDPPlanner(SteakMediumLevelMDPPlanner):
                 elif human_action == 'pickup' and human_obj == 'steak':
                     human_obj = 'hot_plate'
 
-                delta_cost = 0#(-33)*len(remaining_orders)
+                delta_cost = (-33)*len(remaining_orders)
                 if chop_state == 'None' or chop_state == None:
                     chop_state = 0
                 else:
-                    chop_state += 1
+                    chop_state += 3 #1
                 if sink_state == 'None' or sink_state == None:
                     sink_state = 0
                 else:
-                    sink_state += 1
+                    sink_state += 3 #1
+                    
                 # the rewards are given in two phases. One where you prep and the other where you collect and plate.
                 print('world info:', player_obj, pot_state, chop_state, sink_state, remaining_orders, human_obj)
                 # if len(remaining_orders) > 0:
                 # if player_obj not in ['hot_plate', 'dish', 'steak'] and human_obj not in ['hot_plate', 'dish', 'steak']:
-                delta_cost += ((4)*pot_state + (2)*chop_state + (2)*sink_state)
+                # delta_cost += ((4)*pot_state + (2)*chop_state + (1)*sink_state)
+                delta_cost += ((5)*pot_state + (1)*chop_state + (1)*sink_state)
                 # else:
                 if 'hot_plate' in [player_obj, human_obj]:
-                    delta_cost += 9
+                    delta_cost += 12 # 9
                 if 'steak' in [player_obj, human_obj]:
-                    delta_cost += 18
+                    delta_cost += 20 # 18
                 if 'dish' in [player_obj, human_obj]:
                     delta_cost += 30
-                print('delta_cost:cost', (delta_cost*(3-len(remaining_orders))/3), cost)
-                cost -= (delta_cost*(3-len(remaining_orders))/3)
+                
+                if len(remaining_orders) == 0:
+                    delta_cost += 100
+
+                print('delta_cost:cost', (delta_cost), cost)
+                
+                cost -= (delta_cost)*(1.1**(2-len(remaining_orders)))#*((3-len(remaining_orders))/3)
             self.world_state_cost_dict[(next_world_state_str,mdp_state_key)] = cost
 
         # print('self.world_state_cost_dict length =', len(self.world_state_cost_dict))            
@@ -6519,7 +6536,7 @@ class SteakKnowledgeBasePlanner(SteakHumanSubtaskQMDPPlanner):
                     elif human_action == 'pickup' and human_obj == 'steak':
                         human_obj = 'hot_plate'
                     
-                    delta_cost = 0#(-7)*len(remaining_orders)
+                    delta_cost = (-7)*len(remaining_orders)
                     if chop_state == 'None' or chop_state == None:
                         chop_state = 0
                     else:
@@ -6541,7 +6558,8 @@ class SteakKnowledgeBasePlanner(SteakHumanSubtaskQMDPPlanner):
                     if 'dish' in [player_obj, human_obj]:
                         delta_cost += 6.5
                         # print('delta_cost:cost', delta_cost, cost)
-                    cost -= ((delta_cost*(3-len(remaining_orders)))/3)
+                    # cost -= ((delta_cost*(3-len(remaining_orders)))/10)
+                    cost -= (delta_cost)*(1.1**(2-len(remaining_orders)))/5
                 successor_states.append((self.get_key_from_value(self.state_idx_dict, next_state_idx), next_world_state, cost))
                 if debug: print('From {} to {} costs {} in {} seconds.'.format(self.get_key_from_value(self.state_idx_dict, ori_state_idx), self.get_key_from_value(self.state_idx_dict, next_state_idx), cost, time.time()-start_time))
 
@@ -6716,8 +6734,12 @@ class SteakKnowledgeBasePlanner(SteakHumanSubtaskQMDPPlanner):
             num_item_in_pot = int(num_item_in_pot)
             if chop_time != 'None':
                 chop_time = int(chop_time)
+            else:
+                chop_time = -1
             if wash_time != 'None':
                 wash_time = int(wash_time)
+            else:
+                wash_time = -1
         else:
             # update state info with kb
             num_item_in_pot, chop_time, wash_time, robot_obj = self.kb_to_state_info(kb)
@@ -7028,7 +7050,7 @@ class SteakKnowledgeBasePlanner(SteakHumanSubtaskQMDPPlanner):
 
         return new_state_obj
     
-    def step(self, world_state, mdp_state_keys_and_belief, belief, agent_idx, low_level_action=True, observation=None, explicit_communcation=False, SEARCH_DEPTH=5, SEARCH_TIME=1):
+    def step(self, world_state, mdp_state_keys_and_belief, belief, agent_idx, low_level_action=True, observation=None, explicit_communcation=False, SEARCH_DEPTH=5, SEARCH_TIME=1, KB_SEARCH_DEPTH=3):
         """
         Compute plan cost that starts from the next qmdp state defined as next_state_v().
         Compute the action cost of excuting a step towards the next qmdp state based on the
@@ -7048,7 +7070,7 @@ class SteakKnowledgeBasePlanner(SteakHumanSubtaskQMDPPlanner):
         computed_v_cost = {} # a temp storage for computed value cost to save some computation time
 
         for i, mdp_state_key in enumerate(mdp_state_keys):
-            if belief[used_belief[i]] > 0.01:
+            if belief[used_belief[i]] > 0.2 or all(belief < 0.072):#belief[used_belief[i]] > 0.01:
                 mdp_state_idx = self.get_mdp_state_idx(mdp_state_key)
                 curr_belief = self.get_key_from_value(self.subtask_idx_dict, i)
                 if self.sim_human_model is not None:
@@ -7069,7 +7091,7 @@ class SteakKnowledgeBasePlanner(SteakHumanSubtaskQMDPPlanner):
                     la_step_cost = sum([abs(new_positions[0][0] - world_state.players[0].position[0]), abs(new_positions[0][1] - world_state.players[0].position[1])])
 
                     # the KB' we want to seek is the one S' needs {NOPE!!!, it is actually that the S, KB' leads to S'}
-                    next_kbs_and_prob = self.roll_out_for_kb(one_la_successor_state, search_depth=1, other_agent_plan=next_las, explore_interact=True)
+                    next_kbs_and_prob = self.roll_out_for_kb(one_la_successor_state, search_depth=KB_SEARCH_DEPTH, other_agent_plan=next_las, explore_interact=True)
                     robot_world_state_info = self.world_state_to_mdp_state_key(one_la_successor_state, one_la_successor_state.players[0], one_la_successor_state.players[1], RETURN_NON_SUBTASK=True, RETURN_OBJ=True)
                     
                     # check if human subtask is still the same
@@ -7080,8 +7102,24 @@ class SteakKnowledgeBasePlanner(SteakHumanSubtaskQMDPPlanner):
                     agent_holding1 = None if one_la_successor_state.players[0].held_object == None else one_la_successor_state.players[0].held_object.name
 
                     # update the human subtask when the human's holding changes, since this is not shown in the kb, we have a seperate if else statement.
-                    if (human_holding0 != human_holding1):
-                        one_la_human_subtasks, _ = self.human_state_subtask_transition(self.state_dict[mdp_state_key][-1], robot_world_state_info[1:])
+                    
+
+                    # if (human_holding0 != human_holding1 or human_next_la == 'interact'):
+                    if (human_next_la == 'interact'):
+                        human_changed_world = False
+                        i_pos = Action.move_in_direction(one_la_successor_state.players[1].position, one_la_successor_state.players[1].orientation)
+                        if world_state.has_object(i_pos) and one_la_successor_state.has_object(i_pos):
+                            obj0 = world_state.get_object(i_pos).state
+                            obj1 = one_la_successor_state.get_object(i_pos).state
+                            if obj0 != obj1:
+                                human_changed_world = True
+                        elif world_state.has_object(i_pos) or one_la_successor_state.has_object(i_pos):
+                            human_changed_world = True
+
+                        if human_changed_world: 
+                            # one_la_human_subtasks, _ = self.human_state_subtask_transition(self.state_dict[mdp_state_key][-1], robot_world_state_info[1:])
+                            kb_robot_world_state_info = self.get_kb_key(self.sim_human_model.get_knowledge_base(one_la_successor_state)).split('.')[:-1] + [robot_world_state_info[4]]
+                            one_la_human_subtasks, _ = self.human_state_subtask_transition(self.state_dict[mdp_state_key][-1], kb_robot_world_state_info)
                     ## TODO: why not consider the robot changing the world? Only commented out since it seems to work better for initial steps to find the reasonable actions
                     # the idea is update the human subtask when the enivornment changes
                     elif (agent_holding0 != agent_holding1) or (self.state_dict[mdp_state_key][1:4] != robot_world_state_info[1:4]): #or (human_next_la == 'interact'):
@@ -7090,6 +7128,7 @@ class SteakKnowledgeBasePlanner(SteakHumanSubtaskQMDPPlanner):
                         else:
                             one_la_kb_key = self.get_kb_key(one_la_successor_state)
 
+                        # get the next low-level step environment to determine the human's subtask
                         one_la_human_subtasks, _ = np.array(self.kb_based_human_subtask_state(self.state_dict[mdp_state_key][-1], one_la_kb_key, kb_key=True), dtype=object)
 
                     one_la_human_subtask_count = 0
@@ -7097,8 +7136,10 @@ class SteakKnowledgeBasePlanner(SteakHumanSubtaskQMDPPlanner):
                         one_la_state_idx = self.get_mdp_state_idx(self.world_state_to_mdp_state_key(one_la_successor_state, one_la_successor_state.players[0], one_la_successor_state.players[1], one_la_human_subtask))
                         
                         if one_la_state_idx != mdp_state_idx:
-                            if human_holding0 == human_holding1 and self.state_dict[mdp_state_key][-1] != one_la_human_subtask:
-                                est_next_state_v[i, Action.ACTION_TO_INDEX[joint_motion_action[agent_idx]]] += 0
+
+                            # since human's holding doesn't change, that means it's subtask goal has not changed, therefore, the comparison should be with the mdp_state_key's human subtask. Keep in mind that the human's subtask goal in mdp_state_key is a goal that is currently being executed and not yet complete.
+                            # if (human_holding0 == human_holding1 and human_next_la != 'interact') and self.state_dict[mdp_state_key][-1] != one_la_human_subtask:
+                            #     est_next_state_v[i, Action.ACTION_TO_INDEX[joint_motion_action[agent_idx]]] += 0
 
                             # after_action_world_states = self.mdp_state_to_world_state(one_la_state_idx, one_la_state_idx, one_la_successor_state, with_argmin=True)
                             # else:
@@ -7120,31 +7161,32 @@ class SteakKnowledgeBasePlanner(SteakHumanSubtaskQMDPPlanner):
                             #     # action_cost[i, Action.ACTION_TO_INDEX[joint_motion_action[agent_idx]]] -= (one_step_cost) * (1/len(one_la_human_subtasks))# * (1/one_step_cost) 
                             # else:
 
-                            else:
-                                one_la_human_subtask_count += 1
-                                after_action_world_states = self.mdp_state_to_world_state(mdp_state_idx, one_la_state_idx, one_la_successor_state, with_argmin=True)
-                                total_v_cost = 0
-                                # total_one_step_cost = 0
-                                for after_action_world_state in after_action_world_states[:,0]:
-                                    if self.jmp.is_valid_joint_motion_pair(one_la_successor_state.players_pos_and_or, after_action_world_state.players_pos_and_or):
-                                        _, one_step_cost = self.joint_action_cost(one_la_successor_state, after_action_world_state.players_pos_and_or, PLAN_COST='short')
-                                        # one_step_cost += 1 # consider the interact action
-                                    else:
-                                        one_step_cost = (self.mdp.height*self.mdp.width)*2 
-                                    
-                                    cost = self.compute_V(one_la_successor_state, self.get_key_from_value(self.state_idx_dict, one_la_state_idx), belief_prob=belief, belief_idx=used_belief[i], search_depth=SEARCH_DEPTH, search_time_limit=SEARCH_TIME, add_rewards=True, gamma=True)
-                                    print('one la state key: cost: one_step_cost: add_cost', self.get_key_from_value(self.state_idx_dict, one_la_state_idx), cost, one_step_cost, (cost/(one_step_cost*200)))
-                                    
-                                    est_next_state_v[i, Action.ACTION_TO_INDEX[joint_motion_action[agent_idx]]] += ((cost+(cost/(one_step_cost*200))) * (1/len(after_action_world_states)))
+                            # else:
+                            one_la_human_subtask_count += 1
+                            after_action_world_states = self.mdp_state_to_world_state(mdp_state_idx, one_la_state_idx, world_state, with_argmin=True)
+                            total_v_cost = 0
+                            # total_one_step_cost = 0
+                            for after_action_world_state in after_action_world_states[:,0]:
+                                if self.jmp.is_valid_joint_motion_pair(one_la_successor_state.players_pos_and_or, after_action_world_state.players_pos_and_or):
+                                    # already considers the interaction action
+                                    _, one_step_cost = self.joint_action_cost(one_la_successor_state, after_action_world_state.players_pos_and_or, PLAN_COST='short')
+                                else:
+                                    one_step_cost = (self.mdp.height*self.mdp.width)*2 
+                                
+                                # cost = self.compute_V(one_la_successor_state, self.get_key_from_value(self.state_idx_dict, one_la_state_idx), belief_prob=belief, belief_idx=used_belief[i], search_depth=SEARCH_DEPTH, search_time_limit=SEARCH_TIME, add_rewards=True, gamma=True)
+                                cost = self.compute_V(after_action_world_state, self.get_key_from_value(self.state_idx_dict, one_la_state_idx), belief_prob=belief, belief_idx=used_belief[i], search_depth=SEARCH_DEPTH, search_time_limit=SEARCH_TIME, add_rewards=True, gamma=True)
+                                print('one la state key: cost: one_step_cost: add_cost', self.get_key_from_value(self.state_idx_dict, one_la_state_idx), cost, one_step_cost, (cost/(one_step_cost*200)))
+                                
+                                est_next_state_v[i, Action.ACTION_TO_INDEX[joint_motion_action[agent_idx]]] += ((cost+(cost/(one_step_cost*200))) * (1/len(after_action_world_states)) * (1/len(one_la_human_subtasks)))
                             
-                            if one_la_human_subtask_count > 0:
-                                est_next_state_v[i, Action.ACTION_TO_INDEX[joint_motion_action[agent_idx]]] *= (1/one_la_human_subtask_count)
+                            # if one_la_human_subtask_count > 0:
+                            #     est_next_state_v[i, Action.ACTION_TO_INDEX[joint_motion_action[agent_idx]]] *= (1/one_la_human_subtask_count)
 
                         else:
                             kb_state_values = {}
                             for next_kb_key, next_kb_prob in next_kbs_and_prob.items():
                                 kb_state_values[next_kb_key] = 0
-                                nxt_human_subtasks, nxt_world_infos = np.array(self.kb_based_human_subtask_state(one_la_human_subtask, next_kb_key, kb_key=True), dtype=object)
+                                nxt_human_subtasks, _ = np.array(self.kb_based_human_subtask_state(one_la_human_subtask, next_kb_key, kb_key=True), dtype=object)
 
                                 # P(KB'|KB, L_A): for next human subtasks based on kb, we assume the human does complete the task, therefore, the world changes as well
                                 # for (nxt_human_subtask, nxt_world_info) in zip(nxt_human_subtasks, nxt_world_infos):
@@ -7154,34 +7196,54 @@ class SteakKnowledgeBasePlanner(SteakHumanSubtaskQMDPPlanner):
 
                                     # T(S'|S, KB'): all possible next states based on KB' (human new subtask based on completing old subtask with KB)
                                 next_mdp_state_idx_arr = np.where(self.s_kb_trans_matrix[mdp_state_idx] > 0.000001)[0]
-                                ## Next states should qualify for two criteria:
-                                # 1. is reachable from current state (If KB explore has found a KB state, then is considered reachable)
-                                if next_kb_key != curr_kb:
-                                    kb_state_obj = self.kb_based_state(mdp_state_key, next_kb_key, kb_key=True)
-                                    for j in range(len(kb_state_obj)):
-                                        if kb_state_obj[j] == -1:
-                                            kb_state_obj[j] = 'None'
-                                # 2. contains the correct next human subtask (keep this even though there will be a gap between the current state to the next state since logically you do not see the transition of the kb change directly in the computation, but it is considered by including the next_kb_prob in the computation)
-                                    next_mdp_state_idx_arr = np.array([], dtype=int)
+
+                                # Assuming that the next state constains states where the success is both half for both agents, we then over-write the human -subtask based on the nxt_human_subtasks. This is to match the subtask with the knowledge base the human has but still have the other state information to represent the updated world based on the success probability.
+                                kb_based_next_mdp_state_idx_arr = np.array([], dtype=int)
+                                # if next_kb_key != curr_kb:
+                                for next_mdp_state_idx in next_mdp_state_idx_arr:
+                                    kb_state_obj = self.state_dict[self.get_key_from_value(self.state_idx_dict, next_mdp_state_idx)].copy()
                                     for nxt_human_subtask in nxt_human_subtasks:
                                         kb_state_obj[-1] = nxt_human_subtask                                    
                                         kb_based_state_key = self.get_key_from_value(self.state_dict, kb_state_obj)
                                         kb_based_state_idx = self.state_idx_dict[kb_based_state_key]
-                                        next_mdp_state_idx_arr = np.concatenate((next_mdp_state_idx_arr, np.where(self.s_kb_trans_matrix[kb_based_state_idx] > 0.000001)[0]))
+                                        kb_based_next_mdp_state_idx_arr = np.concatenate((kb_based_next_mdp_state_idx_arr, [kb_based_state_idx]))
 
-                                # # else:
-                                #     kb_state_obj[:-1] = self.state_dict[mdp_state_key][:-1]
-                                #     kb_based_state_idx = self.state_idx_dict[self.get_key_from_value(self.state_dict, kb_state_obj)]
-                                #     next_mdp_state_idx_arr = np.concatenate((next_mdp_state_idx_arr, np.where(self.s_kb_trans_matrix[kb_based_state_idx] > 0.000001)[0]))
+                                next_mdp_state_idx_arr = np.unique(kb_based_next_mdp_state_idx_arr)
+
+                                # # next_mdp_state_idx_arr = np.where(self.optimal_s_kb_trans_matrix[mdp_state_idx] > 0.000001)[0]
+                                # ## Next states should qualify for two criteria:
+                                # # 1. is reachable from current state (If KB explore has found a KB state, then is considered reachable)
+                                # if next_kb_key != curr_kb:
+                                #     kb_state_obj = self.kb_based_state(mdp_state_key, next_kb_key, kb_key=True)
+                                #     for j in range(len(kb_state_obj)):
+                                #         if kb_state_obj[j] == -1:
+                                #             kb_state_obj[j] = 'None'
+                                # # 2. contains the correct next human subtask (keep this even though there will be a gap between the current state to the next state since logically you do not see the transition of the kb change directly in the computation, but it is considered by including the next_kb_prob in the computation)
+                                #     next_mdp_state_idx_arr = np.array([], dtype=int)
+                                #     for nxt_human_subtask in nxt_human_subtasks:
+                                #         kb_state_obj[-1] = nxt_human_subtask                                    
+                                #         kb_based_state_key = self.get_key_from_value(self.state_dict, kb_state_obj)
+                                #         kb_based_state_idx = self.state_idx_dict[kb_based_state_key]
+
+                                #         # # we do not use the next states of kb_based_state_idx since then we will be considering taking a high-level step in advance (wrong!)
+                                #         # next_mdp_state_idx_arr = np.concatenate((next_mdp_state_idx_arr, [kb_based_state_idx]))
+                                #         next_mdp_state_idx_arr = np.concatenate((next_mdp_state_idx_arr, np.where(self.s_kb_trans_matrix[kb_based_state_idx] > 0.000001)[0]))
+                                #         # next_mdp_state_idx_arr = np.concatenate((next_mdp_state_idx_arr, np.where(self.optimal_s_kb_trans_matrix[kb_based_state_idx] > 0.000001)[0]))
+
+                                # # # else:
+                                # #     kb_state_obj[:-1] = self.state_dict[mdp_state_key][:-1]
+                                # #     kb_based_state_idx = self.state_idx_dict[self.get_key_from_value(self.state_dict, kb_state_obj)]
+                                # #     next_mdp_state_idx_arr = np.concatenate((next_mdp_state_idx_arr, np.where(self.s_kb_trans_matrix[kb_based_state_idx] > 0.000001)[0]))
                                 
-                                next_mdp_state_idx_arr = np.unique(next_mdp_state_idx_arr)
+                                # next_mdp_state_idx_arr = np.unique(next_mdp_state_idx_arr)
 
                                 # only compute human_subtasks that are the same as nxt_human_subtask induced by KB'
                                 nxt_state_counter = 0
                                 all_nxt_state_value = 0
                                 all_nxt_one_step_cost = 0
                                 for next_state_idx in next_mdp_state_idx_arr:
-                                    if (self.state_dict[self.get_key_from_value(self.state_idx_dict, next_state_idx)][-1] in nxt_human_subtasks) and (mdp_state_idx != next_state_idx):
+                                    # if (self.state_dict[self.get_key_from_value(self.state_idx_dict, next_state_idx)][-1] in nxt_human_subtasks) and (mdp_state_idx != next_state_idx):
+                                    if (mdp_state_idx != next_state_idx):
                                         nxt_state_counter+=1
                                         print('nxt_human_subtask', self.state_dict[self.get_key_from_value(self.state_idx_dict, next_state_idx)])
                                         # if one_la_state_idx == mdp_state_idx:
@@ -7190,24 +7252,28 @@ class SteakKnowledgeBasePlanner(SteakHumanSubtaskQMDPPlanner):
                                         #     after_action_world_states = self.mdp_state_to_world_state(mdp_state_idx, one_la_state_idx, world_state, with_argmin=True)
                                         total_v_cost = 0
                                         total_one_step_cost = 0
-                                        for after_action_world_state in after_action_world_states[:,0]:
-                                            if self.jmp.is_valid_joint_motion_pair(one_la_successor_state.players_pos_and_or, after_action_world_state.players_pos_and_or):
-                                                _, one_step_cost = self.joint_action_cost(one_la_successor_state, after_action_world_state.players_pos_and_or, PLAN_COST='average')#average
-                                                # one_step_cost += 1 # consider the interact action
+                                        for after_action_world_state_info in after_action_world_states:
+                                            if self.jmp.is_valid_joint_motion_pair(one_la_successor_state.players_pos_and_or, after_action_world_state_info[0].players_pos_and_or):
+                                                [ai_wait, human_wait] = after_action_world_state_info[3]
+                                                if ai_wait or human_wait:
+                                                    _, one_step_cost = self.joint_action_cost(one_la_successor_state, after_action_world_state_info[0].players_pos_and_or, PLAN_COST= 'human' if ai_wait else 'robot')
+                                                else:
+                                                    _, one_step_cost = self.joint_action_cost(one_la_successor_state, after_action_world_state_info[0].players_pos_and_or, PLAN_COST='average')# change to max such that we make sure the state is reached to accuratly represent the probability of obtaining this state value #average
+                                                one_step_cost += 1 # consider the current state to the one_la_successor_state action
                                             else:
                                                 one_step_cost = (self.mdp.height*self.mdp.width)*2 
                                             
-                                            print('(', one_la_successor_state.players_pos_and_or, after_action_world_state.players_pos_and_or, ') one_step_cost', one_step_cost)
+                                            print('(', one_la_successor_state.players_pos_and_or, after_action_world_state_info[0].players_pos_and_or, ') one_step_cost', one_step_cost)
                                             total_one_step_cost += one_step_cost
                                             
                                             # V(S')
                                             # if (s_kb_prim_idx, next_state_idx) not in computed_v_cost.keys():
-                                            cost = self.compute_V(after_action_world_state, self.get_key_from_value(self.state_idx_dict, next_state_idx), belief_prob=belief, belief_idx=used_belief[i], search_depth=SEARCH_DEPTH, search_time_limit=SEARCH_TIME, add_rewards=True, gamma=True)
+                                            cost = self.compute_V(after_action_world_state_info[0], self.get_key_from_value(self.state_idx_dict, next_state_idx), belief_prob=belief, belief_idx=used_belief[i], search_depth=SEARCH_DEPTH, search_time_limit=SEARCH_TIME, add_rewards=True, gamma=True)
                                             print('next state key: cost: add_cost', self.get_key_from_value(self.state_idx_dict, next_state_idx), cost, (cost/(one_step_cost*200)))
 
                                             total_v_cost += cost
                                             kb_state_values[next_kb_key] += (cost + (cost/(one_step_cost*200))) * (1/len(after_action_world_states)) 
-                                                                             
+                                                                                
                                         kb_state_values[next_kb_key] *= (next_kb_prob * (1/len(one_la_human_subtasks)))
                                         print('(',one_la_state_idx, next_state_idx, ')', 'total_v_cost =', total_v_cost, '; total one step cost:', total_one_step_cost, 'next_kb_prob:', next_kb_prob, 'num_after_action_world:', len(after_action_world_states), 'num_one_la_subtask:', len(one_la_human_subtasks))
 

@@ -418,28 +418,40 @@ class GreedyHumanModel(Agent):
         if self.auto_unstuck:
             # HACK: if two agents get stuck, select an action at random that would
             # change the player positions if the other player were not to move
-            if self.prev_state is not None and state.players_pos_and_or == self.prev_state.players_pos_and_or and self.prev_chosen_action != 'interact':
-                if self.agent_index == 0:
-                    joint_actions = list(itertools.product(Action.ALL_ACTIONS, [Action.STAY]))
-                elif self.agent_index == 1:
-                    joint_actions = list(itertools.product([Action.STAY], Action.ALL_ACTIONS))
-                else:
-                    raise ValueError("Player index not recognized")
+            human_changed_world = False
+            if self.prev_state is not None:
+                i_pos = Action.move_in_direction(state.players[self.agent_index].position, state.players[self.agent_index].orientation)
+                if self.prev_state.has_object(i_pos) and state.has_object(i_pos):
+                    obj0 = self.prev_state.get_object(i_pos).state
+                    obj1 = state.get_object(i_pos).state
+                    if obj0 != obj1:
+                        human_changed_world = True
+                elif self.prev_state.has_object(i_pos) or state.has_object(i_pos):
+                    human_changed_world = True
 
-                unblocking_joint_actions = []
-                for j_a in joint_actions:
-                    new_state, _, _, _ = self.mlp.mdp.get_state_transition(state, j_a)
-                    if new_state.player_positions != self.prev_state.player_positions:
-                        unblocking_joint_actions.append(j_a)
+            if self.prev_state is not None and (state.players_pos_and_or[self.agent_index] == self.prev_state.players_pos_and_or[self.agent_index] and (self.prev_chosen_action !='interact' or (self.prev_chosen_action == 'interact' and not human_changed_world))):
+                # if self.prev_state is not None and self.prev_state == state:#and state.players_pos_and_or == self.prev_state.players_pos_and_or:# and self.prev_chosen_action != 'interact':
+                    if self.agent_index == 0:
+                        joint_actions = list(itertools.product(Action.ALL_ACTIONS, [Action.STAY]))
+                    elif self.agent_index == 1:
+                        joint_actions = list(itertools.product([Action.STAY], Action.ALL_ACTIONS))
+                    else:
+                        raise ValueError("Player index not recognized")
 
-                if len(unblocking_joint_actions) > 0:
-                    chosen_action = unblocking_joint_actions[np.random.choice(len(unblocking_joint_actions))][self.agent_index]
-                else:
-                    chosen_action = Action.STAY
-                action_probs = self.a_probs_from_action(chosen_action)
+                    unblocking_joint_actions = []
+                    for j_a in joint_actions:
+                        new_state, _, _, _ = self.mlp.mdp.get_state_transition(state, j_a)
+                        if new_state.player_positions != self.prev_state.player_positions:
+                            unblocking_joint_actions.append(j_a)
 
-                state.players[self.agent_index].stuck_log += [1]
-                self.prev_state = None
+                    if len(unblocking_joint_actions) > 0:
+                        chosen_action = unblocking_joint_actions[np.random.choice(len(unblocking_joint_actions))][self.agent_index]
+                    else:
+                        chosen_action = Action.STAY
+                    action_probs = self.a_probs_from_action(chosen_action)
+
+                    state.players[self.agent_index].stuck_log += [1]
+                    self.prev_state = None
             else:
                 state.players[self.agent_index].stuck_log += [0]
                 self.prev_state = state
@@ -725,7 +737,7 @@ class limitVisionHumanModel(GreedyHumanModel):
         key = '_'.join((str(object.position[0]), str(object.position[1]), str(object.name)))
         return key
 
-    def get_vision_bound(self, state, half_bound=60):
+    def get_vision_bound(self, state, half_bound=120):
         player = state.players[self.agent_index]
 
         # get the two points first by assuming facing north
@@ -990,7 +1002,7 @@ class SteakLimitVisionHumanModel(limitVisionHumanModel):
         self.knowledge_base['other_player'] = start_state.players[1]
 
     def update(self, state):
-        right_pt, left_pt = self.get_vision_bound(state, half_bound=60)
+        right_pt, left_pt = self.get_vision_bound(state, half_bound=120)
 
         for obj in state.objects.values():
             if self.in_bound(obj.position, right_pt, left_pt, state):
