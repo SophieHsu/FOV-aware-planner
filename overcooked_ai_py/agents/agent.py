@@ -718,11 +718,12 @@ class GreedySteakHumanModel(GreedyHumanModel):
 
 class limitVisionHumanModel(GreedyHumanModel):
     def __init__(self, mlp, start_state, hl_boltzmann_rational=False, ll_boltzmann_rational=False, hl_temp=1, ll_temp=1,
-                 auto_unstuck=True, explore=False, vision_limit=True):
+                 auto_unstuck=True, explore=False, vision_limit=True, vision_bound=120):
         super().__init__(mlp, hl_boltzmann_rational, ll_boltzmann_rational, hl_temp, ll_temp,
                  auto_unstuck)
         self.explore = explore
         self.vision_limit = vision_limit
+        self.vision_bound = vision_bound
         self.init_knowledge_base(start_state)
 
     def init_knowledge_base(self, start_state):
@@ -737,7 +738,7 @@ class limitVisionHumanModel(GreedyHumanModel):
         key = '_'.join((str(object.position[0]), str(object.position[1]), str(object.name)))
         return key
 
-    def get_vision_bound(self, state, half_bound=120):
+    def get_vision_bound(self, state, half_bound=60):
         player = state.players[self.agent_index]
 
         # get the two points first by assuming facing north
@@ -838,7 +839,7 @@ class limitVisionHumanModel(GreedyHumanModel):
         return (left_in_bound and right_in_bound)
 
     def update(self, state):
-        right_pt, left_pt = self.get_vision_bound(state)
+        right_pt, left_pt = self.get_vision_bound(state, half_bound=self.vision_bound/2)
         valid_pot_pos = []
 
         for obj in state.objects.values():
@@ -858,7 +859,7 @@ class limitVisionHumanModel(GreedyHumanModel):
             self.knowledge_base['other_player'] = other_player
 
     def get_knowledge_base(self, state):
-        right_pt, left_pt = self.get_vision_bound(state)
+        right_pt, left_pt = self.get_vision_bound(state, half_bound=self.vision_bound/2)
         valid_pot_pos = []
         new_knowledge_base = self.knowledge_base.copy()
         for obj in state.objects.values():
@@ -974,7 +975,7 @@ class limitVisionHumanModel(GreedyHumanModel):
 
 
 class SteakLimitVisionHumanModel(limitVisionHumanModel):
-    def __init__(self, mlp, start_state, hl_boltzmann_rational=False, ll_boltzmann_rational=False, hl_temp=1, ll_temp=1, auto_unstuck=True, explore=False, vision_limit=True, robot_aware=False):
+    def __init__(self, mlp, start_state, hl_boltzmann_rational=False, ll_boltzmann_rational=False, hl_temp=1, ll_temp=1, auto_unstuck=True, explore=False, vision_limit=True, robot_aware=False, vision_bound=120):
         super().__init__(mlp, start_state, hl_boltzmann_rational, ll_boltzmann_rational, hl_temp, ll_temp, auto_unstuck, explore, vision_limit=vision_limit)
         self.robot_aware = robot_aware
 
@@ -1002,7 +1003,7 @@ class SteakLimitVisionHumanModel(limitVisionHumanModel):
         self.knowledge_base['other_player'] = start_state.players[1]
 
     def update(self, state):
-        right_pt, left_pt = self.get_vision_bound(state, half_bound=120)
+        right_pt, left_pt = self.get_vision_bound(state, half_bound=self.vision_bound/2)
 
         for obj in state.objects.values():
             if self.in_bound(obj.position, right_pt, left_pt, state):

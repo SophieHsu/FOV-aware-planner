@@ -1,0 +1,52 @@
+lvl_type,ID,exp_log_dir,row_index,column_index,matrix_index,lvl_str
+steak_island,,,,,,"XXXXXXXXXXXXXXX                 
+XXXPXXXXDXMOXXX                 
+XX           XX
+XX       1   XX
+                 
+XX   XXXWX   XX                 
+XX   BXXXX   XX                 
+XX        2  XX                 
+XS           XX                 
+XXXXXXXXXXXXXXX                 
+XXXXXXXXXXXXXXX"
+steak_island2,,,,,,"XXXXXXXXXXXXXXX 
+XXXPXXXXXXXXXXX 
+XX           OX 
+XX       1   MX 
+XD   XBXWX   XX 
+XX   XXXXX   XX 
+XX        2  XX 
+XS           XX 
+XXXXXXXXXXXXXXX 
+XXXXXXXXXXXXXXX"
+steak_parrallel,,,,,,"XXXXXXXXXXXXXXX 
+XXXPXMOXXDXXXXX 
+XX           XX 
+XX           XX 
+XX  XXBXWXX  XX 
+XX  XXXXXXX  XX 
+XX        2  XX 
+XS    1      XX 
+XXXXXXXXXXXXXXX 
+XXXXXXXXXXXXXXX"
+steak_test,,,,,,"XXXXXXXXXXXXXXX 
+XXXXXXXXXXPXXXX 
+XO        2 XXX 
+XM          XXX 
+XX        XDXXX 
+XXXXX       XXX 
+XX   1      BXX 
+XS          XXX 
+XXXXXXXXXWXXXXX 
+XXXXXXXXXXXXXXX"
+steak_tshape,,,,,,"XXXXXXXXXXXXXXX                 
+XXXPXMOXXDXBXXX                 
+XX           XX                 
+XX    XXX    XX                 
+XX  1 XXW    XX                 
+XX    XXX    XX                 
+XX        2  XX                 
+XS           XX                 
+XXXXXXXXXXXXXXX                 
+XXXXXXXXXXXXXXX"

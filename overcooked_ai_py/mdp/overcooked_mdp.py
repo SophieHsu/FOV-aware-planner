@@ -444,12 +444,14 @@ NO_REW_SHAPING_PARAMS = {
     "DISH_DISP_DISTANCE_REW": 0,
     "POT_DISTANCE_REW": 0,
     "SOUP_DISTANCE_REW": 0,
+    "COOKING_STEAK_REW": 0,
 }
 
 BASE_REW_SHAPING_PARAMS = {
     "PLACEMENT_IN_POT_REW": 3,
     "DISH_PICKUP_REWARD": 3,
     "SOUP_PICKUP_REWARD": 5,
+    "COOKING_STEAK_REW": 3,
     "DISH_DISP_DISTANCE_REW": 0,
     "POT_DISTANCE_REW": 0,
     "SOUP_DISTANCE_REW": 0
@@ -1328,7 +1330,7 @@ class OvercookedGridworld(object):
 
         # Borders must not be free spaces
         def is_not_free(c):
-            return c in 'XOPDST'
+            return c in 'XOPDSTWMB'
 
         for y in range(height):
             assert is_not_free(grid[y][0]), 'Left border must not be free'
@@ -1346,7 +1348,7 @@ class OvercookedGridworld(object):
         assert layout_digits == list(range(1, num_players +
                                            1)), "Some players were missing"
 
-        assert all(c in 'XOPDST123456789 '
+        assert all(c in 'XOPDSTBWM123456789 '
                    for c in all_elements), 'Invalid character in grid'
         assert all_elements.count('1') == 1, "'1' must be present exactly once"
         assert all_elements.count(
