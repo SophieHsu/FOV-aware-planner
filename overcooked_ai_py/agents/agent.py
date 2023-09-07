@@ -429,7 +429,7 @@ class GreedyHumanModel(Agent):
                 elif self.prev_state.has_object(i_pos) or state.has_object(i_pos):
                     human_changed_world = True
 
-            if self.prev_state is not None and (state.players_pos_and_or[self.agent_index] == self.prev_state.players_pos_and_or[self.agent_index] and (self.prev_chosen_action !='interact' or (self.prev_chosen_action == 'interact' and not human_changed_world))):
+            if self.prev_state is not None and (state.players_pos_and_or[self.agent_index] == self.prev_state.players_pos_and_or[self.agent_index] and (state.players[self.agent_index].held_object == self.prev_state.players[self.agent_index].held_object) and (self.prev_chosen_action !='interact' or (self.prev_chosen_action == 'interact' and not human_changed_world))):
                 # if self.prev_state is not None and self.prev_state == state:#and state.players_pos_and_or == self.prev_state.players_pos_and_or:# and self.prev_chosen_action != 'interact':
                     if self.agent_index == 0:
                         joint_actions = list(itertools.product(Action.ALL_ACTIONS, [Action.STAY]))
@@ -976,7 +976,7 @@ class limitVisionHumanModel(GreedyHumanModel):
 
 class SteakLimitVisionHumanModel(limitVisionHumanModel):
     def __init__(self, mlp, start_state, hl_boltzmann_rational=False, ll_boltzmann_rational=False, hl_temp=1, ll_temp=1, auto_unstuck=True, explore=False, vision_limit=True, robot_aware=False, vision_bound=120):
-        super().__init__(mlp, start_state, hl_boltzmann_rational, ll_boltzmann_rational, hl_temp, ll_temp, auto_unstuck, explore, vision_limit=vision_limit)
+        super().__init__(mlp, start_state, hl_boltzmann_rational, ll_boltzmann_rational, hl_temp, ll_temp, auto_unstuck, explore, vision_limit=vision_limit, vision_bound=vision_bound)
         self.robot_aware = robot_aware
 
     def deepcopy(self, world_state):
@@ -1002,95 +1002,133 @@ class SteakLimitVisionHumanModel(limitVisionHumanModel):
         self.knowledge_base['chop_states'] = self.mlp.mdp.get_chopping_board_status(start_state)
         self.knowledge_base['other_player'] = start_state.players[1]
 
-    def update(self, state):
+    def get_knowledge_base(self, state, rollout_kb=None):
+        return self.update(state, rollout_kb=rollout_kb)
+
+    def update(self, state, rollout_kb=None):
         right_pt, left_pt = self.get_vision_bound(state, half_bound=self.vision_bound/2)
+
+        if rollout_kb is not None:
+            tmp_kb = copy.deepcopy(rollout_kb)
+        else:
+            tmp_kb = self.knowledge_base
 
         for obj in state.objects.values():
             if self.in_bound(obj.position, right_pt, left_pt, state):
-                self.knowledge_base[obj.position] = (obj.name, obj.state)
+               tmp_kb[obj.position] = (obj.name, obj.state)
 
-        for k, v in self.knowledge_base.items():
+        for k, v in tmp_kb.items():
             if type(k) == tuple:
                 if self.in_bound(k, right_pt, left_pt, state):
                     if state.has_object(k):
                         obj = state.get_object(k)
-                        self.knowledge_base[k] = obj
-                        if 'steak' in obj.name:
+                        tmp_kb[k] = obj
+                        if 'steak' in obj.name and obj.position in self.mlp.mdp.get_pot_locations():
                             item_name, item_num, cooking_time = obj.state
                             if cooking_time < self.mlp.mdp.steak_cooking_time:
-                                if obj.position in self.knowledge_base['pot_states']['empty']:
-                                    self.knowledge_base['pot_states']['empty'].remove(obj.position)
-                                if obj.position in self.knowledge_base['pot_states'][obj.name]['empty']:
-                                    self.knowledge_base['pot_states'][obj.name]['empty'].remove(obj.position)
-                                if obj.position not in self.knowledge_base['pot_states'][obj.name]['cooking']:
-                                    self.knowledge_base['pot_states'][obj.name]['cooking'].append(obj.position)
+                                if obj.position in tmp_kb['pot_states']['empty']:
+                                    tmp_kb['pot_states']['empty'].remove(obj.position)
+                                if obj.position in tmp_kb['pot_states'][obj.name]['empty']:
+                                    tmp_kb['pot_states'][obj.name]['empty'].remove(obj.position)
+                                if obj.position not in tmp_kb['pot_states'][obj.name]['cooking']:
+                                    tmp_kb['pot_states'][obj.name]['cooking'].append(obj.position)
+                                if obj.position in tmp_kb['pot_states'][obj.name]['ready']:
+                                    tmp_kb['pot_states'][obj.name]['ready'].remove(obj.position)
                             else:
-                                if obj.position in self.knowledge_base['pot_states'][obj.name]['cooking']:
-                                    self.knowledge_base['pot_states'][obj.name]['cooking'].remove(obj.position)
-                                if obj.position not in self.knowledge_base['pot_states'][obj.name]['ready']:
-                                    self.knowledge_base['pot_states'][obj.name]['ready'].append(obj.position)
+                                if obj.position in tmp_kb['pot_states']['empty']:
+                                    tmp_kb['pot_states']['empty'].remove(obj.position)
+                                if obj.position in tmp_kb['pot_states'][obj.name]['empty']:
+                                    tmp_kb['pot_states'][obj.name]['empty'].remove(obj.position)
+                                if obj.position in tmp_kb['pot_states'][obj.name]['cooking']:
+                                    tmp_kb['pot_states'][obj.name]['cooking'].remove(obj.position)
+                                if obj.position not in tmp_kb['pot_states'][obj.name]['ready']:
+                                    tmp_kb['pot_states'][obj.name]['ready'].append(obj.position)
 
-                        elif 'garnish' in obj.name:
+                        elif 'garnish' in obj.name and obj.position in self.mlp.mdp.get_chopping_board_locations():
                             chop_time = obj.state
-                            if chop_time < self.mlp.mdp.chopping_time:
-                                if obj.position in self.knowledge_base['chop_states']['empty']:
-                                    self.knowledge_base['chop_states']['empty'].remove(obj.position)
-                                if obj.position not in self.knowledge_base['chop_states']['full']:
-                                    self.knowledge_base['chop_states']['full'].append(obj.position)
+                            if chop_time < 0:
+                                if obj.position in tmp_kb['chop_states']['ready']:
+                                    tmp_kb['chop_states']['ready'].remove(obj.position)
+                                if obj.position not in tmp_kb['chop_states']['empty']:
+                                    tmp_kb['chop_states']['empty'].append(obj.position)
+                                if obj.position in tmp_kb['chop_states']['full']:
+                                    tmp_kb['chop_states']['full'].remove(obj.position)
+                            elif chop_time >= 0 and chop_time < self.mlp.mdp.chopping_time:
+                                if obj.position in tmp_kb['chop_states']['empty']:
+                                    tmp_kb['chop_states']['empty'].remove(obj.position)
+                                if obj.position not in tmp_kb['chop_states']['full']:
+                                    tmp_kb['chop_states']['full'].append(obj.position)
+                                if obj.position in tmp_kb['chop_states']['ready']:
+                                    tmp_kb['chop_states']['ready'].remove(obj.position)
                             else:
-                                if obj.position in self.knowledge_base['chop_states']['full']:
-                                    self.knowledge_base['chop_states']['full'].remove(obj.position)
-                                if obj.position not in self.knowledge_base['chop_states']['ready']:
-                                    self.knowledge_base['chop_states']['ready'].append(obj.position)
+                                if obj.position in tmp_kb['chop_states']['empty']:
+                                    tmp_kb['chop_states']['empty'].remove(obj.position)
+                                if obj.position in tmp_kb['chop_states']['full']:
+                                    tmp_kb['chop_states']['full'].remove(obj.position)
+                                if obj.position not in tmp_kb['chop_states']['ready']:
+                                    tmp_kb['chop_states']['ready'].append(obj.position)
 
-                        elif 'hot_plate' in obj.name:
+                        elif 'hot_plate' in obj.name and obj.position in self.mlp.mdp.get_sink_locations():
                             wash_time = obj.state
-                            if wash_time < self.mlp.mdp.wash_time:
-                                if obj.position in self.knowledge_base['sink_states']['empty']:
-                                    self.knowledge_base['sink_states']['empty'].remove(obj.position)
-                                if obj.position not in self.knowledge_base['sink_states']['full']:
-                                    self.knowledge_base['sink_states']['full'].append(obj.position)
+                            if wash_time < 0:
+                                if obj.position in tmp_kb['sink_states']['ready']:
+                                    tmp_kb['sink_states']['ready'].remove(obj.position)
+                                if obj.position not in tmp_kb['sink_states']['empty']:
+                                    tmp_kb['sink_states']['empty'].append(obj.position)
+                                if obj.position in tmp_kb['sink_states']['full']:
+                                    tmp_kb['sink_states']['full'].remove(obj.position)
+                            elif wash_time >= 0 and wash_time < self.mlp.mdp.wash_time:
+                                if obj.position in tmp_kb['sink_states']['empty']:
+                                    tmp_kb['sink_states']['empty'].remove(obj.position)
+                                if obj.position not in tmp_kb['sink_states']['full']:
+                                    tmp_kb['sink_states']['full'].append(obj.position)
+                                if obj.position in tmp_kb['sink_states']['ready']:
+                                    tmp_kb['sink_states']['ready'].remove(obj.position)
                             else:
-                                if obj.position in self.knowledge_base['sink_states']['full']:
-                                    self.knowledge_base['sink_states']['full'].remove(obj.position)
-                                if obj.position not in self.knowledge_base['sink_states']['ready']:
-                                    self.knowledge_base['sink_states']['ready'].append(obj.position)
+                                if obj.position in tmp_kb['sink_states']['empty']:
+                                    tmp_kb['sink_states']['empty'].remove(obj.position)
+                                if obj.position in tmp_kb['sink_states']['full']:
+                                    tmp_kb['sink_states']['full'].remove(obj.position)
+                                if obj.position not in tmp_kb['sink_states']['ready']:
+                                    tmp_kb['sink_states']['ready'].append(obj.position)
                     else:
-                        self.knowledge_base[k] = None
+                        tmp_kb[k] = None
                         tile_type = self.mlp.mdp.get_terrain_type_at_pos(k)
                         if tile_type == 'W':
-                            if k in self.knowledge_base['sink_states']['ready']:
-                                self.knowledge_base['sink_states']['ready'].remove(k)
-                            if k not in self.knowledge_base['sink_states']['empty']:
-                                self.knowledge_base['sink_states']['empty'].append(k)
+                            if k in tmp_kb['sink_states']['ready']:
+                                tmp_kb['sink_states']['ready'].remove(k)
+                            if k not in tmp_kb['sink_states']['empty']:
+                                tmp_kb['sink_states']['empty'].append(k)
 
                         if tile_type == 'P':
-                            for pot_key in self.knowledge_base['pot_states'].keys():
+                            for pot_key in tmp_kb['pot_states'].keys():
                                 if pot_key != 'empty':
-                                    if k in self.knowledge_base['pot_states'][pot_key]['ready']:
-                                        self.knowledge_base['pot_states'][pot_key]['ready'].remove(k)
-                                    elif k not in self.knowledge_base['pot_states'][pot_key]['empty']:
-                                        self.knowledge_base['pot_states'][pot_key]['empty'].append(k)
-                                    if k not in self.knowledge_base['pot_states']['empty']:
-                                        self.knowledge_base['pot_states']['empty'].append(k)
+                                    if k in tmp_kb['pot_states'][pot_key]['ready']:
+                                        tmp_kb['pot_states'][pot_key]['ready'].remove(k)
+                                    elif k not in tmp_kb['pot_states'][pot_key]['empty']:
+                                        tmp_kb['pot_states'][pot_key]['empty'].append(k)
+                                    if k not in tmp_kb['pot_states']['empty']:
+                                        tmp_kb['pot_states']['empty'].append(k)
                                 
                         if tile_type == 'B':
-                            if k in self.knowledge_base['chop_states']['ready']:
-                                self.knowledge_base['chop_states']['ready'].remove(k)
-                            if k not in self.knowledge_base['chop_states']['empty']:
-                                self.knowledge_base['chop_states']['empty'].append(k)
+                            if k in tmp_kb['chop_states']['ready']:
+                                tmp_kb['chop_states']['ready'].remove(k)
+                            if k not in tmp_kb['chop_states']['empty']:
+                                tmp_kb['chop_states']['empty'].append(k)
                                 
 
         # check if other player is in vision
         other_player = state.players[1 - self.agent_index]
         if self.in_bound(other_player.position, right_pt, left_pt, state):
             # print('Other agent in bound')
-            self.knowledge_base['other_player'] = other_player
+            tmp_kb['other_player'] = other_player
 
         # print out knowledge base
-        for k, v in self.knowledge_base.items():
-            print(k, ':', v)
-        return
+        if rollout_kb is None:
+            for k, v in tmp_kb.items():
+                print(k, ':', v)
+        
+        return tmp_kb
 
     def ml_action(self, state):
         """
@@ -1196,6 +1234,7 @@ class SteakLimitVisionHumanModel(limitVisionHumanModel):
 
             elif player_obj.name == "plate":
                 motion_goals = am.put_plate_in_sink_actions(counter_objects, state, knowledge_base=self.knowledge_base)
+                # if (hot_plate_ready or rinsing) and garnish_ready and (steak_nearly_ready):
 
             elif player_obj.name == 'hot_plate':
                 motion_goals = am.pickup_steak_with_hot_plate_actions(pot_states_dict, only_nearly_ready=True)
@@ -1213,14 +1252,17 @@ class SteakLimitVisionHumanModel(limitVisionHumanModel):
 
         if len(motion_goals) == 0:
             if self.explore: # explore to expand the vision.
-                # get four directions to explore
-                for o in Direction.ALL_DIRECTIONS:
-                    if o != player.orientation:
-                        motion_goals.append(self.mdp._move_if_direction(player.position, player.orientation, o))
-                if player.pos_and_or in motion_goals:
-                    motion_goals.remove(player.pos_and_or)
                 if player.has_object():
-                    motion_goals += am.get_closest_counter(state, player)
+                    motion_goals += am.place_obj_on_counter_actions(state)
+                else:
+                    motion_goals += am.pickup_plate_actions(counter_objects, knowledge_base=self.knowledge_base)
+
+                    # get four directions to explore
+                    for o in Direction.ALL_DIRECTIONS:
+                        if o != player.orientation:
+                            motion_goals.append(self.mdp._move_if_direction(player.position, player.orientation, o))
+                    if player.pos_and_or in motion_goals:
+                        motion_goals.remove(player.pos_and_or)
                 random.shuffle(motion_goals)
                 motion_goals = [[mg for mg in motion_goals if self.mlp.mp.is_valid_motion_start_goal_pair(player.pos_and_or, mg)][0]] # directly return on specific motion goal as the interact plan will always cost
 
@@ -1228,7 +1270,9 @@ class SteakLimitVisionHumanModel(limitVisionHumanModel):
             else: # get to the closest key object location
                 if player.has_object():
                     motion_goals += am.place_obj_on_counter_actions(state)
-                motion_goals += am.go_to_closest_feature_actions(player)
+                else:
+                    motion_goals += am.pickup_plate_actions(counter_objects, knowledge_base=self.knowledge_base)
+                    # motion_goals += am.go_to_closest_feature_actions(player)
                 motion_goals = [mg for mg in motion_goals if self.mlp.mp.is_valid_motion_start_goal_pair(player.pos_and_or, mg)]
                 assert len(motion_goals) != 0
 
@@ -1828,6 +1872,7 @@ class MediumQMdpPlanningAgent(Agent):
         self.greedy_known = greedy
         self.low_level_action_flag = low_level_action_flag
         self.vision_limit = vision_limit
+        self.prev_stuck = False
         self.prev_action_info = [np.full((len(self.mdp_planner.subtask_dict)), 1.0/len(self.mdp_planner.subtask_dict), dtype=float), None, None, None]
         self.reset()
 
@@ -1838,6 +1883,7 @@ class MediumQMdpPlanningAgent(Agent):
         self.belief = np.full((len(self.mdp_planner.subtask_dict)), 1.0/len(self.mdp_planner.subtask_dict), dtype=float)
         self.track_belief = [np.full((len(self.mdp_planner.subtask_dict)), 1.0/len(self.mdp_planner.subtask_dict), dtype=float)]
         self.prev_action_info = [np.full((len(self.mdp_planner.subtask_dict)), 1.0/len(self.mdp_planner.subtask_dict), dtype=float), None, None, None]
+        self.prev_chosen_action = None
 
     def mdp_action_to_low_level_action(self, state, state_strs, action_object_pair):
         # map back the medium level action to low level action
@@ -1873,8 +1919,12 @@ class MediumQMdpPlanningAgent(Agent):
         if curr_state_str != prev_state_str:
             self.belief = np.full((len(self.mdp_planner.subtask_dict)), 1.0/len(self.mdp_planner.subtask_dict), dtype=float)
 
-        self.belief, self.prev_dist_to_feature = self.mdp_planner.belief_update(state, state.players[0], observed_info, state.players[1], self.belief, self.prev_dist_to_feature, greedy=self.greedy_known, vision_limit=self.vision_limit)
+        tmp_belief, self.prev_dist_to_feature = self.mdp_planner.belief_update(state, state.players[0], observed_info, state.players[1], self.belief, self.prev_dist_to_feature, greedy=self.greedy_known, vision_limit=self.vision_limit)
 
+        # do not update belief based on actions trying to resolve stuck
+        if not self.prev_stuck:
+            self.belief = tmp_belief
+            
         # do not recompute next subtask if the belief change and observed_info is the same
         print('belief delta =', np.sum(np.abs(self.belief-prev_belief)))
         belief_delta = np.sum(np.abs(self.belief-prev_belief))
@@ -1885,7 +1935,9 @@ class MediumQMdpPlanningAgent(Agent):
         # if belief_delta >= RECOMPUTE_SUBTASK or curr_state_str != prev_state_str or LOW_LEVEL_ACTION:
         
         # compute in low-level the action and cost
-        action, action_object_pair, _ = self.mdp_planner.step(state, mdp_state_keys, self.belief, self.agent_index, low_level_action=LOW_LEVEL_ACTION, observation=observed_info)
+        # action, action_object_pair, _ = self.mdp_planner.step(state, mdp_state_keys, self.belief, self.agent_index, low_level_action=LOW_LEVEL_ACTION, observation=observed_info)
+        
+        action, action_object_pair, _ = self.mdp_planner.new_step(state, dict(zip(list(self.mdp_planner.subtask_dict.keys()), self.belief)))
 
         if not LOW_LEVEL_ACTION:
             action = self.mdp_action_to_low_level_action(state, mdp_state_keys, action_object_pair)
@@ -1893,7 +1945,7 @@ class MediumQMdpPlanningAgent(Agent):
         print('action =', action, '; action_object_pair =', action_object_pair)
         action_probs = self.a_probs_from_action(action)
         if self.auto_unstuck:
-            action, action_probs = self.resolve_stuck(state, action, action_probs)
+            action, action_probs, self.prev_stuck = self.resolve_stuck(state, action, action_probs)
             # NOTE: Assumes that calls to the action method are sequential
             self.prev_state = state
 
@@ -1916,7 +1968,20 @@ class MediumQMdpPlanningAgent(Agent):
     def resolve_stuck(self, state, chosen_action, action_probs):
         # HACK: if two agents get stuck and neither performing a pick or drop action, select an action at random that would
         # change the player positions if the other player were to move
-        if self.prev_state is not None and state.players_pos_and_or == self.prev_state.players_pos_and_or and state.players[0].held_object == self.prev_state.players[0].held_object and state.players[1].held_object == self.prev_state.players[1].held_object:
+        stuck_flag = False
+        action_changed_world = False
+        if self.prev_state is not None:
+            i_pos = Action.move_in_direction(state.players[self.agent_index].position, state.players[self.agent_index].orientation)
+            if self.prev_state.has_object(i_pos) and state.has_object(i_pos):
+                obj0 = self.prev_state.get_object(i_pos).state
+                obj1 = state.get_object(i_pos).state
+                if obj0 != obj1:
+                    action_changed_world = True
+            elif self.prev_state.has_object(i_pos) or state.has_object(i_pos):
+                action_changed_world = True
+
+        if self.prev_state is not None and self.prev_state == state: #and (state.players_pos_and_or == self.prev_state.players_pos_and_or and (state.players[self.agent_index].held_object == self.prev_state.players[self.agent_index].held_object) and (self.prev_chosen_action !='interact' or (self.prev_chosen_action == 'interact' and not action_changed_world))):
+        # if self.prev_state is not None and state.players_pos_and_or == self.prev_state.players_pos_and_or and state.players[0].held_object == self.prev_state.players[0].held_object and state.players[1].held_object == self.prev_state.players[1].held_object:
             # print('Resolving stuck...')
             joint_actions = list(itertools.product(Action.MOTION_ACTIONS, Action.MOTION_ACTIONS))
             unblocking_joint_actions = []
@@ -1932,11 +1997,13 @@ class MediumQMdpPlanningAgent(Agent):
             action_probs = self.a_probs_from_action(chosen_action)
         
             state.players[self.agent_index].stuck_log += [1]
-        
+            stuck_flag = True
         else:
             state.players[self.agent_index].stuck_log += [0]
         
-        return chosen_action, action_probs
+        self.prev_chosen_action = chosen_action
+        
+        return chosen_action, action_probs, stuck_flag
 
 
 class HRLTrainingAgent(MediumQMdpPlanningAgent):

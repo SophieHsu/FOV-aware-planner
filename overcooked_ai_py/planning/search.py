@@ -164,8 +164,9 @@ class SearchTree(object):
                 if info: print("Found goal after: \t{:.2f} seconds,   \t{} state expanded ({:.2f} unique) \t ~{:.2f} expansions/s".format(
                     elapsed_time, iter_count, len(seen)/iter_count, iter_count/elapsed_time))
                 tmp_node = curr_node
+                print(curr_node.action, curr_node.gamma_cost, curr_node.state.players_pos_and_or, end='/')
                 while (tmp_node.parent is not None):
-                    print(tmp_node.parent.action, tmp_node.parent.gamma_cost, end='/')
+                    print(tmp_node.parent.action, tmp_node.parent.gamma_cost, tmp_node.parent.state.players_pos_and_or, end='/')
                     tmp_node = tmp_node.parent
                 print('')
                 # print("in is goal:", curr_qmdp_state, curr_node.state, curr_node.backwards_cost)
@@ -279,7 +280,7 @@ class SearchTree(object):
         print("Successors for last node expanded: ", self.expand(curr_state, depth=curr_state.depth))
         raise TimeoutError("A* graph search was unable to find any goal state.")
 
-    def bfs_track_path(self, kb_key_root=None, info=False, time_limit=10e8, path_limit=100, search_depth=10):
+    def bfs_track_path(self, get_kb_key, kb_root=None, info=False, time_limit=10e8, path_limit=100, search_depth=10):
         """
         Performs a bfs
         """
@@ -290,9 +291,9 @@ class SearchTree(object):
         pq = []
         kb_prob_track = {}
 
-        root_node = SearchNode(self.root, action=kb_key_root, parent=None, action_cost=0, debug=self.debug)
+        root_node = SearchNode(self.root, action=kb_root, parent=None, action_cost=0, debug=self.debug)
         pq.append([root_node, self.estimated_total_cost(root_node)])
-        root_flag = True
+        # root_flag = True
         while not len(pq) == 0:
             [curr_node, _] = pq.pop()
             iter_count += 1
@@ -302,14 +303,14 @@ class SearchTree(object):
                 print(iter_count)
 
             curr_state = curr_node.state
-            curr_kb_key = curr_node.action
+            curr_kb_key = get_kb_key(curr_node.action)
             # print(iter_count, curr_state, curr_node.backwards_cost)
             # print(iter_count, curr_state.num_orders_remaining)
             
-            if not root_flag:
-                if curr_kb_key not in kb_prob_track.keys():
+            # if not root_flag:
+            if curr_kb_key not in kb_prob_track.keys():
                     # we only track the largest probability when a change is seen so that later when we mulitply it on the state value, it gives the max possible value.
-                    kb_prob_track[curr_kb_key] = 1.0/curr_node.depth 
+                kb_prob_track[curr_kb_key] = (1.0/(curr_node.depth+1), curr_node.depth, curr_node.state)
                 # else:
                 #     kb_prob_track[curr_kb_key] += 1
 
@@ -333,10 +334,10 @@ class SearchTree(object):
             #     return curr_node.get_path(), curr_node.backwards_cost, kb_prob_track 
 
             if curr_node.depth < search_depth:
-                successors = self.expand(curr_state, depth=curr_node.depth)
+                successors = self.expand(curr_state, curr_node.action, depth=curr_node.depth)
 
-                for kb_key, child, cost in successors:
-                    child_node = SearchNode(child, kb_key, parent=curr_node, action_cost=cost, debug=self.debug)
+                for kb, child, cost in successors:
+                    child_node = SearchNode(child, kb, parent=curr_node, action_cost=cost, debug=self.debug)
                     if child_node.depth <= search_depth:
                         pq.append([child_node, self.estimated_total_cost(child_node)])
 
