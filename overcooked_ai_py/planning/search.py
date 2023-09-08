@@ -124,7 +124,7 @@ class SearchTree(object):
         print("Successors for last node expanded: ", self.expand(curr_state))
         raise TimeoutError("A* graph search was unable to find any goal state.")
 
-    def bounded_A_star_graph_search(self, qmdp_root=None, info=False, cost_limit=10e8, gamma=False, time_limit=10e8):
+    def bounded_A_star_graph_search(self, qmdp_root=None, info=False, cost_limit=10e8, gamma=False, time_limit=10e8, debug=False):
         """
         Performs a A* Graph Search to find a path to a goal state
         """
@@ -144,7 +144,7 @@ class SearchTree(object):
             # if curr_node.depth < pq_min_depth:
             #     pq_min_depth = curr_node.depth
 
-            if self.debug and iter_count % 1000 == 0:
+            if self.debug and iter_count % 1000 == 0 and debug:
                 print([p[0] for p in curr_node.get_path()])
                 print(iter_count)
 
@@ -164,12 +164,13 @@ class SearchTree(object):
                 if info: print("Found goal after: \t{:.2f} seconds,   \t{} state expanded ({:.2f} unique) \t ~{:.2f} expansions/s".format(
                     elapsed_time, iter_count, len(seen)/iter_count, iter_count/elapsed_time))
                 tmp_node = curr_node
-                print(curr_node.action, curr_node.gamma_cost, curr_node.state.players_pos_and_or, end='/')
-                while (tmp_node.parent is not None):
-                    print(tmp_node.parent.action, tmp_node.parent.gamma_cost, tmp_node.parent.state.players_pos_and_or, end='/')
-                    tmp_node = tmp_node.parent
-                print('')
-                # print("in is goal:", curr_qmdp_state, curr_node.state, curr_node.backwards_cost)
+                if debug:
+                    print(curr_node.action, curr_node.gamma_cost, curr_node.state.players_pos_and_or, end='/')
+                    while (tmp_node.parent is not None):
+                        print(tmp_node.parent.action, tmp_node.parent.gamma_cost, tmp_node.parent.state.players_pos_and_or, end='/')
+                        tmp_node = tmp_node.parent
+                    print('')
+
                 if gamma:
                     return curr_node.state, curr_node.gamma_cost, False, curr_node.action
                 else:

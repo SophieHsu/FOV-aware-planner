@@ -718,13 +718,14 @@ class GreedySteakHumanModel(GreedyHumanModel):
 
 class limitVisionHumanModel(GreedyHumanModel):
     def __init__(self, mlp, start_state, hl_boltzmann_rational=False, ll_boltzmann_rational=False, hl_temp=1, ll_temp=1,
-                 auto_unstuck=True, explore=False, vision_limit=True, vision_bound=120):
+                 auto_unstuck=True, explore=False, vision_limit=True, vision_bound=120, debug=False):
         super().__init__(mlp, hl_boltzmann_rational, ll_boltzmann_rational, hl_temp, ll_temp,
                  auto_unstuck)
         self.explore = explore
         self.vision_limit = vision_limit
         self.vision_bound = vision_bound
         self.init_knowledge_base(start_state)
+        self.debug = debug
 
     def init_knowledge_base(self, start_state):
         self.knowledge_base = {}
@@ -975,8 +976,8 @@ class limitVisionHumanModel(GreedyHumanModel):
 
 
 class SteakLimitVisionHumanModel(limitVisionHumanModel):
-    def __init__(self, mlp, start_state, hl_boltzmann_rational=False, ll_boltzmann_rational=False, hl_temp=1, ll_temp=1, auto_unstuck=True, explore=False, vision_limit=True, robot_aware=False, vision_bound=120):
-        super().__init__(mlp, start_state, hl_boltzmann_rational, ll_boltzmann_rational, hl_temp, ll_temp, auto_unstuck, explore, vision_limit=vision_limit, vision_bound=vision_bound)
+    def __init__(self, mlp, start_state, hl_boltzmann_rational=False, ll_boltzmann_rational=False, hl_temp=1, ll_temp=1, auto_unstuck=True, explore=False, vision_limit=True, robot_aware=False, vision_bound=120, debug=False):
+        super().__init__(mlp, start_state, hl_boltzmann_rational, ll_boltzmann_rational, hl_temp, ll_temp, auto_unstuck, explore, vision_limit=vision_limit, vision_bound=vision_bound, debug=debug)
         self.robot_aware = robot_aware
 
     def deepcopy(self, world_state):
@@ -1097,6 +1098,8 @@ class SteakLimitVisionHumanModel(limitVisionHumanModel):
                         if tile_type == 'W':
                             if k in tmp_kb['sink_states']['ready']:
                                 tmp_kb['sink_states']['ready'].remove(k)
+                            if k in tmp_kb['sink_states']['full']:
+                                tmp_kb['sink_states']['full'].remove(k)
                             if k not in tmp_kb['sink_states']['empty']:
                                 tmp_kb['sink_states']['empty'].append(k)
 
@@ -1105,14 +1108,18 @@ class SteakLimitVisionHumanModel(limitVisionHumanModel):
                                 if pot_key != 'empty':
                                     if k in tmp_kb['pot_states'][pot_key]['ready']:
                                         tmp_kb['pot_states'][pot_key]['ready'].remove(k)
-                                    elif k not in tmp_kb['pot_states'][pot_key]['empty']:
+                                    if k not in tmp_kb['pot_states'][pot_key]['empty']:
                                         tmp_kb['pot_states'][pot_key]['empty'].append(k)
+                                    if k in tmp_kb['pot_states'][pot_key]['cooking']:
+                                        tmp_kb['pot_states'][pot_key]['cooking'].remove(k)
                                     if k not in tmp_kb['pot_states']['empty']:
                                         tmp_kb['pot_states']['empty'].append(k)
                                 
                         if tile_type == 'B':
                             if k in tmp_kb['chop_states']['ready']:
                                 tmp_kb['chop_states']['ready'].remove(k)
+                            if k in tmp_kb['chop_states']['full']:
+                                tmp_kb['chop_states']['full'].remove(k)
                             if k not in tmp_kb['chop_states']['empty']:
                                 tmp_kb['chop_states']['empty'].append(k)
                                 
@@ -1124,7 +1131,7 @@ class SteakLimitVisionHumanModel(limitVisionHumanModel):
             tmp_kb['other_player'] = other_player
 
         # print out knowledge base
-        if rollout_kb is None:
+        if rollout_kb is None and self.debug:
             for k, v in tmp_kb.items():
                 print(k, ':', v)
         
@@ -1147,6 +1154,7 @@ class SteakLimitVisionHumanModel(limitVisionHumanModel):
         player = state.players[self.agent_index]
         other_player = self.knowledge_base['other_player']
         am = self.mlp.ml_action_manager
+        curr_pos_and_or = player.pos_and_or
 
         counter_objects = self.mlp.mdp.get_counter_objects_dict(state, list(self.mlp.mdp.terrain_pos_dict['X']))
         sink_status = self.knowledge_base['sink_states']
@@ -1200,35 +1208,44 @@ class SteakLimitVisionHumanModel(limitVisionHumanModel):
             rinsing = len(sink_status['full']) > 0
             sink_empty = len(sink_status['empty']) > 0
 
+            # if 'dish' in counter_objects.keys():
+            #     motion_goals = counter_objects['dish']
+            # elif garnish_ready and not other_has_steak and 'steak' in counter_objects.keys():
+            #     motion_goals += counter_objects['steak']
+            # elif steak_nearly_ready and not other_has_hot_plate and 'hot_plate' in counter_objects.keys():
+            #     motion_goals = counter_objects['hot_plate']
+            
             if chopping and not garnish_ready:
-                motion_goals = am.chop_onion_on_board_actions(state, knowledge_base=self.knowledge_base)
+                motion_goals += am.chop_onion_on_board_actions(state, knowledge_base=self.knowledge_base)
             elif rinsing and not hot_plate_ready:
-                motion_goals = am.heat_plate_in_sink_actions(state, knowledge_base=self.knowledge_base)
+                motion_goals += am.heat_plate_in_sink_actions(state, knowledge_base=self.knowledge_base)
+            
             elif not steak_nearly_ready and state.num_orders_remaining > 0 and not other_has_meat:
-                motion_goals = am.pickup_meat_actions(counter_objects, knowledge_base=self.knowledge_base)
+                motion_goals += am.pickup_meat_actions(counter_objects, knowledge_base=self.knowledge_base)
             elif not chopping and not garnish_ready and not other_has_onion:
-                motion_goals = am.pickup_onion_actions(counter_objects, knowledge_base=self.knowledge_base)
+                motion_goals += am.pickup_onion_actions(counter_objects, knowledge_base=self.knowledge_base)
             elif not rinsing and not hot_plate_ready and not other_has_plate:
-                motion_goals = am.pickup_plate_actions(counter_objects, state, knowledge_base=self.knowledge_base)
-            elif garnish_ready and hot_plate_ready and not (other_has_hot_plate or other_has_steak):
-                motion_goals = am.pickup_hot_plate_from_sink_actions(counter_objects, state, knowledge_base=self.knowledge_base)
-            else:
-                next_order = None
-                if state.num_orders_remaining > 1:
-                    next_order = state.next_order
-                if next_order == 'onion':
-                    motion_goals = am.pickup_onion_actions(counter_objects, knowledge_base=self.knowledge_base)
-                elif next_order == 'steak': #pick up plate first since that is the first empty key object when in the plating stage
-                    motion_goals = am.pickup_plate_actions(counter_objects, knowledge_base=self.knowledge_base)
-                elif next_order is None or next_order == 'any':
-                    motion_goals = am.pickup_onion_actions(counter_objects, knowledge_base=self.knowledge_base) + am.pickup_tomato_actions(counter_objects) + am.pickup_meat_actions(counter_objects, knowledge_base=self.knowledge_base)
+                motion_goals += am.pickup_plate_actions(counter_objects, state, knowledge_base=self.knowledge_base)
+            
+            elif (garnish_ready or other_has_onion) and hot_plate_ready and not (other_has_hot_plate or other_has_steak):
+                motion_goals += am.pickup_hot_plate_from_sink_actions(counter_objects, state, knowledge_base=self.knowledge_base)
+            elif (garnish_ready or other_has_onion) and steak_nearly_ready and other_has_plate and not (other_has_hot_plate or other_has_steak) and not hot_plate_ready:
+                motion_goals += am.pickup_hot_plate_from_sink_actions(counter_objects, state, knowledge_base=self.knowledge_base)
+                if len(motion_goals) == 0:
+                    if other_has_plate:
+                        motion_goals += self.knowledge_base['sink_states']['full']
+                        if len(motion_goals) == 0:
+                            motion_goals += self.knowledge_base['sink_states']['empty']
+
+            if len(motion_goals) == 0:
+                motion_goals += am.pickup_plate_actions(counter_objects, knowledge_base=self.knowledge_base)
 
         else:
             player_obj = player.get_object()
 
             if player_obj.name == 'onion':
                 motion_goals = am.put_onion_on_board_actions(state, knowledge_base=self.knowledge_base)
-            
+
             elif player_obj.name == 'meat':
                 motion_goals = am.put_meat_in_pot_actions(pot_states_dict)
 
@@ -1238,9 +1255,20 @@ class SteakLimitVisionHumanModel(limitVisionHumanModel):
 
             elif player_obj.name == 'hot_plate':
                 motion_goals = am.pickup_steak_with_hot_plate_actions(pot_states_dict, only_nearly_ready=True)
+                if len(motion_goals) == 0:
+                    if other_has_meat:
+                        motion_goals = pot_states_dict['steak']['cooking'] + pot_states_dict['steak']['partially_full']
+                        if len(motion_goals) == 0:
+                            motion_goals = pot_states_dict['empty']
 
             elif player_obj.name == 'steak':
+                # would go towards chopping board if it does know the human picked up the onion
                 motion_goals = am.add_garnish_to_steak_actions(state, knowledge_base=self.knowledge_base)
+                if len(motion_goals) == 0:
+                    if other_has_onion:
+                        motion_goals = self.knowledge_base['chop_states']['full']
+                        if len(motion_goals) == 0:
+                            self.knowledge_base['chop_states']['empty']
 
             elif player_obj.name == 'dish':
                 motion_goals = am.deliver_dish_actions()
@@ -1249,32 +1277,35 @@ class SteakLimitVisionHumanModel(limitVisionHumanModel):
             #     motion_goals += am.place_obj_on_counter_actions(state)
 
         motion_goals = [mg for mg in motion_goals if self.mlp.mp.is_valid_motion_start_goal_pair(player.pos_and_or, mg)]
-
+        
         if len(motion_goals) == 0:
-            if self.explore: # explore to expand the vision.
-                if player.has_object():
-                    motion_goals += am.place_obj_on_counter_actions(state)
-                else:
-                    motion_goals += am.pickup_plate_actions(counter_objects, knowledge_base=self.knowledge_base)
+            motion_goals = [curr_pos_and_or]
 
-                    # get four directions to explore
-                    for o in Direction.ALL_DIRECTIONS:
-                        if o != player.orientation:
-                            motion_goals.append(self.mdp._move_if_direction(player.position, player.orientation, o))
-                    if player.pos_and_or in motion_goals:
-                        motion_goals.remove(player.pos_and_or)
-                random.shuffle(motion_goals)
-                motion_goals = [[mg for mg in motion_goals if self.mlp.mp.is_valid_motion_start_goal_pair(player.pos_and_or, mg)][0]] # directly return on specific motion goal as the interact plan will always cost
+        # if len(motion_goals) == 0:
+        #     if self.explore: # explore to expand the vision.
+        #         if player.has_object():
+        #             motion_goals += am.place_obj_on_counter_actions(state)
+        #         else:
+        #             motion_goals += am.pickup_plate_actions(counter_objects, knowledge_base=self.knowledge_base)
 
-                assert len(motion_goals) != 0
-            else: # get to the closest key object location
-                if player.has_object():
-                    motion_goals += am.place_obj_on_counter_actions(state)
-                else:
-                    motion_goals += am.pickup_plate_actions(counter_objects, knowledge_base=self.knowledge_base)
-                    # motion_goals += am.go_to_closest_feature_actions(player)
-                motion_goals = [mg for mg in motion_goals if self.mlp.mp.is_valid_motion_start_goal_pair(player.pos_and_or, mg)]
-                assert len(motion_goals) != 0
+        #             # get four directions to explore
+        #             for o in Direction.ALL_DIRECTIONS:
+        #                 if o != player.orientation:
+        #                     motion_goals.append(self.mdp._move_if_direction(player.position, player.orientation, o))
+        #             if player.pos_and_or in motion_goals:
+        #                 motion_goals.remove(player.pos_and_or)
+        #         random.shuffle(motion_goals)
+        #         motion_goals = [[mg for mg in motion_goals if self.mlp.mp.is_valid_motion_start_goal_pair(player.pos_and_or, mg)][0]] # directly return on specific motion goal as the interact plan will always cost
+
+        #         assert len(motion_goals) != 0
+        #     else: # get to the closest key object location
+        #         if player.has_object():
+        #             motion_goals += am.place_obj_on_counter_actions(state)
+        #         else:
+        #             motion_goals += am.pickup_plate_actions(counter_objects, knowledge_base=self.knowledge_base)
+        #             # motion_goals += am.go_to_closest_feature_actions(player)
+        #         motion_goals = [mg for mg in motion_goals if self.mlp.mp.is_valid_motion_start_goal_pair(player.pos_and_or, mg)]
+        #         assert len(motion_goals) != 0
 
         print('SteakLimitVisionHumanModel\'s motion_goals:', motion_goals)
         return motion_goals
@@ -1907,7 +1938,7 @@ class MediumQMdpPlanningAgent(Agent):
                             action = action_plan[0]
         return action
 
-    def action(self, state, track_belief=False, RECOMPUTE_SUBTASK=0.01):
+    def action(self, state, track_belief=False, RECOMPUTE_SUBTASK=0.01, debug=False):
         LOW_LEVEL_ACTION = self.low_level_action_flag
         # update the belief in a state by the result of observations
         observed_info, robot_agent_obj, human_agent_obj = self.mdp_planner.observe(state, state.players[0], state.players[1])
@@ -1935,9 +1966,9 @@ class MediumQMdpPlanningAgent(Agent):
         # if belief_delta >= RECOMPUTE_SUBTASK or curr_state_str != prev_state_str or LOW_LEVEL_ACTION:
         
         # compute in low-level the action and cost
-        # action, action_object_pair, _ = self.mdp_planner.step(state, mdp_state_keys, self.belief, self.agent_index, low_level_action=LOW_LEVEL_ACTION, observation=observed_info)
+        # action, action_object_pair, _ = self.mdp_planner.old_step(state, mdp_state_keys, self.belief, self.agent_index, low_level_action=LOW_LEVEL_ACTION, observation=observed_info)
         
-        action, action_object_pair, _ = self.mdp_planner.new_step(state, dict(zip(list(self.mdp_planner.subtask_dict.keys()), self.belief)))
+        action, action_object_pair, _ = self.mdp_planner.step(state, dict(zip(list(self.mdp_planner.subtask_dict.keys()), self.belief)))
 
         if not LOW_LEVEL_ACTION:
             action = self.mdp_action_to_low_level_action(state, mdp_state_keys, action_object_pair)
