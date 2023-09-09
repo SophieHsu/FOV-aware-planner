@@ -149,8 +149,8 @@ if __name__ == "__main__" :
     # ml_action_manager = planners.MediumLevelActionManager(scenario_1_mdp, NO_COUNTERS_PARAMS)
     # hmlp = planners.HumanMediumLevelPlanner(scenario_1_mdp, ml_action_manager, [0.5, (1.0-0.5)], 0.5)
     # human_agent = agent.biasHumanModel(ml_action_manager, [0.5, (1.0-0.5)], 0.5, auto_unstuck=True)
-    VISION_LIMIT = True
-    VISION_BOUND = 120
+    VISION_LIMIT = False
+    VISION_BOUND = 0
     VISION_LIMIT_AWARE = True
     EXPLORE = False
     mlp = planners.MediumLevelPlanner.from_pickle_or_compute(scenario_1_mdp, COUNTERS_PARAMS, force_compute=False)  
@@ -194,7 +194,7 @@ if __name__ == "__main__" :
         total_t += len(s_t)
     print('Total timesteps =', total_t)
     t = 0
-    scenario_1_mdp = SteakHouseGridworld.from_layout_name(layout_name,  num_items_for_steak=1, chop_time=2, wash_time=2, start_order_list=['steak', 'steak'])
+    scenario_1_mdp = SteakHouseGridworld.from_layout_name(layout_name,  num_items_for_steak=1, chop_time=2, wash_time=2, start_order_list=['steak', 'steak'], cook_time=10)
     env = OvercookedEnv.from_mdp(scenario_1_mdp, horizon = 200)
     while not done:
         if t >= 0 and t <= len(s_t):

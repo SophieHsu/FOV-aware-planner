@@ -1184,22 +1184,22 @@ class SteakLimitVisionHumanModel(limitVisionHumanModel):
         sink_empty = len(sink_status['empty']) > 0
         motion_goals = []
         
+        if curr_order == 'any':
+            ready_soups = pot_states_dict['onion']['ready'] + pot_states_dict['tomato']['ready']
+            cooking_soups = pot_states_dict['onion']['cooking'] + pot_states_dict['tomato']['cooking']
+        else:
+            ready_soups = pot_states_dict[curr_order]['ready']
+            cooking_soups = pot_states_dict[curr_order]['cooking']
+
+        steak_nearly_ready = len(ready_soups) > 0 or len(cooking_soups) > 0
+        other_has_dish = other_player.has_object() and other_player.get_object().name == 'dish'
+        other_has_hot_plate = other_player.has_object() and other_player.get_object().name == 'hot_plate'
+        other_has_steak = other_player.has_object() and other_player.get_object().name == 'steak'
+        other_has_meat = other_player.has_object() and other_player.get_object().name == 'meat'
+        other_has_onion = other_player.has_object() and other_player.get_object().name == 'onion'
+        other_has_plate = other_player.has_object() and other_player.get_object().name == 'plate'
+
         if not player.has_object():
-
-            if curr_order == 'any':
-                ready_soups = pot_states_dict['onion']['ready'] + pot_states_dict['tomato']['ready']
-                cooking_soups = pot_states_dict['onion']['cooking'] + pot_states_dict['tomato']['cooking']
-            else:
-                ready_soups = pot_states_dict[curr_order]['ready']
-                cooking_soups = pot_states_dict[curr_order]['cooking']
-
-            steak_nearly_ready = len(ready_soups) > 0 or len(cooking_soups) > 0
-            other_has_dish = other_player.has_object() and other_player.get_object().name == 'dish'
-            other_has_hot_plate = other_player.has_object() and other_player.get_object().name == 'hot_plate'
-            other_has_steak = other_player.has_object() and other_player.get_object().name == 'steak'
-            other_has_meat = other_player.has_object() and other_player.get_object().name == 'meat'
-            other_has_onion = other_player.has_object() and other_player.get_object().name == 'onion'
-            other_has_plate = other_player.has_object() and other_player.get_object().name == 'plate'
 
             garnish_ready = len(chopping_board_status['ready']) > 0
             chopping = len(chopping_board_status['full']) > 0
