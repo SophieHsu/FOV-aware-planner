@@ -124,7 +124,7 @@ class SearchTree(object):
         print("Successors for last node expanded: ", self.expand(curr_state))
         raise TimeoutError("A* graph search was unable to find any goal state.")
 
-    def bounded_A_star_graph_search(self, qmdp_root=None, info=False, cost_limit=10e8, gamma=False, time_limit=10e8, debug=False):
+    def bounded_A_star_graph_search(self, qmdp_root=None, info=False, cost_limit=10e8, gamma=0, time_limit=10e8, debug=False):
         """
         Performs a A* Graph Search to find a path to a goal state
         """
@@ -135,7 +135,7 @@ class SearchTree(object):
         pq = PriorityQueue()
         pq_min_depth = cost_limit
 
-        root_node = SearchNode(self.root, action=qmdp_root, parent=None, action_cost=0, debug=self.debug, gamma=0.95)
+        root_node = SearchNode(self.root, action=qmdp_root, parent=None, action_cost=0, debug=self.debug, gamma=gamma)
         pq.push(root_node, self.estimated_total_cost(root_node, gamma=gamma))
         # print('\n\n')
         while not pq.isEmpty():
@@ -182,7 +182,7 @@ class SearchTree(object):
 
             for qmdp_state, child, cost in successors:
                 # print(qmdp_state, child, cost)
-                child_node = SearchNode(child, qmdp_state, parent=curr_node, action_cost=cost, debug=self.debug)
+                child_node = SearchNode(child, qmdp_state, parent=curr_node, action_cost=cost, debug=self.debug, gamma=gamma)
                 # est_total_cost = self.estimated_total_cost(child_node)
                 pq.push(child_node, self.estimated_total_cost(child_node, gamma=gamma))
 

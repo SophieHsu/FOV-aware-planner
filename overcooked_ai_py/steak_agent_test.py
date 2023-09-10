@@ -129,7 +129,7 @@ if __name__ == "__main__" :
 
     # np.random.seed(0)
     start_time = time.time()
-    layout_name = 'steak_island' #'steak_island2' #'steak_parrallel'  'steak_tshape'
+    layout_name = 'steak_test' #'steak_island2' #'steak_parrallel'  'steak_tshape'
     scenario_1_mdp = SteakHouseGridworld.from_layout_name(layout_name,  num_items_for_steak=1, chop_time=2, wash_time=2, start_order_list=['steak', 'steak'], cook_time=10)
     # start_state = OvercookedState(
     #     [P((2, 1), s, Obj('onion', (2, 1))),
@@ -149,8 +149,8 @@ if __name__ == "__main__" :
     # ml_action_manager = planners.MediumLevelActionManager(scenario_1_mdp, NO_COUNTERS_PARAMS)
     # hmlp = planners.HumanMediumLevelPlanner(scenario_1_mdp, ml_action_manager, [0.5, (1.0-0.5)], 0.5)
     # human_agent = agent.biasHumanModel(ml_action_manager, [0.5, (1.0-0.5)], 0.5, auto_unstuck=True)
-    VISION_LIMIT = False
-    VISION_BOUND = 0
+    VISION_LIMIT = True
+    VISION_BOUND = 60
     VISION_LIMIT_AWARE = True
     EXPLORE = False
     mlp = planners.MediumLevelPlanner.from_pickle_or_compute(scenario_1_mdp, COUNTERS_PARAMS, force_compute=False)  

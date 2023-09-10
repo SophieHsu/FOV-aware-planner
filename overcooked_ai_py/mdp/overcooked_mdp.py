@@ -26,6 +26,7 @@ class ObjectState(object):
             (soup_type, num_items, cook_time)
             where cook_time is how long the soup has been cooking for.
         """
+        self.id = None
         self.name = name
         self.position = tuple(position)
         if name == 'soup':
