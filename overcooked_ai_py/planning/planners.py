@@ -1002,10 +1002,10 @@ class MediumLevelActionManager(object):
         if not only_use_dispensers:
             onion_pickup_locations += counter_objects['onion']
         if knowledge_base is not None:
-            for pos, obj in knowledge_base.items():
-                if (obj is not None) and pos not in ['pot_states', 'chop_states', 'sink_states', 'other_player']:
+            for obj_id, obj in knowledge_base.items():
+                if obj_id not in ['pot_states', 'chop_states', 'sink_states', 'other_player']:
                     if obj.name == 'onion':
-                        onion_pickup_locations += [pos]
+                        onion_pickup_locations += [obj.position]
         return self._get_ml_actions_for_positions(onion_pickup_locations)
 
     def pickup_tomato_actions(self, counter_objects):
@@ -1017,10 +1017,10 @@ class MediumLevelActionManager(object):
         meat_dispenser_locations = self.mdp.get_meat_dispenser_locations()
         meat_pickup_locations = meat_dispenser_locations + counter_objects['meat']
         if knowledge_base is not None:
-            for pos, obj in knowledge_base.items():
-                if (obj is not None) and pos not in ['pot_states', 'chop_states', 'sink_states', 'other_player']:
+            for obj_id, obj in knowledge_base.items():
+                if obj_id not in ['pot_states', 'chop_states', 'sink_states', 'other_player']:
                     if obj.name in 'meat':
-                        meat_pickup_locations += [pos]
+                        meat_pickup_locations += [obj.position]
         return self._get_ml_actions_for_positions(meat_pickup_locations)
     
     def pickup_dish_actions(self, counter_objects, only_use_dispensers=False, knowledge_base=None):
@@ -1029,10 +1029,10 @@ class MediumLevelActionManager(object):
         if not only_use_dispensers:
             dish_pickup_locations += counter_objects['dish']
             if knowledge_base is not None:
-                for pos, obj in knowledge_base.items():
-                    if (obj is not None) and pos not in ['pot_states', 'chop_states', 'sink_states', 'other_player']:
+                for obj_id, obj in knowledge_base.items():
+                    if obj_id not in ['pot_states', 'chop_states', 'sink_states', 'other_player']:
                         if obj.name == 'dish':
-                            dish_pickup_locations += [pos]
+                            dish_pickup_locations += [obj.position]
         return self._get_ml_actions_for_positions(dish_pickup_locations)
     
     def pickup_plate_actions(self, counter_objects, only_use_dispensers=False, knowledge_base=None):
@@ -1041,10 +1041,10 @@ class MediumLevelActionManager(object):
         if not only_use_dispensers:
             plate_pickup_locations += counter_objects['plate']
             if knowledge_base is not None:
-                for pos, obj in knowledge_base.items():
-                    if (obj is not None) and pos not in ['pot_states', 'chop_states', 'sink_states', 'other_player']:
+                for obj_id, obj in knowledge_base.items():
+                    if obj_id not in ['pot_states', 'chop_states', 'sink_states', 'other_player']:
                         if obj.name == 'plate':
-                            plate_pickup_locations += [pos]
+                            plate_pickup_locations += [obj.position]
         return self._get_ml_actions_for_positions(plate_pickup_locations)
 
     def pickup_counter_soup_actions(self, counter_objects):
@@ -1074,9 +1074,13 @@ class MediumLevelActionManager(object):
         fillable_pots = partially_full_tomato_pots + pot_states_dict['empty']
         return self._get_ml_actions_for_positions(fillable_pots)
     
-    def put_meat_in_pot_actions(self, pot_states_dict):
-        partially_full_steak_pots = pot_states_dict['steak']['partially_full']
-        fillable_pots = partially_full_steak_pots + pot_states_dict['empty']
+    def put_meat_in_pot_actions(self, pot_states_dict, knowledge_base=None):
+        if knowledge_base is not None:
+            partially_full_steak_pots = [knowledge_base[obj_id].position for obj_id in knowledge_base['pot_states']['steak']['partially_full']]
+            fillable_pots = partially_full_steak_pots + knowledge_base['pot_states']['empty']
+        else:    
+            partially_full_steak_pots = pot_states_dict['steak']['partially_full']
+            fillable_pots = partially_full_steak_pots + pot_states_dict['empty']
         return self._get_ml_actions_for_positions(fillable_pots)
     
     def put_onion_on_board_actions(self, state, knowledge_base=None):
@@ -1093,7 +1097,8 @@ class MediumLevelActionManager(object):
     def chop_onion_on_board_actions(self, state, knowledge_base=None):
         full_boards = []
         if knowledge_base is not None:
-            full_boards += knowledge_base['chop_states']['full']
+            for obj_id in knowledge_base['chop_states']['full']:
+                full_boards += [knowledge_base[obj_id].position]
         else:
             board_locations = self.mdp.get_chopping_board_locations()
             for loc in board_locations:
@@ -1105,7 +1110,7 @@ class MediumLevelActionManager(object):
         empty_sink = []
         plate_on_counter = []
         if knowledge_base is not None:
-            empty_sink = knowledge_base['sink_states']['empty']
+            empty_sink += knowledge_base['sink_states']['empty']
         else:
             sink_locations = self.mdp.get_sink_locations()
             for loc in sink_locations:
@@ -1117,7 +1122,8 @@ class MediumLevelActionManager(object):
     def heat_plate_in_sink_actions(self, state, knowledge_base=None):
         heat_needed_loc = []
         if knowledge_base is not None:
-            heat_needed_loc = knowledge_base['sink_states']['full']
+            for obj_id in knowledge_base['sink_states']['full']:
+                heat_needed_loc += [knowledge_base[obj_id].position]
         else:
             sink_locations = self.mdp.get_sink_locations()
             for loc in sink_locations:
@@ -1129,13 +1135,15 @@ class MediumLevelActionManager(object):
     def add_garnish_to_steak_actions(self, state, knowledge_base=None):
         garnish_chopped_loc = []
         if knowledge_base is not None:
-            garnish_chopped_loc = knowledge_base['chop_states']['ready']
+            for obj_id in knowledge_base['chop_states']['ready']:
+                garnish_chopped_loc += [knowledge_base[obj_id].position]
             if len(garnish_chopped_loc) == 0:
-                garnish_chopped_loc = knowledge_base['chop_states']['full']
+                for obj_id in knowledge_base['chop_states']['full']:
+                    garnish_chopped_loc += [knowledge_base[obj_id].position]
             if len(garnish_chopped_loc) == 0:
                 robot_obj = knowledge_base['other_player'].held_object.name if knowledge_base['other_player'].held_object is not None else 'None'
                 if robot_obj == 'onion':
-                    garnish_chopped_loc = knowledge_base['chop_states']['empty']
+                    garnish_chopped_loc += knowledge_base['chop_states']['empty']
         else:
             board_locations = self.mdp.get_chopping_board_locations()
             for loc in board_locations:
@@ -1149,11 +1157,10 @@ class MediumLevelActionManager(object):
         hot_plate_loc = []
         hot_plate_on_counter = []
         if knowledge_base is not None:
-            hot_plate_loc = knowledge_base['sink_states']['ready']
-            for pos, obj in knowledge_base.items():
-                if (obj is not None) and pos not in ['pot_states', 'chop_states', 'sink_states', 'other_player']:
+            for obj_id, obj in knowledge_base.items():
+                if obj_id not in ['pot_states', 'chop_states', 'sink_states', 'other_player']:
                     if obj.name == 'hot_plate':
-                        hot_plate_on_counter += [pos]
+                        hot_plate_loc += [obj.position]
         else:
             sink_locations = self.mdp.get_sink_locations()
             for loc in sink_locations:
@@ -1172,12 +1179,19 @@ class MediumLevelActionManager(object):
             nearly_ready_pot_locations = nearly_ready_pot_locations + pot_states_dict['empty'] + partially_full_pots
         return self._get_ml_actions_for_positions(ready_pot_locations + nearly_ready_pot_locations)
     
-    def pickup_steak_with_hot_plate_actions(self, pot_states_dict, only_nearly_ready=False):
-        ready_pot_locations = pot_states_dict['steak']['ready']
-        nearly_ready_pot_locations = pot_states_dict['steak']['cooking']
-        if not only_nearly_ready:
-            partially_full_pots = pot_states_dict['steak']['partially_full']
-            nearly_ready_pot_locations = nearly_ready_pot_locations + pot_states_dict['empty'] + partially_full_pots
+    def pickup_steak_with_hot_plate_actions(self, pot_states_dict, only_nearly_ready=False, knowledge_base=None):
+        if knowledge_base is not None:
+            ready_pot_locations = [knowledge_base[obj_id].position for obj_id in knowledge_base['pot_states']['steak']['ready']]
+            nearly_ready_pot_locations = [knowledge_base[obj_id].position for obj_id in knowledge_base['pot_states']['steak']['cooking']]
+            if not only_nearly_ready:
+                partially_full_pots = [knowledge_base[obj_id].position for obj_id in knowledge_base['pot_states']['steak']['partially_full']]
+                nearly_ready_pot_locations = nearly_ready_pot_locations + knowledge_base['pot_states']['empty'] + partially_full_pots
+        else:
+            ready_pot_locations = pot_states_dict['steak']['ready']
+            nearly_ready_pot_locations = pot_states_dict['steak']['cooking']
+            if not only_nearly_ready:
+                partially_full_pots = pot_states_dict['steak']['partially_full']
+                nearly_ready_pot_locations = nearly_ready_pot_locations + pot_states_dict['empty'] + partially_full_pots
         return self._get_ml_actions_for_positions(ready_pot_locations + nearly_ready_pot_locations)
 
     def go_to_closest_feature_actions(self, player):

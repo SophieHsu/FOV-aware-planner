@@ -739,112 +739,147 @@ class limitVisionHumanModel(GreedyHumanModel):
         key = '_'.join((str(object.position[0]), str(object.position[1]), str(object.name)))
         return key
 
-    def get_vision_bound(self, state, half_bound=60):
-        player = state.players[self.agent_index]
+    # def get_vision_bound(self, state, half_bound=60):
+    #     player = state.players[self.agent_index]
 
-        # get the two points first by assuming facing north
-        vision_width = np.radians(90-half_bound)
-        player_back = [player.position[0], player.position[1]]
+    #     # get the two points first by assuming facing north
+    #     vision_width = np.radians(90-half_bound)
+    #     player_back = [player.position[0], player.position[1]]
+
+    #     ori = Direction.DIRECTION_TO_INDEX[player.orientation]
+    #     if ori == 0: # north
+    #         # right_pt[0] = math.ceil(right_pt[0])
+    #         # left_pt[0] = math.ceil(left_pt[0])
+    #         player_back[1] += 1
+    #     elif ori == 2: # east
+    #         # right_pt[1] = math.floor(right_pt[1])
+    #         # left_pt[1] = math.floor(left_pt[1])
+    #         player_back[0] -= 1
+    #     elif ori == 1: # south
+    #         # right_pt[0] = math.floor(right_pt[0])
+    #         # left_pt[0] = math.floor(left_pt[0])
+    #         player_back[1] -= 1
+    #     elif ori == 3: # west
+    #         # right_pt[1] = math.ceil(right_pt[1])
+    #         # left_pt[1] = math.ceil(left_pt[1])
+    #         player_back[0] += 1
+    
+    #     right_pt = player_back + np.array([-math.cos(vision_width), math.sin(vision_width)])
+    #     left_pt = player_back + np.array([math.cos(vision_width), math.sin(vision_width)])
+
+    #     # angle based on the agent's facing
+    #     # theta = np.radians(0)
+        
+    #     # c, s = np.cos(theta), np.sin(theta)
+    #     # R = np.array(((c, -s), (s, c)))
+    #     # right_pt = np.matmul(R,right_pt-player.position)+player.position
+    #     # left_pt = np.matmul(R,left_pt-player.position)+player.position
+
+    #     return right_pt, left_pt
+
+    # def in_bound(self, loc, right_pt, left_pt, state):
+    #     '''
+    #     Use cross product to see if the point is on the left or right side of the vision bound edges.
+    #     '''
+    #     if not self.vision_limit:
+    #         return True
+
+    #     player = state.players[self.agent_index]
+    #     right_in_bound = False
+    #     left_in_bound = False
+    #     thresh = 1e-9
+    #     player_back = [player.position[0], player.position[1]]
+    #     # angle based on the agent's facing
+    #     theta = None
+    #     ori = Direction.DIRECTION_TO_INDEX[player.orientation]
+    #     if ori == 1: # south
+    #         theta = np.radians(0)
+    #         bount_theta = np.radians(0)
+    #         player_back[1] -= 1
+    #     elif ori == 2: # east
+    #         theta = np.radians(-90)
+    #         bount_theta = np.radians(180)
+    #         player_back[0] -= 1
+    #     elif ori == 0: # north
+    #         theta = np.radians(0)
+    #         bount_theta = np.radians(180)
+    #         player_back[1] += 1
+    #     elif ori == 3: # west
+    #         theta = np.radians(-270)
+    #         bount_theta = np.radians(180)
+    #         player_back[0] += 1
+
+    #     c, s = np.cos(theta), np.sin(theta)
+    #     R = np.array(((c, -s), (s, c)))
+    #     rot_loc = np.matmul(R,np.array(loc)-player_back)+player_back
+
+    #     rot_left_pt = np.matmul(np.array(((np.cos(bount_theta), -np.sin(bount_theta)), (np.sin(bount_theta), np.cos(bount_theta)))), np.array(left_pt)-player_back)+player_back
+    #     rot_right_pt = np.matmul(np.array(((np.cos(bount_theta), -np.sin(bount_theta)), (np.sin(bount_theta), np.cos(bount_theta)))), np.array(right_pt)-player_back)+player_back
+
+    #     # check right bound
+    #     right_val = ((rot_right_pt[0] - player_back[0])*(rot_loc[1] - player_back[1]) - (rot_right_pt[1] - player_back[1])*(rot_loc[0] - player_back[0]))
+    #     if right_val >= thresh: # above of line
+    #         right_in_bound = False
+    #     elif right_val <= -thresh: # below of line
+    #         right_in_bound = True
+    #     else: # on the line
+    #         right_in_bound = True
+
+    #     # check left bound
+    #     left_val = ((rot_left_pt[0] - player_back[0])*(rot_loc[1] - player_back[1]) - (rot_left_pt[1] - player_back[1])*(rot_loc[0] - player_back[0]))
+    #     if left_val >= thresh: # above of line
+    #         left_in_bound = True
+    #     elif left_val <= -thresh: # below of line
+    #         left_in_bound = False
+    #     else: # on the line
+    #         left_in_bound = True
+
+    #     if (rot_loc == player_back).all():
+    #         return False
+        
+    #     return (left_in_bound and right_in_bound)
+
+    def in_bound(self, state, loc, vision_bound=120/2):
+        if vision_bound == 0:
+            return True
+        
+        player = state.players[self.agent_index]
+        center_pt = [player.position[0], player.position[1]]
 
         ori = Direction.DIRECTION_TO_INDEX[player.orientation]
         if ori == 0: # north
-            # right_pt[0] = math.ceil(right_pt[0])
-            # left_pt[0] = math.ceil(left_pt[0])
-            player_back[1] += 1
+            center_pt[1] += 1
+            rot_angel = np.radians(180)
         elif ori == 2: # east
-            # right_pt[1] = math.floor(right_pt[1])
-            # left_pt[1] = math.floor(left_pt[1])
-            player_back[0] -= 1
+            center_pt[0] -= 1
+            rot_angel = np.radians(270)
         elif ori == 1: # south
-            # right_pt[0] = math.floor(right_pt[0])
-            # left_pt[0] = math.floor(left_pt[0])
-            player_back[1] -= 1
+            center_pt[1] -= 1
+            rot_angel = np.radians(0)
         elif ori == 3: # west
-            # right_pt[1] = math.ceil(right_pt[1])
-            # left_pt[1] = math.ceil(left_pt[1])
-            player_back[0] += 1
+            center_pt[0] += 1
+            rot_angel = np.radians(90)
 
-        right_pt = player_back + np.array([-math.cos(vision_width), math.sin(vision_width)])
-        left_pt = player_back + np.array([math.cos(vision_width), math.sin(vision_width)])
-
-        # angle based on the agent's facing
-        # theta = np.radians(0)
-        
-        # c, s = np.cos(theta), np.sin(theta)
-        # R = np.array(((c, -s), (s, c)))
-        # right_pt = np.matmul(R,right_pt-player.position)+player.position
-        # left_pt = np.matmul(R,left_pt-player.position)+player.position
-
-        return right_pt, left_pt
-
-    def in_bound(self, loc, right_pt, left_pt, state):
-        '''
-        Use cross product to see if the point is on the left or right side of the vision bound edges.
-        '''
-        if not self.vision_limit:
-            return True
-
-        player = state.players[self.agent_index]
-        right_in_bound = False
-        left_in_bound = False
-        thresh = 1e-9
-        player_back = [player.position[0], player.position[1]]
-        # angle based on the agent's facing
-        theta = None
-        ori = Direction.DIRECTION_TO_INDEX[player.orientation]
-        if ori == 1: # south
-            theta = np.radians(0)
-            bount_theta = np.radians(0)
-            player_back[1] -= 1
-        elif ori == 2: # east
-            theta = np.radians(-90)
-            bount_theta = np.radians(180)
-            player_back[0] -= 1
-        elif ori == 0: # north
-            theta = np.radians(0)
-            bount_theta = np.radians(180)
-            player_back[1] += 1
-        elif ori == 3: # west
-            theta = np.radians(-270)
-            bount_theta = np.radians(180)
-            player_back[0] += 1
-
-        c, s = np.cos(theta), np.sin(theta)
+        c, s = np.cos(rot_angel), np.sin(rot_angel)
         R = np.array(((c, -s), (s, c)))
-        rot_loc = np.matmul(R,np.array(loc)-player_back)+player_back
 
-        rot_left_pt = np.matmul(np.array(((np.cos(bount_theta), -np.sin(bount_theta)), (np.sin(bount_theta), np.cos(bount_theta)))), np.array(left_pt)-player_back)+player_back
-        rot_right_pt = np.matmul(np.array(((np.cos(bount_theta), -np.sin(bount_theta)), (np.sin(bount_theta), np.cos(bount_theta)))), np.array(right_pt)-player_back)+player_back
+        shifted_loc = np.array(loc)-np.array(center_pt)
+        y_flip_loc = [shifted_loc[0], shifted_loc[1]*-1]
 
-        # check right bound
-        right_val = ((rot_right_pt[0] - player_back[0])*(rot_loc[1] - player_back[1]) - (rot_right_pt[1] - player_back[1])*(rot_loc[0] - player_back[0]))
-        if right_val >= thresh: # above of line
-            right_in_bound = False
-        elif right_val <= -thresh: # below of line
-            right_in_bound = True
-        else: # on the line
-            right_in_bound = True
-
-        # check left bound
-        left_val = ((rot_left_pt[0] - player_back[0])*(rot_loc[1] - player_back[1]) - (rot_left_pt[1] - player_back[1])*(rot_loc[0] - player_back[0]))
-        if left_val >= thresh: # above of line
-            left_in_bound = True
-        elif left_val <= -thresh: # below of line
-            left_in_bound = False
-        else: # on the line
-            left_in_bound = True
-
-        if (rot_loc == player_back).all():
-            return False
+        rot_loc = np.matmul(R,y_flip_loc)
         
-        return (left_in_bound and right_in_bound)
+        y = -np.abs(rot_loc[0]*np.cos(np.radians(vision_bound)))
+        if y >= rot_loc[1]:
+            return True
+        
+        return False
 
     def update(self, state):
-        right_pt, left_pt = self.get_vision_bound(state, half_bound=self.vision_bound/2)
+        # right_pt, left_pt = self.get_vision_bound(state, half_bound=self.vision_bound)
         valid_pot_pos = []
 
         for obj in state.objects.values():
-            if self.in_bound(obj.position, right_pt, left_pt, state):
+            if self.in_bound(state, obj.position, vision_bound=self.vision_bound/2):
                 key = self.knowledge_base_key(obj)
                 self.knowledge_base[key] = obj
 
@@ -855,16 +890,16 @@ class limitVisionHumanModel(GreedyHumanModel):
 
         # check if other player is in vision
         other_player = state.players[1 - self.agent_index]
-        if self.in_bound(other_player.position, right_pt, left_pt, state):
+        if self.in_bound(state, other_player.position, vision_bound=self.vision_bound/2):
             # print('Other agent in bound')
             self.knowledge_base['other_player'] = other_player
 
     def get_knowledge_base(self, state):
-        right_pt, left_pt = self.get_vision_bound(state, half_bound=self.vision_bound/2)
+        # right_pt, left_pt = self.get_vision_bound(state, half_bound=self.vision_bound/2)
         valid_pot_pos = []
         new_knowledge_base = self.knowledge_base.copy()
         for obj in state.objects.values():
-            if self.in_bound(obj.position, right_pt, left_pt, state):
+            if self.in_bound(state, obj.position, vision_bound=self.vision_bound/2):
                 key = self.knowledge_base_key(obj)
                 new_knowledge_base[key] = obj
 
@@ -875,7 +910,7 @@ class limitVisionHumanModel(GreedyHumanModel):
 
         # check if other player is in vision
         other_player = state.players[1 - self.agent_index]
-        if self.in_bound(other_player.position, right_pt, left_pt, state):
+        if self.in_bound(state, other_player.position, vision_bound=self.vision_bound/2):
             # print('Other agent in bound')
             new_knowledge_base['other_player'] = other_player
 
@@ -985,19 +1020,14 @@ class SteakLimitVisionHumanModel(limitVisionHumanModel):
         new_human_model = SteakLimitVisionHumanModel(self.mlp, world_state, auto_unstuck=self.auto_unstuck, explore=self.explore, vision_limit=self.vision_limit)
         
         for k, v in self.knowledge_base.items():
-            new_human_model.knowledge_base[k] = v
+            new_human_model.knowledge_base[k] = v.deepcopy()
 
         return new_human_model
 
     def init_knowledge_base(self, start_state):
         self.knowledge_base = {}
-        for obj_loc in self.mlp.mdp.get_key_objects_locations():
-            # key = '_'.join(obj_loc)
-            if start_state.has_object(obj_loc):
-                obj = start_state.get_object(obj_loc)
-                self.knowledge_base[obj_loc] = (obj.name, obj.state)
-            else:
-                self.knowledge_base[obj_loc] = None
+        for obj in start_state.all_objects_list:
+            self.knowledge_base[obj.id] = obj
 
         self.knowledge_base['pot_states'] = self.mlp.mdp.get_pot_states(start_state)
         self.knowledge_base['sink_states'] = self.mlp.mdp.get_sink_status(start_state)
@@ -1008,134 +1038,140 @@ class SteakLimitVisionHumanModel(limitVisionHumanModel):
         return self.update(state, rollout_kb=rollout_kb)
 
     def update(self, state, rollout_kb=None):
-        right_pt, left_pt = self.get_vision_bound(state, half_bound=self.vision_bound/2)
+        # right_pt, left_pt = self.get_vision_bound(state, half_bound=self.vision_bound/2)
 
         if rollout_kb is not None:
             tmp_kb = copy.deepcopy(rollout_kb)
+            prev_kb = rollout_kb
         else:
+            prev_kb = copy.deepcopy(self.knowledge_base)
             tmp_kb = self.knowledge_base
 
-        for obj in state.objects.values():
-            if self.in_bound(obj.position, right_pt, left_pt, state):
-               tmp_kb[obj.position] = (obj.name, obj.state)
+        for obj in state.all_objects_list:
+            if self.in_bound(state, obj.position, vision_bound=self.vision_bound/2):
+                tmp_kb[obj.id] = obj.deepcopy()
 
-        for k, v in tmp_kb.items():
-            if type(k) == tuple:
-                if self.in_bound(k, right_pt, left_pt, state):
-                    if state.has_object(k):
-                        obj = state.get_object(k)
-                        tmp_kb[k] = obj
-                        if 'steak' in obj.name and obj.position in self.mlp.mdp.get_pot_locations():
-                            item_name, item_num, cooking_time = obj.state
-                            if cooking_time < self.mlp.mdp.steak_cooking_time:
-                                if obj.position in tmp_kb['pot_states']['empty']:
-                                    tmp_kb['pot_states']['empty'].remove(obj.position)
-                                if obj.position in tmp_kb['pot_states'][obj.name]['empty']:
-                                    tmp_kb['pot_states'][obj.name]['empty'].remove(obj.position)
-                                if obj.position not in tmp_kb['pot_states'][obj.name]['cooking']:
-                                    tmp_kb['pot_states'][obj.name]['cooking'].append(obj.position)
-                                if obj.position in tmp_kb['pot_states'][obj.name]['ready']:
-                                    tmp_kb['pot_states'][obj.name]['ready'].remove(obj.position)
-                            else:
-                                if obj.position in tmp_kb['pot_states']['empty']:
-                                    tmp_kb['pot_states']['empty'].remove(obj.position)
-                                if obj.position in tmp_kb['pot_states'][obj.name]['empty']:
-                                    tmp_kb['pot_states'][obj.name]['empty'].remove(obj.position)
-                                if obj.position in tmp_kb['pot_states'][obj.name]['cooking']:
-                                    tmp_kb['pot_states'][obj.name]['cooking'].remove(obj.position)
-                                if obj.position not in tmp_kb['pot_states'][obj.name]['ready']:
-                                    tmp_kb['pot_states'][obj.name]['ready'].append(obj.position)
-
-                        elif 'garnish' in obj.name and obj.position in self.mlp.mdp.get_chopping_board_locations():
-                            chop_time = obj.state
-                            if chop_time < 0:
-                                if obj.position in tmp_kb['chop_states']['ready']:
-                                    tmp_kb['chop_states']['ready'].remove(obj.position)
-                                if obj.position not in tmp_kb['chop_states']['empty']:
-                                    tmp_kb['chop_states']['empty'].append(obj.position)
-                                if obj.position in tmp_kb['chop_states']['full']:
-                                    tmp_kb['chop_states']['full'].remove(obj.position)
-                            elif chop_time >= 0 and chop_time < self.mlp.mdp.chopping_time:
-                                if obj.position in tmp_kb['chop_states']['empty']:
-                                    tmp_kb['chop_states']['empty'].remove(obj.position)
-                                if obj.position not in tmp_kb['chop_states']['full']:
-                                    tmp_kb['chop_states']['full'].append(obj.position)
-                                if obj.position in tmp_kb['chop_states']['ready']:
-                                    tmp_kb['chop_states']['ready'].remove(obj.position)
-                            else:
-                                if obj.position in tmp_kb['chop_states']['empty']:
-                                    tmp_kb['chop_states']['empty'].remove(obj.position)
-                                if obj.position in tmp_kb['chop_states']['full']:
-                                    tmp_kb['chop_states']['full'].remove(obj.position)
-                                if obj.position not in tmp_kb['chop_states']['ready']:
-                                    tmp_kb['chop_states']['ready'].append(obj.position)
-
-                        elif 'hot_plate' in obj.name and obj.position in self.mlp.mdp.get_sink_locations():
-                            wash_time = obj.state
-                            if wash_time < 0:
-                                if obj.position in tmp_kb['sink_states']['ready']:
-                                    tmp_kb['sink_states']['ready'].remove(obj.position)
-                                if obj.position not in tmp_kb['sink_states']['empty']:
-                                    tmp_kb['sink_states']['empty'].append(obj.position)
-                                if obj.position in tmp_kb['sink_states']['full']:
-                                    tmp_kb['sink_states']['full'].remove(obj.position)
-                            elif wash_time >= 0 and wash_time < self.mlp.mdp.wash_time:
-                                if obj.position in tmp_kb['sink_states']['empty']:
-                                    tmp_kb['sink_states']['empty'].remove(obj.position)
-                                if obj.position not in tmp_kb['sink_states']['full']:
-                                    tmp_kb['sink_states']['full'].append(obj.position)
-                                if obj.position in tmp_kb['sink_states']['ready']:
-                                    tmp_kb['sink_states']['ready'].remove(obj.position)
-                            else:
-                                if obj.position in tmp_kb['sink_states']['empty']:
-                                    tmp_kb['sink_states']['empty'].remove(obj.position)
-                                if obj.position in tmp_kb['sink_states']['full']:
-                                    tmp_kb['sink_states']['full'].remove(obj.position)
-                                if obj.position not in tmp_kb['sink_states']['ready']:
-                                    tmp_kb['sink_states']['ready'].append(obj.position)
+        del_list = []
+        for obj_id, obj in tmp_kb.items():
+            if obj_id not in ['pot_states', 'chop_states', 'sink_states', 'other_player'] and self.in_bound(state, obj.position, vision_bound=self.vision_bound/2):
+                if obj.id not in [i.id for i in state.all_objects_list]:
+                    obj.position = None
+                    del_list.append(obj_id)
+                # else:
+                #     tmp_kb[obj.id] = obj
+                if 'steak' in obj.name:
+                    if obj.position in self.mlp.mdp.get_pot_locations():
+                        item_name, item_num, cooking_time = obj.state
+                        if cooking_time < self.mlp.mdp.steak_cooking_time:
+                            if obj.position in tmp_kb['pot_states']['empty']:
+                                tmp_kb['pot_states']['empty'].remove(obj.position)
+                            if obj.position in tmp_kb['pot_states'][obj.name]['empty']:
+                                tmp_kb['pot_states'][obj.name]['empty'].remove(obj.position)
+                            if obj.id not in tmp_kb['pot_states'][obj.name]['cooking']:
+                                tmp_kb['pot_states'][obj.name]['cooking'].append(obj.id)
+                            if obj.id in tmp_kb['pot_states'][obj.name]['ready']:
+                                tmp_kb['pot_states'][obj.name]['ready'].remove(obj.id)
+                        else:
+                            if obj.position in tmp_kb['pot_states']['empty']:
+                                tmp_kb['pot_states']['empty'].remove(obj.position)
+                            if obj.position in tmp_kb['pot_states'][obj.name]['empty']:
+                                tmp_kb['pot_states'][obj.name]['empty'].remove(obj.position)
+                            if obj.id in tmp_kb['pot_states'][obj.name]['cooking']:
+                                tmp_kb['pot_states'][obj.name]['cooking'].remove(obj.id)
+                            if obj.id not in tmp_kb['pot_states'][obj.name]['ready']:
+                                tmp_kb['pot_states'][obj.name]['ready'].append(obj.id)
                     else:
-                        tmp_kb[k] = None
-                        tile_type = self.mlp.mdp.get_terrain_type_at_pos(k)
-                        if tile_type == 'W':
-                            if k in tmp_kb['sink_states']['ready']:
-                                tmp_kb['sink_states']['ready'].remove(k)
-                            if k in tmp_kb['sink_states']['full']:
-                                tmp_kb['sink_states']['full'].remove(k)
-                            if k not in tmp_kb['sink_states']['empty']:
-                                tmp_kb['sink_states']['empty'].append(k)
+                        if obj.id in prev_kb.keys():
+                            empty_pot_loc = prev_kb[obj.id].position
+                            if obj.id in tmp_kb['pot_states'][obj.name]['ready'] or obj_id in tmp_kb['pot_states'][obj.name]['cooking']:
+                                if empty_pot_loc not in tmp_kb['pot_states'][obj.name]['empty']:
+                                    tmp_kb['pot_states'][obj.name]['empty'].append(empty_pot_loc)
+                                if empty_pot_loc not in tmp_kb['pot_states']['empty']:
+                                    tmp_kb['pot_states']['empty'].append(empty_pot_loc)
 
-                        if tile_type == 'P':
-                            for pot_key in tmp_kb['pot_states'].keys():
-                                if pot_key != 'empty':
-                                    if k in tmp_kb['pot_states'][pot_key]['ready']:
-                                        tmp_kb['pot_states'][pot_key]['ready'].remove(k)
-                                    if k not in tmp_kb['pot_states'][pot_key]['empty']:
-                                        tmp_kb['pot_states'][pot_key]['empty'].append(k)
-                                    if k in tmp_kb['pot_states'][pot_key]['cooking']:
-                                        tmp_kb['pot_states'][pot_key]['cooking'].remove(k)
-                                    if k not in tmp_kb['pot_states']['empty']:
-                                        tmp_kb['pot_states']['empty'].append(k)
-                                
-                        if tile_type == 'B':
-                            if k in tmp_kb['chop_states']['ready']:
-                                tmp_kb['chop_states']['ready'].remove(k)
-                            if k in tmp_kb['chop_states']['full']:
-                                tmp_kb['chop_states']['full'].remove(k)
-                            if k not in tmp_kb['chop_states']['empty']:
-                                tmp_kb['chop_states']['empty'].append(k)
-                                
+                            if obj.id in tmp_kb['pot_states'][obj.name]['ready']:
+                                tmp_kb['pot_states'][obj.name]['ready'].remove(obj.id)
+                            if obj.id in tmp_kb['pot_states'][obj.name]['cooking']:
+                                tmp_kb['pot_states'][obj.name]['cooking'].remove(obj.id)
+
+                elif 'garnish' in obj.name:
+                    chop_time = obj.state
+                    if obj.position in self.mlp.mdp.get_chopping_board_locations():
+                        if chop_time >= 0 and chop_time < self.mlp.mdp.chopping_time:
+                            if obj.position in tmp_kb['chop_states']['empty']:
+                                tmp_kb['chop_states']['empty'].remove(obj.position)
+                            if obj.id not in tmp_kb['chop_states']['full']:
+                                tmp_kb['chop_states']['full'].append(obj.id)
+                            if obj.id in tmp_kb['chop_states']['ready']:
+                                tmp_kb['chop_states']['ready'].remove(obj.id)
+                        elif chop_time >= self.mlp.mdp.chopping_time:
+                            if obj.position in tmp_kb['chop_states']['empty']:
+                                tmp_kb['chop_states']['empty'].remove(obj.position)
+                            if obj.id in tmp_kb['chop_states']['full']:
+                                tmp_kb['chop_states']['full'].remove(obj.id)
+                            if obj.id not in tmp_kb['chop_states']['ready']:
+                                tmp_kb['chop_states']['ready'].append(obj.id)
+                        else:
+                            print(tmp_kb['chop_states'])
+                            print(obj)
+                            raise ValueError()
+                    else:
+                        if obj.id in prev_kb.keys():
+                            empty_board_loc = prev_kb[obj.id].position
+                            if obj.id in tmp_kb['chop_states']['ready'] or obj_id in tmp_kb['chop_states']['full']:
+                                if empty_board_loc not in tmp_kb['chop_states']['empty']:
+                                    tmp_kb['chop_states']['empty'].append(empty_board_loc)
+                            if obj.id in tmp_kb['chop_states']['ready']:
+                                tmp_kb['chop_states']['ready'].remove(obj.id)
+                            if obj.id in tmp_kb['chop_states']['full']:
+                                tmp_kb['chop_states']['full'].remove(obj.id)
+
+                elif 'hot_plate' in obj.name:
+                    wash_time = obj.state
+                    if obj.position in self.mlp.mdp.get_sink_locations():
+                        if wash_time >= 0 and wash_time < self.mlp.mdp.wash_time:
+                            if obj.position in tmp_kb['sink_states']['empty']:
+                                tmp_kb['sink_states']['empty'].remove(obj.position)
+                            if obj.id not in tmp_kb['sink_states']['full']:
+                                tmp_kb['sink_states']['full'].append(obj.id)
+                            if obj.id in tmp_kb['sink_states']['ready']:
+                                tmp_kb['sink_states']['ready'].remove(obj.id)
+                        elif wash_time >= self.mlp.mdp.wash_time:
+                            if obj.position in tmp_kb['sink_states']['empty']:
+                                tmp_kb['sink_states']['empty'].remove(obj.position)
+                            if obj.id in tmp_kb['sink_states']['full']:
+                                tmp_kb['sink_states']['full'].remove(obj.id)
+                            if obj.id not in tmp_kb['sink_states']['ready']:
+                                tmp_kb['sink_states']['ready'].append(obj.id)
+                        else:
+                            print(tmp_kb['sink_states'])
+                            print(obj)
+                            raise ValueError()
+                    else:
+                        if obj.id in prev_kb.keys():
+                            empty_sink_loc = prev_kb[obj.id].position
+                            if obj.id in tmp_kb['sink_states']['ready'] or obj_id in tmp_kb['sink_states']['full']:
+                                if empty_sink_loc not in tmp_kb['sink_states']['empty']:
+                                    tmp_kb['sink_states']['empty'].append(empty_sink_loc)
+                            if obj.id in tmp_kb['sink_states']['ready']:
+                                tmp_kb['sink_states']['ready'].remove(obj.id)
+                            if obj.id in tmp_kb['sink_states']['full']:
+                                tmp_kb['sink_states']['full'].remove(obj.id)
 
         # check if other player is in vision
         other_player = state.players[1 - self.agent_index]
-        if self.in_bound(other_player.position, right_pt, left_pt, state):
+        if self.in_bound(state, other_player.position, vision_bound=self.vision_bound/2):
             # print('Other agent in bound')
-            tmp_kb['other_player'] = other_player
+            tmp_kb['other_player'] = other_player.deepcopy()
+
+        for i in del_list:
+            del tmp_kb[i]
 
         # print out knowledge base
         if rollout_kb is None and self.debug:
             for k, v in tmp_kb.items():
                 print(k, ':', v)
-        
+
         return tmp_kb
 
     def ml_action(self, state):
@@ -1254,14 +1290,14 @@ class SteakLimitVisionHumanModel(limitVisionHumanModel):
                 motion_goals = am.put_onion_on_board_actions(state, knowledge_base=self.knowledge_base)
                 chosen_subtask = 'drop_onion'
             elif player_obj.name == 'meat':
-                motion_goals = am.put_meat_in_pot_actions(pot_states_dict)
+                motion_goals = am.put_meat_in_pot_actions(pot_states_dict, knowledge_base=self.knowledge_base)
                 chosen_subtask = 'drop_meat'
             elif player_obj.name == "plate":
                 motion_goals = am.put_plate_in_sink_actions(counter_objects, state, knowledge_base=self.knowledge_base)
                 # if (hot_plate_ready or rinsing) and garnish_ready and (steak_nearly_ready):
                 chosen_subtask = 'drop_plate'
             elif player_obj.name == 'hot_plate':
-                motion_goals = am.pickup_steak_with_hot_plate_actions(pot_states_dict, only_nearly_ready=True)
+                motion_goals = am.pickup_steak_with_hot_plate_actions(pot_states_dict, only_nearly_ready=True, knowledge_base=self.knowledge_base)
                 chosen_subtask = 'pickup_steak'
                 if len(motion_goals) == 0:
                     if other_has_meat:

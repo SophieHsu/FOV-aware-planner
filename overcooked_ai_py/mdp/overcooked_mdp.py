@@ -9,6 +9,81 @@ from overcooked_ai_py.mdp.actions import Action, Direction
 from overcooked_ai_py.mdp.graphics import *
 
 
+# class ObjectState(object):
+#     """
+#     State of an object in OvercookedGridworld.
+#     """
+
+#     SOUP_TYPES = ['onion', 'tomato']
+
+#     def __init__(self, name, position, state=None):
+#         """
+#         name (str): The name of the object
+#         position (int, int): Tuple for the current location of the object.
+#         state (tuple or None):
+#             Extra information about the object. Is None for all objects 
+#             except soups, for which `state` is a tuple:
+#             (soup_type, num_items, cook_time)
+#             where cook_time is how long the soup has been cooking for.
+#         """
+#         self.id = None
+#         self.name = name
+#         self.position = tuple(position)
+#         if name == 'soup':
+#             assert len(state) == 3
+#         if state is None:
+#             self.state = None 
+#         elif type(state) is int:
+#             self.state = state
+#         else:
+#             self.state = tuple(state)
+
+#     def is_valid(self):
+#         if self.name in ['onion', 'tomato', 'dish']:
+#             return self.state is None
+#         elif self.name == 'soup':
+#             soup_type, num_items, cook_time = self.state
+#             valid_soup_type = soup_type in self.SOUP_TYPES
+#             valid_item_num = (1 <= num_items <= 3)
+#             valid_cook_time = (0 <= cook_time)
+#             return valid_soup_type and valid_item_num and valid_cook_time
+#         elif self.name in ['steak', 'garnish', 'hot_plate']:
+#             prep_time = self.state
+#             valid_prep_time = (0 <= prep_time)
+#             return valid_prep_time
+#         # Unrecognized object
+#         return False
+
+#     def deepcopy(self):
+#         return ObjectState(self.name, self.position, self.state)
+
+#     def __eq__(self, other):
+#         return isinstance(other, ObjectState) and \
+#             self.name == other.name and \
+#             self.position == other.position and \
+#             self.state == other.state
+
+#     def __hash__(self):
+#         return hash((self.name, self.position, self.state))
+
+#     def __repr__(self):
+#         if self.state is None:
+#             return '{}@{}'.format(self.name, self.position)
+#         return '{}@{} with state {}'.format(self.name, self.position,
+#                                             str(self.state))
+
+#     def to_dict(self):
+#         return {
+#             "name": self.name,
+#             "position": self.position,
+#             "state": self.state
+#         }
+
+#     @staticmethod
+#     def from_dict(obj_dict):
+#         obj_dict = copy.deepcopy(obj_dict)
+#         return ObjectState(**obj_dict)
+
 class ObjectState(object):
     """
     State of an object in OvercookedGridworld.
@@ -16,7 +91,7 @@ class ObjectState(object):
 
     SOUP_TYPES = ['onion', 'tomato']
 
-    def __init__(self, name, position, state=None):
+    def __init__(self, id, name, position, state=None):
         """
         name (str): The name of the object
         position (int, int): Tuple for the current location of the object.
@@ -26,7 +101,7 @@ class ObjectState(object):
             (soup_type, num_items, cook_time)
             where cook_time is how long the soup has been cooking for.
         """
-        self.id = None
+        self.id = id
         self.name = name
         self.position = tuple(position)
         if name == 'soup':
@@ -55,25 +130,27 @@ class ObjectState(object):
         return False
 
     def deepcopy(self):
-        return ObjectState(self.name, self.position, self.state)
+        return ObjectState(self.id, self.name, self.position, self.state)
 
     def __eq__(self, other):
         return isinstance(other, ObjectState) and \
+            self.id == other.id and \
             self.name == other.name and \
             self.position == other.position and \
             self.state == other.state
 
     def __hash__(self):
-        return hash((self.name, self.position, self.state))
+        return hash((self.id, self.name, self.position, self.state))
 
     def __repr__(self):
         if self.state is None:
-            return '{}@{}'.format(self.name, self.position)
-        return '{}@{} with state {}'.format(self.name, self.position,
+            return '{}-{}@{}'.format(self.id, self.name, self.position)
+        return '{}-{}@{} with state {}'.format(self.id, self.name, self.position,
                                             str(self.state))
 
     def to_dict(self):
         return {
+            "id": self.id,
             "name": self.name,
             "position": self.position,
             "state": self.state
@@ -207,7 +284,7 @@ class PlayerState(object):
 
 class OvercookedState(object):
     """A state in OvercookedGridworld."""
-    def __init__(self, players, objects, order_list):
+    def __init__(self, players, objects, order_list, obj_count=0):
         """
         players: List of PlayerStates (order corresponds to player indices).
         objects: Dictionary mapping positions (x, y) to ObjectStates. 
@@ -225,6 +302,7 @@ class OvercookedState(object):
             # assert all(
                 # [o in OvercookedGridworld.ORDER_TYPES for o in order_list])
         self.order_list = order_list
+        self.obj_count = obj_count
 
     @property
     def player_positions(self):
@@ -342,7 +420,7 @@ class OvercookedState(object):
             [player.deepcopy() for player in self.players],
             {pos: obj.deepcopy()
              for pos, obj in self.objects.items()},
-            None if self.order_list is None else list(self.order_list))
+            None if self.order_list is None else list(self.order_list), obj_count=self.obj_count)
 
     def __eq__(self, other):
         order_list_equal = type(self.order_list) == type(other.order_list) and \
@@ -806,7 +884,7 @@ class OvercookedGridworld(object):
 
         # Resolve interacts first
         sparse_reward, shaped_reward = self.resolve_interacts(
-            new_state, joint_action, events_infos)
+            new_state, joint_action, events_infos, rollout=False)
 
         assert new_state.player_positions == state.player_positions
         assert new_state.player_orientations == state.player_orientations
@@ -822,7 +900,7 @@ class OvercookedGridworld(object):
 
         return new_state, sparse_reward, shaped_reward, events_infos
 
-    def resolve_interacts(self, new_state, joint_action, events_infos):
+    def resolve_interacts(self, new_state, joint_action, events_infos, rollout=True):
         """
         Resolve any INTERACT actions, if present.
 
@@ -2023,7 +2101,7 @@ class SteakHouseGridworld(OvercookedGridworld):
         self.chopping_time = chop_time
         self.wash_time = wash_time
         self.num_items_for_steak = num_items_for_steak
-
+        self.object_id_dict = {}
 
 
     @staticmethod
@@ -2135,7 +2213,7 @@ class SteakHouseGridworld(OvercookedGridworld):
     # GAME LOGIC #
     ##############
 
-    def resolve_interacts(self, new_state, joint_action, events_infos):
+    def resolve_interacts(self, new_state, joint_action, events_infos, rollout=True):
         """
         Resolve any INTERACT actions, if present.
 
@@ -2157,7 +2235,10 @@ class SteakHouseGridworld(OvercookedGridworld):
             pos, o = player.position, player.orientation
             i_pos = Action.move_in_direction(pos, o)
             terrain_type = self.get_terrain_type_at_pos(i_pos)
-
+            if not rollout:
+                obj_count = len(self.object_id_dict)
+            else:
+                obj_count = new_state.obj_count
             # NOTE: we always log pickup/drop before performing it, as that's
             # what the logic of determining whether the pickup/drop is useful assumes
             if terrain_type == 'X':
@@ -2201,7 +2282,12 @@ class SteakHouseGridworld(OvercookedGridworld):
                                        pot_states, player_idx)
 
                 # Onion pickup from dispenser
-                player.set_object(ObjectState('onion', pos))
+                new_o_id = obj_count
+                o = ObjectState(new_o_id, 'onion', pos)
+                if not rollout: self.object_id_dict[new_o_id] = o
+                else: new_state.obj_count += 1
+                obj_count += 1
+                player.set_object(o)
                 player.num_ingre_held += 1
 
             elif terrain_type == 'M' and player.held_object is None:
@@ -2209,7 +2295,12 @@ class SteakHouseGridworld(OvercookedGridworld):
                                        pot_states, player_idx)
 
                 # Tomato pickup from dispenser
-                player.set_object(ObjectState('meat', pos))
+                new_o_id = obj_count
+                o = ObjectState(new_o_id, 'meat', pos)
+                if not rollout: self.object_id_dict[new_o_id] = o
+                else: new_state.obj_count += 1
+                obj_count += 1
+                player.set_object(o)
                 player.num_ingre_held += 1
 
             elif terrain_type == 'D' and player.held_object is None:
@@ -2223,8 +2314,11 @@ class SteakHouseGridworld(OvercookedGridworld):
                     #     "PLATE_PICKUP_REWARD"]
 
                 # Perform dish pickup from dispenser
-                obj = ObjectState('plate', pos)
-                player.set_object(obj)
+                new_o_id = obj_count
+                o = ObjectState(new_o_id, 'plate', pos)
+                if not rollout: self.object_id_dict[new_o_id] = o
+                obj_count += 1
+                player.set_object(o)
 
             elif terrain_type == 'W':
                 if player.held_object is None:
@@ -2263,7 +2357,11 @@ class SteakHouseGridworld(OvercookedGridworld):
                     
                         # Drop object on counter
                         obj = player.remove_object()
-                        new_state.add_object(ObjectState('hot_plate', i_pos, 0), i_pos) # wash time = 0
+                        new_o_id = obj_count
+                        new_obj = ObjectState(new_o_id, 'hot_plate', i_pos, 0)
+                        if not rollout: self.object_id_dict[new_o_id] = new_obj
+                        obj_count += 1
+                        new_state.add_object(new_obj, i_pos) # wash time = 0
 
             elif terrain_type == 'P' and player.has_object():
 
@@ -2286,9 +2384,11 @@ class SteakHouseGridworld(OvercookedGridworld):
                     if not new_state.has_object(i_pos):
                         # Pot was empty, add meat to it
                         player.remove_object()
-                        new_state.add_object(
-                            ObjectState('steak', i_pos, ('steak', 1, 0)),
-                            i_pos)
+                        new_o_id = obj_count
+                        new_obj = ObjectState(new_o_id, 'steak', i_pos, ('steak', 1, 0))
+                        if not rollout: self.object_id_dict[new_o_id] = new_obj
+                        obj_count += 1
+                        new_state.add_object(new_obj, i_pos)
                         shaped_reward[
                             player_idx] += self.reward_shaping_params[
                                 "PLACEMENT_IN_POT_REW"]
@@ -2316,9 +2416,11 @@ class SteakHouseGridworld(OvercookedGridworld):
                     if not new_state.has_object(i_pos):
                         # Pot was empty, add onion to it
                         player.remove_object()
-                        new_state.add_object(
-                            ObjectState('soup', i_pos, (item_type, 1, 0)),
-                            i_pos)
+                        new_o_id = obj_count
+                        new_obj = ObjectState(new_o_id, 'soup', i_pos, (item_type, 1, 0))
+                        if not rollout: self.object_id_dict[new_o_id] = new_obj
+                        obj_count += 1
+                        new_state.add_object(new_obj, i_pos)
                         shaped_reward[
                             player_idx] += self.reward_shaping_params[
                                 "PLACEMENT_IN_POT_REW"]
@@ -2375,9 +2477,11 @@ class SteakHouseGridworld(OvercookedGridworld):
                 elif player.get_object().name == 'onion' and not new_state.has_object(i_pos):
                     # Chopping board was empty, add onion to it
                     player.remove_object()
-                    new_state.add_object(
-                        ObjectState('garnish', i_pos, 0),
-                        i_pos)
+                    new_o_id = obj_count
+                    new_obj = ObjectState(new_o_id, 'garnish', i_pos, 0)
+                    if not rollout: self.object_id_dict[new_o_id] = new_obj
+                    obj_count += 1
+                    new_state.add_object(new_obj, i_pos)
                     # shaped_reward[
                         # player_idx] += self.reward_shaping_params[
                             # "PLACEMENT_ON_BOARD_REW"]
@@ -2392,10 +2496,15 @@ class SteakHouseGridworld(OvercookedGridworld):
                                            pot_states, player_idx)
 
                     _ = new_state.remove_object(i_pos)  # Get steak
-                    player.set_object(ObjectState('dish', pos))
+                    new_o_id = obj_count
+                    new_obj = ObjectState(new_o_id, 'dish', pos)
+                    if not rollout: self.object_id_dict[new_o_id] = new_obj
+                    obj_count += 1
+                    player.set_object(new_obj)
                     # shaped_reward[player_idx] += self.reward_shaping_params[
                     #     "GARNISH_STEAK_REWARD"]
-
+            
+            new_state.obj_count = obj_count
         return sparse_reward, shaped_reward
     
     def deliver_dish(self, state, player, dish_obj):
