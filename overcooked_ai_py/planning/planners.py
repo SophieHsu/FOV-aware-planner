@@ -1001,11 +1001,11 @@ class MediumLevelActionManager(object):
         onion_pickup_locations = self.mdp.get_onion_dispenser_locations()
         if not only_use_dispensers:
             onion_pickup_locations += counter_objects['onion']
-        if knowledge_base is not None:
-            for obj_id, obj in knowledge_base.items():
-                if obj_id not in ['pot_states', 'chop_states', 'sink_states', 'other_player']:
-                    if obj.name == 'onion':
-                        onion_pickup_locations += [obj.position]
+        # if knowledge_base is not None:
+        #     for obj_id, obj in knowledge_base.items():
+        #         if obj_id not in ['pot_states', 'chop_states', 'sink_states', 'other_player']:
+        #             if obj.name == 'onion':
+        #                 onion_pickup_locations += [obj.position]
         return self._get_ml_actions_for_positions(onion_pickup_locations)
 
     def pickup_tomato_actions(self, counter_objects):
@@ -1016,11 +1016,11 @@ class MediumLevelActionManager(object):
     def pickup_meat_actions(self, counter_objects, knowledge_base=None):
         meat_dispenser_locations = self.mdp.get_meat_dispenser_locations()
         meat_pickup_locations = meat_dispenser_locations + counter_objects['meat']
-        if knowledge_base is not None:
-            for obj_id, obj in knowledge_base.items():
-                if obj_id not in ['pot_states', 'chop_states', 'sink_states', 'other_player']:
-                    if obj.name in 'meat':
-                        meat_pickup_locations += [obj.position]
+        # if knowledge_base is not None:
+            # for obj_id, obj in knowledge_base.items():
+            #     if obj_id not in ['pot_states', 'chop_states', 'sink_states', 'other_player']:
+            #         if obj.name in 'meat':
+            #             meat_pickup_locations += [obj.position]
         return self._get_ml_actions_for_positions(meat_pickup_locations)
     
     def pickup_dish_actions(self, counter_objects, only_use_dispensers=False, knowledge_base=None):
@@ -1028,11 +1028,11 @@ class MediumLevelActionManager(object):
         dish_pickup_locations = self.mdp.get_dish_dispenser_locations()
         if not only_use_dispensers:
             dish_pickup_locations += counter_objects['dish']
-            if knowledge_base is not None:
-                for obj_id, obj in knowledge_base.items():
-                    if obj_id not in ['pot_states', 'chop_states', 'sink_states', 'other_player']:
-                        if obj.name == 'dish':
-                            dish_pickup_locations += [obj.position]
+            # if knowledge_base is not None:
+            #     for obj_id, obj in knowledge_base.items():
+            #         if obj_id not in ['pot_states', 'chop_states', 'sink_states', 'other_player']:
+            #             if obj.name == 'dish':
+            #                 dish_pickup_locations += [obj.position]
         return self._get_ml_actions_for_positions(dish_pickup_locations)
     
     def pickup_plate_actions(self, counter_objects, only_use_dispensers=False, knowledge_base=None):
@@ -1040,11 +1040,11 @@ class MediumLevelActionManager(object):
         plate_pickup_locations = self.mdp.get_plate_dispenser_locations()
         if not only_use_dispensers:
             plate_pickup_locations += counter_objects['plate']
-            if knowledge_base is not None:
-                for obj_id, obj in knowledge_base.items():
-                    if obj_id not in ['pot_states', 'chop_states', 'sink_states', 'other_player']:
-                        if obj.name == 'plate':
-                            plate_pickup_locations += [obj.position]
+            # if knowledge_base is not None:
+            #     for obj_id, obj in knowledge_base.items():
+            #         if obj_id not in ['pot_states', 'chop_states', 'sink_states', 'other_player']:
+            #             if obj.name == 'plate':
+            #                 plate_pickup_locations += [obj.position]
         return self._get_ml_actions_for_positions(plate_pickup_locations)
 
     def pickup_counter_soup_actions(self, counter_objects):

@@ -2095,13 +2095,13 @@ class SteakHouseGridworld(OvercookedGridworld):
     # INSTANTIATION METHODS #
     #########################
 
-    def __init__(self, terrain, start_player_positions, start_order_list=None, cook_time=20, num_items_for_steak=1, chop_time=3, wash_time=3, delivery_reward=20, rew_shaping_params=None, layout_name="unnamed_layout"):
+    def __init__(self, terrain, start_player_positions, start_order_list=None, cook_time=20, num_items_for_steak=1, chop_time=3, wash_time=3, delivery_reward=20, rew_shaping_params=None, layout_name="unnamed_layout", object_id_dict={}):
         super().__init__(terrain, start_player_positions, start_order_list, cook_time, num_items_for_steak, delivery_reward, rew_shaping_params, layout_name)
         self.steak_cooking_time = cook_time
         self.chopping_time = chop_time
         self.wash_time = wash_time
         self.num_items_for_steak = num_items_for_steak
-        self.object_id_dict = {}
+        self.object_id_dict = object_id_dict
 
 
     @staticmethod
@@ -2193,7 +2193,8 @@ class SteakHouseGridworld(OvercookedGridworld):
             wash_time=self.wash_time,
             delivery_reward=self.delivery_reward,
             rew_shaping_params=copy.deepcopy(self.reward_shaping_params),
-            layout_name=self.layout_name)
+            layout_name=self.layout_name,
+            object_id_dict=copy.deepcopy(self.object_id_dict))
     
     @property
     def mdp_params(self):
@@ -2285,7 +2286,6 @@ class SteakHouseGridworld(OvercookedGridworld):
                 new_o_id = obj_count
                 o = ObjectState(new_o_id, 'onion', pos)
                 if not rollout: self.object_id_dict[new_o_id] = o
-                else: new_state.obj_count += 1
                 obj_count += 1
                 player.set_object(o)
                 player.num_ingre_held += 1
@@ -2298,7 +2298,6 @@ class SteakHouseGridworld(OvercookedGridworld):
                 new_o_id = obj_count
                 o = ObjectState(new_o_id, 'meat', pos)
                 if not rollout: self.object_id_dict[new_o_id] = o
-                else: new_state.obj_count += 1
                 obj_count += 1
                 player.set_object(o)
                 player.num_ingre_held += 1
