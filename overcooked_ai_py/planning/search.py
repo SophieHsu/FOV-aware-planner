@@ -315,10 +315,10 @@ class SearchTree(object):
                 # else:
                 #     kb_prob_track[curr_kb_key] += 1
 
-            if curr_state in seen:
+            if (str(curr_state), str(curr_node.action)) in seen:
                 continue
             
-            seen.add(curr_state)
+            seen.add((str(curr_state), str(curr_node.action)))
 
             if iter_count > self.max_iter_count:
                 print("Expanded more than the maximum number of allowed states")

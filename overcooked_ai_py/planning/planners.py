@@ -5037,6 +5037,11 @@ class  SteakHumanSubtaskQMDPPlanner(SteakMediumLevelMDPPlanner):
             obj = human_obj
 
         if obj == 'None':
+            if prev_subtask == 'chop_onion' and chop_time < self.mdp.chopping_time and subtask != 'chop_onion':
+                return False
+            if prev_subtask == 'heat_hot_plate' and wash_time < self.mdp.wash_time and subtask != 'heat_hot_plate':
+                return False
+            
             if subtask == 'chop_onion' and chop_time >= 0 and chop_time < self.mdp.chopping_time and prev_subtask in ['drop_onion', 'chop_onion']:
                 return True
             elif subtask == 'heat_hot_plate' and wash_time >= 0 and wash_time < self.mdp.wash_time and prev_subtask in ['drop_plate', 'heat_hot_plate']:
@@ -5781,7 +5786,8 @@ class  SteakHumanSubtaskQMDPPlanner(SteakMediumLevelMDPPlanner):
                 # actions = 'drop_steak'
                 # next_obj = 'None'
                 actions += ['pickup_garnish']
-                next_state_keys += self.gen_state_key('dish', -1, next_wash_time, next_num_item_in_pot, orders, next_subtask)
+                next_state_keys += self.gen_state_key('steak', next_chop_time, next_wash_time, next_num_item_in_pot, orders, next_subtask)
+                # next_state_keys += self.gen_state_key('dish', -1, next_wash_time, next_num_item_in_pot, orders, next_subtask)
 
             elif (player_obj == 'dish'):
                 actions += ['deliver_dish']
@@ -6566,7 +6572,7 @@ class  SteakHumanSubtaskQMDPPlanner(SteakMediumLevelMDPPlanner):
         
         num_item_in_pot, chop_time, wash_time, robot_obj = self.kb_to_state_info(self.sim_human_model.knowledge_base)
         
-        print('Robot understanding of human obs = ', num_item_in_pot, chop_time, wash_time)
+        if self.debug: print('Robot understanding of human obs = ', num_item_in_pot, chop_time, wash_time)
         # else:
         #     num_item_in_pot = world_num_item_in_pot
         #     chop_time = world_chop_time
@@ -6585,7 +6591,7 @@ class  SteakHumanSubtaskQMDPPlanner(SteakMediumLevelMDPPlanner):
         human_obj = human_player.held_object.name if human_player.held_object is not None else 'None'
         game_logic_prob = np.zeros((len(belief_vector)), dtype=float)
         dist_belief_prob = np.zeros((len(belief_vector)), dtype=float)
-        print('subtasks:', self.subtask_dict.keys())
+        if self.debug: print('subtasks:', self.subtask_dict.keys())
         for i, belief in enumerate(belief_vector):
             ## estimating next subtask based on game logic
             game_logic_prob[i] = self._is_valid_object_subtask_pair(subtask_key[i], num_item_in_pot, chop_time, wash_time, vision_limit=vision_limit, human_obj=human_obj, other_agent_holding=robot_obj, prev_subtask=prev_max_belief)*1.0
@@ -6616,7 +6622,7 @@ class  SteakHumanSubtaskQMDPPlanner(SteakMediumLevelMDPPlanner):
                 new_prev_dist_to_feature[str(feature_pos)] = human_dist_cost
 
         prev_dist_to_feature = new_prev_dist_to_feature
-        print('prev_dist_to_feature =', prev_dist_to_feature)
+        if self.debug:print('prev_dist_to_feature =', prev_dist_to_feature)
 
         # Note: prev_dist_to_feature is not updating all positions, but only the possible goals. Hence the game logic should multipy the distance first then the distance is normalized
         # print('human_dist_cost =', human_dist_cost)
@@ -6625,8 +6631,11 @@ class  SteakHumanSubtaskQMDPPlanner(SteakMediumLevelMDPPlanner):
         else:
             game_logic_prob[2] = 1.0 # since no next subtask for human, set the pickup plate to 1 (this matches the human logic)
         game_logic_prob[game_logic_prob <= 0.000001] = 0.000001
-        print('game_logic_prob =', game_logic_prob)
-        print('dist_belief_prob =', dist_belief_prob)
+        
+        if self.debug:
+            print('game_logic_prob =', game_logic_prob)
+            print('dist_belief_prob =', dist_belief_prob)
+        
         # let all dist_belief_prob > 0
         offset = min(dist_belief_prob)
         for i in range(len(dist_belief_prob)):
@@ -6637,9 +6646,9 @@ class  SteakHumanSubtaskQMDPPlanner(SteakMediumLevelMDPPlanner):
         if dist_belief_prob.sum() > 0.0:
             dist_belief_prob[dist_belief_prob <= 0.000001] = 0.000001
             dist_belief_prob /= dist_belief_prob.sum()
-            print('dist_belief_prob =', dist_belief_prob)
+            if self.debug: print('dist_belief_prob =', dist_belief_prob)
 
-        print('original belief:', belief_vector)
+        if self.debug: print('original belief:', belief_vector)
         new_belief = belief_vector*game_logic_prob
         new_belief /= new_belief.sum()
         new_belief = new_belief*0.7 + dist_belief_prob*0.3
@@ -6648,33 +6657,33 @@ class  SteakHumanSubtaskQMDPPlanner(SteakMediumLevelMDPPlanner):
         count_small = len(new_belief[new_belief <= 0.01])
         new_belief[new_belief > 0.01] -= (0.01*count_small)
         new_belief[new_belief <= 0.01] = 0.01
-        print('new_belief =', new_belief)
-        print('max belif =', list(self.subtask_dict.keys())[np.argmax(new_belief)])
+        if self.debug: print('new_belief =', new_belief)
+        if self.debug: print('max belif =', list(self.subtask_dict.keys())[np.argmax(new_belief)])
         # print("It took {} seconds for belief update".format(time.time() - start_time))
 
         return new_belief, prev_dist_to_feature
 
-    def compute_V(self, next_world_state, mdp_state_key, belief_prob=None, belief_idx=None, search_depth=200, search_time_limit=10, add_rewards=False, gamma=False, debug=False):
+    def compute_V(self, next_world_state, mdp_state_key, belief_prob=None, belief_idx=None, search_depth=200, search_time_limit=10, add_rewards=False, gamma=False, debug=False, kb_key=None):
         start_time = time.time()
         next_world_state_str = str(next_world_state)
-        flag = True #False
+        flag = False
         
         if belief_prob is not None:
             if belief_prob[belief_idx] <= 0.03:
                 return 0
                 
-        # if ((next_world_state_str, mdp_state_key) not in self.world_state_cost_dict):
-        #     flag = True
-        #     # save computation: if belief is low, no need to compute next state value since later in comput Q value, the row will have a small value
-        #     if belief_prob is not None:
-        #         if belief_prob[belief_idx] <= 0.01:
-        #             self.world_state_cost_dict[(next_world_state_str,mdp_state_key)] = 0
-        #             return self.world_state_cost_dict[(next_world_state_str,mdp_state_key)]
+        if ((next_world_state_str, mdp_state_key, kb_key) not in self.world_state_cost_dict):
+            flag = True
+            # save computation: if belief is low, no need to compute next state value since later in comput Q value, the row will have a small value
+            if belief_prob is not None:
+                if belief_prob[belief_idx] <= 0.01:
+                    self.world_state_cost_dict[(next_world_state_str, mdp_state_key, kb_key)] = 0
+                    return self.world_state_cost_dict[(next_world_state_str, mdp_state_key, kb_key)]
                     
-        # elif (self.world_state_cost_dict[(next_world_state_str,mdp_state_key)] == 0):
-        #     flag = True
-        # elif math.isinf((self.world_state_cost_dict[(next_world_state_str,mdp_state_key)])):
-        #     flag = True
+        elif (self.world_state_cost_dict[(next_world_state_str, mdp_state_key, kb_key)] == 0):
+            flag = True
+        elif math.isinf((self.world_state_cost_dict[(next_world_state_str, mdp_state_key, kb_key)])):
+            flag = True
 
         if flag:                    
             delivery_horizon=2
@@ -6746,19 +6755,20 @@ class  SteakHumanSubtaskQMDPPlanner(SteakMediumLevelMDPPlanner):
                     print('delta_cost:cost', (delta_cost), cost)
                 
                 cost -= (delta_cost)*2*(0.9**(2-len(remaining_orders)))#*((3-len(remaining_orders))/3)
-            self.world_state_cost_dict[(next_world_state_str,mdp_state_key)] = cost
+            self.world_state_cost_dict[(next_world_state_str, mdp_state_key, kb_key)] = cost
 
         # print('self.world_state_cost_dict length =', len(self.world_state_cost_dict))            
         # print("It took {} seconds for computing value, {}, and {}".format((time.time() - start_time), next_world_state, mdp_state_key))
-        return max((self.mdp.height*self.mdp.width)*5 - self.world_state_cost_dict[(next_world_state_str,mdp_state_key)], 0)
+        return max((self.mdp.height*self.mdp.width)*5 - self.world_state_cost_dict[(next_world_state_str, mdp_state_key, kb_key)], 0)
 
     def optimal_plan_cost(self, start_world_state, start_cost):
         self.world_state_to_mdp_state_key(start_world_state, start_world_state.players[0], start_world_state.players[1], subtask)
 
     def compute_Q(self, b, v, c, gamma=0.9):
-        print('b =', b)
-        print('v =', v)
-        print('c =', c)
+        if self.debug:
+            print('b =', b)
+            print('v =', v)
+            print('c =', c)
 
         return b@((v*gamma)+c)
 
@@ -6787,23 +6797,25 @@ class  SteakHumanSubtaskQMDPPlanner(SteakMediumLevelMDPPlanner):
 
 
 class SteakKnowledgeBasePlanner(SteakHumanSubtaskQMDPPlanner):
-    def __init__(self, mdp, mlp_params, state_dict={}, state_idx_dict={}, action_dict={}, action_idx_dict={}, transition_matrix=None, reward_matrix=None, policy_matrix=None, value_matrix=None, num_states=0, num_rounds=0, epsilon=0.01, discount=0.8, jmp=None, vision_limited_human=None, debug=False):
+    def __init__(self, mdp, mlp_params, state_dict={}, state_idx_dict={}, action_dict={}, action_idx_dict={}, transition_matrix=None, reward_matrix=None, policy_matrix=None, value_matrix=None, num_states=0, num_rounds=0, epsilon=0.01, discount=0.8, jmp=None, vision_limited_human=None, debug=False, search_depth=5, kb_search_depth=3):
         super().__init__(mdp, mlp_params, state_dict, state_idx_dict, action_dict, action_idx_dict, transition_matrix, reward_matrix, policy_matrix, value_matrix, num_states, num_rounds, epsilon, discount, jmp, vision_limited_human)
 
         self.list_objs = ['None', 'meat', 'onion', 'plate', 'hot_plate', 'steak', 'dish']
         self.kb_space = (self.mdp.num_items_for_steak+1) * (self.mdp.chopping_time+1) * (self.mdp.wash_time+1) * len(self.list_objs) # num_in_pot_item * chop_time * wash_time * holding
         self.init_kb_idx_dict()
         self.debug = debug
+        self.search_depth = search_depth
+        self.kb_search_depth = kb_search_depth
     
     @staticmethod
-    def from_pickle_or_compute(mdp, mlp_params, custom_filename=None, force_compute_all=False, info=True, force_compute_more=False, jmp=None, vision_limited_human=None, debug=False):
+    def from_pickle_or_compute(mdp, mlp_params, custom_filename=None, force_compute_all=False, info=True, force_compute_more=False, jmp=None, vision_limited_human=None, debug=False, search_depth=5, kb_search_depth=3):
 
         assert isinstance(mdp, OvercookedGridworld)
 
         filename = custom_filename if custom_filename is not None else mdp.layout_name + '_' + 'steak_knowledge_aware_qmdp' + '.pkl'
 
         if force_compute_all:
-            mdp_planner = SteakKnowledgeBasePlanner(mdp, mlp_params, vision_limited_human=vision_limited_human, debug=debug)
+            mdp_planner = SteakKnowledgeBasePlanner(mdp, mlp_params, vision_limited_human=vision_limited_human, debug=debug, search_depth=search_depth, kb_search_depth=kb_search_depth)
             mdp_planner.compute_mdp(filename)
             return mdp_planner
         
@@ -6817,7 +6829,7 @@ class SteakKnowledgeBasePlanner(SteakHumanSubtaskQMDPPlanner):
 
         except (FileNotFoundError, ModuleNotFoundError, EOFError, AttributeError) as e:
             print("Recomputing planner due to:", e)
-            mdp_planner = SteakKnowledgeBasePlanner(mdp, mlp_params, jmp=jmp, vision_limited_human=vision_limited_human, debug=debug)
+            mdp_planner = SteakKnowledgeBasePlanner(mdp, mlp_params, jmp=jmp, vision_limited_human=vision_limited_human, debug=debug, search_depth=search_depth, kb_search_depth=kb_search_depth)
             mdp_planner.compute_mdp(filename)
             return mdp_planner
 
@@ -6841,7 +6853,8 @@ class SteakKnowledgeBasePlanner(SteakHumanSubtaskQMDPPlanner):
         """
         This transition matrix needs to include subtask tranistion for both robot and human. Humans' state transition is conditioned on the subtask.
         """
-        self.s_kb_trans_matrix = s_kb_trans_matrix if s_kb_trans_matrix is not None else np.identity((len(self.state_idx_dict)), dtype=float)
+        # self.s_kb_trans_matrix = s_kb_trans_matrix if s_kb_trans_matrix is not None else np.identity((len(self.state_idx_dict)), dtype=float)
+        self.s_kb_trans_matrix = s_kb_trans_matrix if s_kb_trans_matrix is not None else np.zeros((len(self.state_idx_dict), len(self.state_idx_dict)), dtype=float)
 
         # state transition calculation
         for state_key, state_obj in self.state_dict.items():
@@ -6850,7 +6863,8 @@ class SteakKnowledgeBasePlanner(SteakHumanSubtaskQMDPPlanner):
             # decode state information
             p0_state, p1_state, world_info = self.decode_state_info(state_obj) # p0_obj; p1_obj, p1_subtask; num_item_in_pot, order_list;
             # calculate next states for p1 (a.k.a. human)
-            p1_nxt_states, p1_nxt_world_info = self.human_state_subtask_transition(p1_state, world_info)
+            # p1_nxt_states, p1_nxt_world_info = self.human_state_subtask_transition(p1_state, world_info)
+            p1_nxt_states, p1_nxt_world_info = self.world_based_human_state_subtask_transition(p1_state, world_info, other_agent_obj=p0_state)
 
             # append original state of p1 (human) to represent unfinished subtask state transition
             p1_nxt_states.append(p1_state)
@@ -6858,7 +6872,8 @@ class SteakKnowledgeBasePlanner(SteakHumanSubtaskQMDPPlanner):
 
             # calculate next states for p0 (conditioned on p1 (a.k.a. human))
             for i, p1_nxt_state in enumerate(p1_nxt_states):
-                _, next_state_keys = self.stochastic_state_transition(p0_state, p1_nxt_world_info[i], human_state=p1_nxt_state)
+                _, next_state_keys = self.consider_subtask_stochastic_state_transition(p0_state, p1_nxt_world_info[0], human_state=p1_nxt_state)
+                # _, next_state_keys = self.stochastic_state_transition(p0_state, p1_nxt_world_info[i], human_state=p1_nxt_state)
                 # consider the next state where agent 0 does not complete action execution
                 p0_not_complete_key = self.get_key_from_value(self.state_dict, [state_obj[0]]+p1_nxt_world_info[i]+[p1_nxt_state])
                 if (p0_not_complete_key not in next_state_keys) and p0_not_complete_key != state_key:
@@ -6886,7 +6901,8 @@ class SteakKnowledgeBasePlanner(SteakHumanSubtaskQMDPPlanner):
             # decode state information
             p0_state, p1_state, world_info = self.decode_state_info(state_obj) # p0_obj; p1_obj, p1_subtask; num_item_in_pot, order_list;
             # calculate next states for p1 (a.k.a. human)
-            p1_nxt_states, p1_nxt_world_info = self.human_state_subtask_transition(p1_state, world_info)
+            # p1_nxt_states, p1_nxt_world_info = self.human_state_subtask_transition(p1_state, world_info)
+            p1_nxt_states, p1_nxt_world_info = self.world_based_human_state_subtask_transition(p1_state, world_info, other_agent_obj=p0_state)
 
             # append original state of p1 (human) to represent unfinished subtask state transition
             p1_nxt_states.append(p1_state)
@@ -6894,7 +6910,8 @@ class SteakKnowledgeBasePlanner(SteakHumanSubtaskQMDPPlanner):
 
             # calculate next states for p0 (conditioned on p1 (a.k.a. human))
             for i, p1_nxt_state in enumerate(p1_nxt_states):
-                _, next_state_keys = self.stochastic_state_transition(p0_state, p1_nxt_world_info[i], human_state=p1_nxt_state)
+                # _, next_state_keys = self.stochastic_state_transition(p0_state, p1_nxt_world_info[i], human_state=p1_nxt_state)
+                _, next_state_keys = self.consider_subtask_stochastic_state_transition(p0_state, p1_nxt_world_info[0], human_state=p1_nxt_state)
                 
                 for next_state_key in next_state_keys:
                     needed_kb_keys_for_next = self.get_needed_kb_key(next_state_key, p1_nxt_state, state_key)
@@ -7612,7 +7629,7 @@ class SteakKnowledgeBasePlanner(SteakHumanSubtaskQMDPPlanner):
 
         return kb_keys
 
-    def get_kb_successor_states(self, start_state, kb, other_agent_action=None, explore_interact=False):
+    def get_kb_successor_states(self, start_state, kb, other_agent_action=None, explore_interact=False, track_state_kb_map=None):
         successor_kb = []
         joint_motion_actions = []
         if explore_interact: 
@@ -7634,8 +7651,14 @@ class SteakKnowledgeBasePlanner(SteakHumanSubtaskQMDPPlanner):
             
             new_positions, new_orientations = self.mdp.compute_new_positions_and_orientations(start_state.players, joint_action)
             successor_state = self.jmp.derive_state(start_state, tuple(zip(*[new_positions, new_orientations])), [joint_action])
+            
+            if (str(successor_state), str(kb)) in track_state_kb_map.keys():
+                successor_kb.append((track_state_kb_map[(str(successor_state), str(kb))], successor_state, 1))
+            else:
+                tmp_kb = self.sim_human_model.get_knowledge_base(successor_state, rollout_kb=kb)
+                track_state_kb_map[(str(successor_state), str(kb))] = tmp_kb
 
-            successor_kb.append((self.sim_human_model.get_knowledge_base(successor_state, rollout_kb=kb), successor_state, 1))
+                successor_kb.append((tmp_kb, successor_state, 1))
             
             # del dummy_sim_human
 
@@ -7650,8 +7673,8 @@ class SteakKnowledgeBasePlanner(SteakHumanSubtaskQMDPPlanner):
             start_state.order_list = ["any"] * delivery_horizon
         else:
             start_state.order_list = start_state.order_list[:delivery_horizon]
-        
-        expand_fn = lambda state, kb, depth: self.get_kb_successor_states(state, kb, None if depth > (len(other_agent_plan)-1) else other_agent_plan[depth], explore_interact=explore_interact)
+
+        expand_fn = lambda state, kb, depth: self.get_kb_successor_states(state, kb, None if depth > (len(other_agent_plan)-1) else other_agent_plan[depth], explore_interact=explore_interact, track_state_kb_map={})
         heuristic_fn = Steak_Heuristic(self.mp).simple_heuristic
 
         search_problem = SearchTree(start_state, None, expand_fn, heuristic_fn, debug=debug)
@@ -7984,12 +8007,14 @@ class SteakKnowledgeBasePlanner(SteakHumanSubtaskQMDPPlanner):
                                 #     action_cost[i, Action.ACTION_TO_INDEX[joint_motion_action[agent_idx]]] -= (all_nxt_one_step_cost+1) * (1/nxt_state_counter) * next_kb_prob
 
         q = self.compute_Q(belief, est_next_state_v, action_cost)
-        print('q value =', q)
-        print('next_state_value:', est_next_state_v)
-        print('action_cost:', action_cost)       
         action_idx = self.get_best_action(q)
-        print('get_best_action =', action_idx, '=', Action.INDEX_TO_ACTION[action_idx])
-        print("It took {} seconds for this step".format(time.time() - start_time))
+
+        if self.debug:
+            print('q value =', q)
+            print('next_state_value:', est_next_state_v)
+            print('action_cost:', action_cost)       
+            print('get_best_action =', action_idx, '=', Action.INDEX_TO_ACTION[action_idx])
+            print("It took {} seconds for this step".format(time.time() - start_time))
         
         return Action.INDEX_TO_ACTION[action_idx], None, low_level_action
     
@@ -8000,6 +8025,8 @@ class SteakKnowledgeBasePlanner(SteakHumanSubtaskQMDPPlanner):
         start_time = time.time()
         est_next_state_v = np.zeros((len(belief), Action.NUM_ACTIONS), dtype=float)
         action_cost = np.zeros((len(belief), Action.NUM_ACTIONS), dtype=float)
+        SEARCH_DEPTH = self.search_depth
+        KB_SEARCH_DEPTH = self.kb_search_depth
 
         # update sim human
         curr_human_kb = self.sim_human_model.get_knowledge_base(world_state)
@@ -8076,6 +8103,7 @@ class SteakKnowledgeBasePlanner(SteakHumanSubtaskQMDPPlanner):
                                 rollout_state_key_cost = {}
                                 for _, rollout_state_key, rollout_cost in rollout_states_keys:
                                     rollout_state_idx = self.state_idx_dict[rollout_state_key]
+                                    # next_mdp_state_idx_arr = np.where(self.s_kb_trans_matrix[rollout_state_idx] > 0.000001)[0]
                                     next_mdp_state_idx_arr = np.where(self.optimal_s_kb_trans_matrix[rollout_state_idx] > 0.000001)[0]
                                     # next_mdp_state_idx_arr = np.where(self.optimal_non_subtask_s_kb_trans_matrix[rollout_state_idx] > 0.000001)[0]
 
@@ -8090,7 +8118,7 @@ class SteakKnowledgeBasePlanner(SteakHumanSubtaskQMDPPlanner):
                                         for next_state_world_state in next_state_world_states:
                                             # compute next state reward to rollout n step based on assuming optimal path planning 
                                             ### TODO: check the cost if it has to be positive, reward - steps
-                                            cost = self.compute_V(next_state_world_state[0], self.get_key_from_value(self.state_idx_dict, next_state_idx), search_depth=SEARCH_DEPTH, search_time_limit=SEARCH_TIME, add_rewards=True, gamma=0.8, debug=debug)
+                                            cost = self.compute_V(next_state_world_state[0], self.get_key_from_value(self.state_idx_dict, next_state_idx), search_depth=SEARCH_DEPTH, search_time_limit=SEARCH_TIME, add_rewards=True, gamma=0.8, debug=debug, kb_key=rollout_kb_key)
                                             rollout_to_next_world_cost = next_state_world_state[1]
 
                                             # log the cost and one step cost
@@ -8153,7 +8181,7 @@ class SteakKnowledgeBasePlanner(SteakHumanSubtaskQMDPPlanner):
             print('next_state_value:', est_next_state_v)
             print('action_cost:', action_cost)       
             print('get_best_action =', action_idx, '=', Action.INDEX_TO_ACTION[action_idx])
-            print("It took {} seconds for this step".format(time.time() - start_time))
+        print("It took {} seconds for this step".format(time.time() - start_time))
         
 
         return Action.INDEX_TO_ACTION[action_idx], None, None
@@ -8360,17 +8388,18 @@ class SteakKnowledgeBasePlanner(SteakHumanSubtaskQMDPPlanner):
         Q value is computed with the equation:
         Q(S', L_a) = [ V(S') * [B(S|o) @ (P(H_a|L_a) * T(S'|S, H_a, KB')*P(KB'|KB, L_a))]# + KB_cost(KB', o)]
         '''
-        print('b =', b)
-        print('v =', v)
-        print('c =', c)
+        if self.debug:
+            print('b =', b)
+            print('v =', v)
+            print('c =', c)
         
         return b@((v*gamma)+c)+knowledge_gap
     
     def init_mdp(self):
         self.init_actions()
         self.init_human_aware_states(order_list=self.mdp.start_order_list)
-        self.init_s_kb_trans_matrix()
-        self.init_sprim_s_kb_trans_matrix()
+        # self.init_s_kb_trans_matrix()
+        # self.init_sprim_s_kb_trans_matrix()
         self.init_optimal_s_kb_trans_matrix()
         self.init_optimal_non_subtask_s_kb_trans_matrix()
     

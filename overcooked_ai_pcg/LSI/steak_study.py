@@ -14,7 +14,7 @@ from pprint import pprint
 from overcooked_ai_pcg import (LSI_STEAK_STUDY_RESULT_DIR,
                                LSI_STEAK_STUDY_CONFIG_DIR,
                                STEAK_TEST_DIR)
-from overcooked_ai_pcg.helper import init_env, init_qmdp_agent, lvl_str2grid
+from overcooked_ai_pcg.helper import init_steak_env, init_steak_qmdp_agent, lvl_str2grid
 import overcooked_ai_py.agents.agent as agent
 import overcooked_ai_py.planning.planners as planners
 from overcooked_ai_py.agents.agent import HumanPlayer, StayAgent
@@ -196,7 +196,7 @@ class OvercookedGame:
 
         return (self.total_sparse_reward, self.joint_actions)
 
-def load_qmdp_agent(env, agent_save_path):
+def load_steak_qmdp_agent(env, agent_save_path):
     ai_agent = None
     if agent_save_path is not None:
         # agent saved before, load it.
@@ -206,7 +206,8 @@ def load_qmdp_agent(env, agent_save_path):
 
     # agent not found, recreate it and save it if a path is given.
     if ai_agent == None:
-        ai_agent = init_qmdp_agent(env.mdp)
+        ai_agent = init_steak_qmdp_agent(env)
+        ai_agent.set_agent_index(0)
         if agent_save_path is not None:
             with open(agent_save_path, 'wb') as f:
                 pickle.dump(ai_agent, f)
@@ -309,9 +310,9 @@ def human_play(
             found, it will be saved to there.
         horizon (int): max number of timesteps to play.
     """
-    env = init_env(lvl_str, horizon=horizon)
+    env = init_steak_env(lvl_str, horizon=horizon)
     if ai_agent is None:
-        ai_agent = load_qmdp_agent(env, agent_save_path)
+        ai_agent = load_steak_qmdp_agent(env, agent_save_path)
     theApp = OvercookedGame(env, ai_agent, agent_idx=0, rand_seed=10)
     return theApp.on_execute()
 
@@ -323,9 +324,12 @@ def agents_play(
     horizon=HUMAN_STUDY_ENV_HORIZON,
     VISION_LIMIT = True,
     VISION_BOUND = 120,
+    VISION_LIMIT_AWARE = True,
     EXPLORE = True,
     agent_unstuck = False,
     human_unstuck = False,
+    SEARCH_DEPTH = 5,
+    KB_SEARCH_DEPTH = 3,
 ):
     """Function that allows human to play with an ai_agent.
 
@@ -337,7 +341,7 @@ def agents_play(
         horizon (int): max number of timesteps to play.
     """
 
-    print(VISION_LIMIT, VISION_BOUND, EXPLORE, agent_unstuck, human_unstuck)
+    print(VISION_LIMIT, VISION_BOUND, VISION_LIMIT_AWARE, EXPLORE, agent_unstuck, human_unstuck, SEARCH_DEPTH, KB_SEARCH_DEPTH)
 
     start_time = time.time()
     grid = lvl_str2grid(lvl_str)
@@ -358,18 +362,28 @@ def agents_play(
     # hmlp = planners.HumanMediumLevelPlanner(mdp, ml_action_manager, [0.5, (1.0-0.5)], 0.5)
     # human_agent = agent.biasHumanModel(ml_action_manager, [0.5, (1.0-0.5)], 0.5, auto_unstuck=True)
     mlp = planners.MediumLevelPlanner.from_pickle_or_compute(mdp, COUNTERS_PARAMS, force_compute=True)  
-    human_agent = agent.SteakLimitVisionHumanModel(mlp, env.state, auto_unstuck=human_unstuck, explore=EXPLORE, vision_limit=VISION_LIMIT, vision_bound=VISION_BOUND)
+    human_agent = agent.SteakLimitVisionHumanModel(mlp, env.state, auto_unstuck=human_unstuck, explore=EXPLORE, vision_limit=VISION_LIMIT, vision_bound=VISION_BOUND, debug=True)
     # human_agent = agent.GreedySteakHumanModel(mlp)
     # human_agent = agent.CoupledPlanningAgent(mlp)
     human_agent.set_agent_index(1)
 
     qmdp_start_time = time.time()
     # mdp_planner = planners.SteakHumanSubtaskQMDPPlanner.from_pickle_or_compute(mdp, COUNTERS_PARAMS, force_compute_all=True, jmp = mlp.ml_action_manager.joint_motion_planner, vision_limited_human=human_agent)
-    mdp_planner = planners.SteakKnowledgeBasePlanner.from_pickle_or_compute(mdp, COUNTERS_PARAMS, force_compute_all=True, jmp = mlp.ml_action_manager.joint_motion_planner, vision_limited_human=human_agent)# if VISION_LIMIT else None)
-    ai_agent = agent.MediumQMdpPlanningAgent(mdp_planner, greedy=True, auto_unstuck=agent_unstuck, low_level_action_flag=True, vision_limit=VISION_LIMIT)
+    # mdp_planner = planners.SteakKnowledgeBasePlanner.from_pickle_or_compute(mdp, COUNTERS_PARAMS, force_compute_all=True, jmp = mlp.ml_action_manager.joint_motion_planner, vision_limited_human=human_agent)# if VISION_LIMIT else None)
     # ai_agent = agent.QMDPAgent(mlp, env)
     # ai_agent = agent.GreedySteakHumanModel(mlp)
-
+    
+    mdp_planner = None
+    if not VISION_LIMIT_AWARE and VISION_LIMIT:
+        non_limited_human = agent.SteakLimitVisionHumanModel(mlp, env.state, auto_unstuck=human_unstuck, explore=EXPLORE, vision_limit=False, vision_bound=0, debug=True)
+        non_limited_human.set_agent_index(1)
+        mdp_planner = planners.SteakKnowledgeBasePlanner.from_pickle_or_compute(mdp, COUNTERS_PARAMS, force_compute_all=True, jmp = mlp.ml_action_manager.joint_motion_planner, vision_limited_human=non_limited_human, debug=True, search_depth=SEARCH_DEPTH, kb_search_depth=KB_SEARCH_DEPTH)
+    else:
+        limited_human = agent.SteakLimitVisionHumanModel(mlp, env.state, auto_unstuck=human_unstuck, explore=EXPLORE, vision_limit=VISION_LIMIT, vision_bound=VISION_BOUND, debug=True)
+        limited_human.set_agent_index(1)
+        mdp_planner = planners.SteakKnowledgeBasePlanner.from_pickle_or_compute(mdp, COUNTERS_PARAMS, force_compute_all=True, jmp = mlp.ml_action_manager.joint_motion_planner, vision_limited_human=limited_human, debug=False, search_depth=SEARCH_DEPTH, kb_search_depth=KB_SEARCH_DEPTH)
+    
+    ai_agent = agent.MediumQMdpPlanningAgent(mdp_planner, greedy=True, auto_unstuck=agent_unstuck, low_level_action_flag=True, vision_limit=VISION_LIMIT)
     ai_agent.set_agent_index(0)
 
     del mlp, mdp_planner
@@ -382,8 +396,9 @@ def agents_play(
     # print("It took {} seconds for qmdp to compute".format(game_start_time - qmdp_start_time))
     # print("It took {} seconds for playing the entire level".format(time.time() - game_start_time))
     # print("It took {} seconds to plan".format(time.time() - start_time))
+    trajectory = s_t[:,1][:-1].tolist()
 
-    return (done_t, s_t[:,1][:-1].tolist())
+    return (done_t, trajectory, len(trajectory))
 
 
 def read_in_study_lvl(_dir):
@@ -420,7 +435,10 @@ def write_to_human_exp_log(lvl_type_full, results, lvl_config):
         lvl_config["human_unstuck"] if "human_unstuck" in lvl_config else None,
         lvl_config["vision_limit"] if "vision_limit" in lvl_config else None,
         lvl_config["vision_bound"] if "vision_bound" in lvl_config else None,
+        lvl_config["vision_limit_aware"] if "vision_limit_aware" in lvl_config else None,
         lvl_config["explore"] if "explore" in lvl_config else None,
+        lvl_config["search_depth"] if "search_depth" in lvl_config else None,
+        lvl_config["kb_search_depth"] if "kb_search_depth" in lvl_config else None,
         *results,
         lvl_config["lvl_str"],
     ]
@@ -454,9 +472,13 @@ def create_human_exp_log():
         "human_unstuck",
         "vision_limit",
         "vision_bound",
+        "vision_limit_aware",
         "explore",
+        "search_depth",
+        "kb_search_depth",
         "complete",
         "joint_actions",
+        "total time steps",
         "lvl_str",
     ]
 
@@ -497,15 +519,25 @@ if __name__ == "__main__":
                         help='Integer: type of the game level.',
                         required=False,
                         default=None)
+    parser.add_argument('--human_play',
+                        action='store_true',
+                        help='Whether to continue running a previous study',
+                        default=False)
     opt = parser.parse_args()
 
     np.random.seed(1)
     # not replay, run the study
     if not opt.replay:
         # read in human study levels
-        study_lvls = pd.read_csv(
-            os.path.join(LSI_STEAK_STUDY_CONFIG_DIR, "study_lvls.csv"))
+        if not opt.human_play:
+            study_lvls = pd.read_csv(
+                os.path.join(LSI_STEAK_STUDY_CONFIG_DIR, "study_lvls.csv"))
 
+            # study_lvls = pd.read_csv(
+            #     os.path.join(LSI_STEAK_STUDY_CONFIG_DIR, "new_study_lvls.csv"))
+        else:
+            study_lvls = pd.read_csv(
+                os.path.join(LSI_STEAK_STUDY_CONFIG_DIR, "human_study_lvls.csv"))
         # running a new study
         if not opt.reload:
             # quit if study type not recognized
@@ -532,9 +564,12 @@ if __name__ == "__main__":
                     horizon=MAX_HORIZON,
                     VISION_LIMIT = lvl_config["vision_limit"],
                     VISION_BOUND = lvl_config["vision_bound"],
+                    VISION_LIMIT_AWARE = lvl_config["vision_limit_aware"],
                     EXPLORE = lvl_config["explore"],
                     agent_unstuck= lvl_config["agent_unstuck"],
-                    human_unstuck= lvl_config["human_unstuck"]
+                    human_unstuck= lvl_config["human_unstuck"],
+                    SEARCH_DEPTH= lvl_config["search_depth"],
+                    KB_SEARCH_DEPTH= lvl_config["kb_search_depth"]
                 )
 
             elif opt.study in NON_TRIAL_STUDY_TYPES:
@@ -543,7 +578,8 @@ if __name__ == "__main__":
 
                 # shuffle the order if playing all
                 if opt.study == 'all':
-                    study_lvls = study_lvls.sample(frac=1)
+                    study_lvls = study_lvls
+                    # study_lvls = study_lvls.sample(frac=1)
 
                 # play all of the levels
                 for index, lvl_config in study_lvls.iterrows():
@@ -552,13 +588,20 @@ if __name__ == "__main__":
                         agent_save_path = os.path.join(
                             STEAK_TEST_DIR, "{lvl_type}_{lvl_vision}_{lvl_explore}.pkl".format(lvl_type=lvl_config["lvl_type"], lvl_vision=lvl_config["vision_bound"], lvl_explore=lvl_config["explore"]))
                         print(lvl_config["lvl_type"])
-                        results = agents_play(lvl_config["lvl_str"],
-                                             agent_save_path=agent_save_path,
-                                            VISION_LIMIT = lvl_config["vision_limit"],
-                                            VISION_BOUND = int(lvl_config["vision_bound"]),
-                                            EXPLORE =  lvl_config["explore"],
-                                            agent_unstuck= lvl_config["agent_unstuck"],
-                                            human_unstuck= lvl_config["human_unstuck"])
+                        if not opt.human_play:
+                            results = agents_play(lvl_config["lvl_str"],
+                                                agent_save_path=agent_save_path,
+                                                VISION_LIMIT = lvl_config["vision_limit"],
+                                                VISION_BOUND = int(lvl_config["vision_bound"]),
+                                                VISION_LIMIT_AWARE = lvl_config["vision_limit_aware"],
+                                                EXPLORE =  lvl_config["explore"],
+                                                agent_unstuck= lvl_config["agent_unstuck"],
+                                                human_unstuck= lvl_config["human_unstuck"],
+                                                SEARCH_DEPTH= lvl_config["search_depth"],
+                                                KB_SEARCH_DEPTH= lvl_config["kb_search_depth"])
+                        else:
+                            results = human_play(lvl_config["lvl_str"],
+                                         agent_save_path=agent_save_path)
                         # write the results
                         if lvl_config["lvl_type"] != "trial":
                             write_to_human_exp_log(human_log_csv, results,
@@ -581,14 +624,20 @@ if __name__ == "__main__":
                     agent_save_path = os.path.join(
                         STEAK_TEST_DIR,
                         "{lvl_type}_{lvl_vision}_{lvl_explore}.pkl".format(lvl_type=lvl_config["lvl_type"], lvl_vision=lvl_config["vision_bound"], lvl_explore=lvl_config["explore"]))
-                    results = agents_play(lvl_str,
+                    if not opt.human_play:
+                        results = agents_play(lvl_str,
                                          agent_save_path=agent_save_path,
                                         VISION_LIMIT = lvl_config["vision_limit"],
                                         VISION_BOUND = int(lvl_config["vision_bound"]),
+                                        VISION_LIMIT_AWARE = lvl_config["vision_limit_aware"],
                                         EXPLORE = lvl_config["explore"],
                                         agent_unstuck = lvl_config["agent_unstuck"],
-                                        human_unstuck = lvl_config["human_unstuck"])
-
+                                        human_unstuck = lvl_config["human_unstuck"],
+                                        SEARCH_DEPTH= lvl_config["search_depth"],
+                                        KB_SEARCH_DEPTH= lvl_config["kb_search_depth"])
+                    else:
+                        results = human_play(lvl_str,
+                                         agent_save_path=agent_save_path)
                     # write the results
                     if lvl_config["lvl_type"] != "trial":
                         write_to_human_exp_log(human_log_csv, results,

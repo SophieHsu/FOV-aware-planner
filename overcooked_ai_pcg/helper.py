@@ -14,8 +14,12 @@ from overcooked_ai_py import LAYOUTS_DIR, read_layout_dict
 from overcooked_ai_py.agents.agent import *
 from overcooked_ai_py.mdp.graphics import render_from_grid
 from overcooked_ai_py.mdp.overcooked_env import OvercookedEnv
-from overcooked_ai_py.mdp.overcooked_mdp import OvercookedGridworld
+from overcooked_ai_py.mdp.overcooked_mdp import OvercookedGridworld, SteakHouseGridworld
 from overcooked_ai_py.planning.planners import (Heuristic,
+                                                Steak_Heuristic,
+                                                SteakKnowledgeBasePlanner,
+                                                SteakHumanSubtaskQMDPPlanner,
+                                                SteakMediumLevelMDPPlanner,
                                                 HumanAwareMediumMDPPlanner,
                                                 HumanMediumLevelPlanner,
                                                 HumanSubtaskQMDPPlanner,
@@ -37,6 +41,18 @@ CONFIG = {
     "delivery_reward": 20,
     "rew_shaping_params": None
 }
+
+
+STEAK_CONFIG = {
+    "start_order_list": ['steak', 'steak'],
+    "cook_time": 10,
+    "delivery_reward": 20,
+    'num_items_for_steak': 1,
+    'chop_time': 2,
+    'wash_time': 2,
+    "rew_shaping_params": None
+}
+
 
 BASE_PARAMS = {
     'start_orientations': False,
@@ -663,6 +679,12 @@ def init_env(lvl_str, horizon=120):
     env = OvercookedEnv.from_mdp(mdp, info_level=0, horizon=horizon)
     return env
 
+def init_steak_env(lvl_str, horizon=200):
+    grid = lvl_str2grid(lvl_str)
+    mdp = SteakHouseGridworld.from_grid(grid, STEAK_CONFIG)
+    env = OvercookedEnv.from_mdp(mdp, info_level=0, horizon=horizon)
+    return env
+
 
 def init_qmdp_agent(mdp):
     qmdp_planner = HumanSubtaskQMDPPlanner.from_pickle_or_compute(
@@ -672,6 +694,20 @@ def init_qmdp_agent(mdp):
                                     greedy=False,
                                     auto_unstuck=True)
 
+    return agent
+
+def init_steak_qmdp_agent(env, search_depth=5, kb_search_depth=3):
+    mlp = MediumLevelPlanner.from_pickle_or_compute(env.mdp, BASE_PARAMS, force_compute=True)
+
+    human_agent = SteakLimitVisionHumanModel(mlp, env.state, auto_unstuck=True, explore=False, vision_limit=True, vision_bound=120, debug=False)
+    human_agent.set_agent_index(1)
+
+    qmdp_planner = SteakKnowledgeBasePlanner.from_pickle_or_compute(
+        env.mdp, BASE_PARAMS, force_compute_all=True, jmp = mlp.ml_action_manager.joint_motion_planner, vision_limited_human=human_agent, debug=False, search_depth=search_depth, kb_search_depth=kb_search_depth)
+
+    agent = MediumQMdpPlanningAgent(qmdp_planner,
+                                    greedy=False,
+                                    auto_unstuck=True)
     return agent
 
 

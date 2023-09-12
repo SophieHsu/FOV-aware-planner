@@ -839,7 +839,7 @@ class limitVisionHumanModel(GreedyHumanModel):
         
     #     return (left_in_bound and right_in_bound)
 
-    def in_bound(self, state, loc, vision_bound=120/2):
+    def in_bound(self, state, loc, vision_bound=120/2, move_back=False):
         if vision_bound == 0:
             return True
         
@@ -848,16 +848,16 @@ class limitVisionHumanModel(GreedyHumanModel):
 
         ori = Direction.DIRECTION_TO_INDEX[player.orientation]
         if ori == 0: # north
-            center_pt[1] += 1
+            if move_back: center_pt[1] += 1
             rot_angel = np.radians(180)
         elif ori == 2: # east
-            center_pt[0] -= 1
+            if move_back: center_pt[0] -= 1
             rot_angel = np.radians(270)
         elif ori == 1: # south
-            center_pt[1] -= 1
+            if move_back: center_pt[1] -= 1
             rot_angel = np.radians(0)
         elif ori == 3: # west
-            center_pt[0] += 1
+            if move_back: center_pt[0] += 1
             rot_angel = np.radians(90)
 
         c, s = np.cos(rot_angel), np.sin(rot_angel)
@@ -1993,17 +1993,18 @@ class MediumQMdpPlanningAgent(Agent):
         action, action_object_pair = prev_action, prev_action_object_pair
 
         # reset belief once there is a subtask completed (aka, change in the robot's holding or human holding or observed world)
+        prev_max_belief = list(self.mdp_planner.subtask_dict.keys())[np.argmax(self.belief)]
         if curr_state_str != prev_state_str:
             self.belief = np.full((len(self.mdp_planner.subtask_dict)), 1.0/len(self.mdp_planner.subtask_dict), dtype=float)
 
-        tmp_belief, self.prev_dist_to_feature = self.mdp_planner.belief_update(state, state.players[0], observed_info, state.players[1], self.belief, self.prev_dist_to_feature, greedy=self.greedy_known, vision_limit=self.vision_limit, prev_max_belief=list(self.mdp_planner.subtask_dict.keys())[np.argmax(self.belief)])
+        tmp_belief, self.prev_dist_to_feature = self.mdp_planner.belief_update(state, state.players[0], observed_info, state.players[1], self.belief, self.prev_dist_to_feature, greedy=self.greedy_known, vision_limit=self.vision_limit, prev_max_belief=prev_max_belief)
 
         # do not update belief based on actions trying to resolve stuck
         if not self.prev_stuck:
             self.belief = tmp_belief
             
         # do not recompute next subtask if the belief change and observed_info is the same
-        print('belief delta =', np.sum(np.abs(self.belief-prev_belief)))
+        if debug: print('belief delta =', np.sum(np.abs(self.belief-prev_belief)))
         belief_delta = np.sum(np.abs(self.belief-prev_belief))
         
         # map abstract to low-level state
@@ -2019,7 +2020,7 @@ class MediumQMdpPlanningAgent(Agent):
         if not LOW_LEVEL_ACTION:
             action = self.mdp_action_to_low_level_action(state, mdp_state_keys, action_object_pair)
 
-        print('action =', action, '; action_object_pair =', action_object_pair)
+        if debug: print('action =', action, '; action_object_pair =', action_object_pair)
         action_probs = self.a_probs_from_action(action)
         if self.auto_unstuck:
             action, action_probs, self.prev_stuck = self.resolve_stuck(state, action, action_probs)
@@ -2030,12 +2031,14 @@ class MediumQMdpPlanningAgent(Agent):
             state.players[self.agent_index].active_log += [0]
         else:
             state.players[self.agent_index].active_log += [1]
-        print('\nState =', state)
-        print('Subtasks:', self.mdp_planner.subtask_dict.keys())
-        print('Belief =', self.belief)
-        print('Max belief =', list(self.mdp_planner.subtask_dict.keys())[np.argmax(self.belief)])
-        print('Action =', action, '\n')
         
+        if debug: 
+            print('\nState =', state)
+            print('Subtasks:', self.mdp_planner.subtask_dict.keys())
+            print('Belief =', self.belief)
+            print('Max belief =', list(self.mdp_planner.subtask_dict.keys())[np.argmax(self.belief)])
+            print('Action =', action, '\n')
+            
         if track_belief:
             self.track_belief.append(self.belief)
         self.prev_action_info = [self.belief.copy(), curr_state_str, action, action_object_pair]

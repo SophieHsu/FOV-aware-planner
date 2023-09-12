@@ -1,5 +1,5 @@
 lvl_type,ID,agent_unstuck,human_unstuck,vision_limit,vision_bound,vision_limit_aware,search_depth,kb_search_depth,explore,lvl_str
-steak_island,0,TRUE,TRUE,TRUE,120,TRUE,5,3,FALSE,"XXXXXXXXXXXXXXX                 
+steak_island,0,TRUE,TRUE,TRUE,120,TRUE,5,10,FALSE,"XXXXXXXXXXXXXXX                 
 XXXPXXXXDXMOXXX                 
 XX           XX
 XX       1   XX
@@ -9,7 +9,7 @@ XX        2  XX
 XS           XX                 
 XXXXXXXXXXXXXXX                 
 XXXXXXXXXXXXXXX"
-steak_island2,1,TRUE,TRUE,TRUE,120,TRUE,5,3,FALSE,"XXXXXXXXXXXXXXX 
+steak_island2,1,TRUE,TRUE,TRUE,120,TRUE,5,10,FALSE,"XXXXXXXXXXXXXXX 
 XXXPXXXXXXXXXXX 
 XX           OX 
 XX       1   MX 
@@ -19,7 +19,7 @@ XX        2  XX
 XS           XX 
 XXXXXXXXXXXXXXX 
 XXXXXXXXXXXXXXX"
-steak_parrallel,2,TRUE,TRUE,TRUE,120,TRUE,5,3,FALSE,"XXXXXXXXXXXXXXX 
+steak_parrallel,2,TRUE,TRUE,TRUE,120,TRUE,5,10,FALSE,"XXXXXXXXXXXXXXX 
 XXXPXMOXXDXXXXX 
 XX           XX 
 XX           XX 
@@ -29,7 +29,7 @@ XX        2  XX
 XS    1      XX 
 XXXXXXXXXXXXXXX 
 XXXXXXXXXXXXXXX"
-steak_test,3,TRUE,TRUE,TRUE,120,TRUE,5,3,FALSE,"XXXXXXXXXXXXXXX 
+steak_test,3,TRUE,TRUE,TRUE,120,TRUE,5,10,FALSE,"XXXXXXXXXXXXXXX 
 XXXXXXXXXXPXXXX 
 XO        2 XXX 
 XM          XXX 
@@ -39,7 +39,7 @@ XX   1      BXX
 XS          XXX 
 XXXXXXXXXWXXXXX 
 XXXXXXXXXXXXXXX"
-steak_tshape,4,TRUE,TRUE,TRUE,120,TRUE,5,3,FALSE,"XXXXXXXXXXXXXXX                 
+steak_tshape,4,TRUE,TRUE,TRUE,120,TRUE,5,10,FALSE,"XXXXXXXXXXXXXXX                 
 XXXPXMOXXDXBXXX                 
 XX           XX                 
 XX    XXX    XX                 
@@ -49,7 +49,7 @@ XX        2  XX
 XS           XX                 
 XXXXXXXXXXXXXXX                 
 XXXXXXXXXXXXXXX"
-steak_island_no_limit,5,TRUE,TRUE,FALSE,0,TRUE,5,3,FALSE,"XXXXXXXXXXXXXXX                 
+steak_island_no_limit,5,TRUE,TRUE,FALSE,0,TRUE,5,10,FALSE,"XXXXXXXXXXXXXXX                 
 XXXPXXXXDXMOXXX                 
 XX           XX
 XX       1   XX 
@@ -59,7 +59,7 @@ XX        2  XX
 XS           XX                 
 XXXXXXXXXXXXXXX                 
 XXXXXXXXXXXXXXX"
-steak_island2_no_limit,6,TRUE,TRUE,FALSE,0,TRUE,5,3,FALSE,"XXXXXXXXXXXXXXX 
+steak_island2_no_limit,6,TRUE,TRUE,FALSE,0,TRUE,5,10,FALSE,"XXXXXXXXXXXXXXX 
 XXXPXXXXXXXXXXX 
 XX           OX 
 XX       1   MX 
@@ -69,7 +69,7 @@ XX        2  XX
 XS           XX 
 XXXXXXXXXXXXXXX 
 XXXXXXXXXXXXXXX"
-steak_parrallel_no_limit,7,TRUE,TRUE,FALSE,0,TRUE,5,3,FALSE,"XXXXXXXXXXXXXXX 
+steak_parrallel_no_limit,7,TRUE,TRUE,FALSE,0,TRUE,5,10,FALSE,"XXXXXXXXXXXXXXX 
 XXXPXMOXXDXXXXX 
 XX           XX 
 XX           XX 
@@ -79,7 +79,7 @@ XX        2  XX
 XS    1      XX 
 XXXXXXXXXXXXXXX 
 XXXXXXXXXXXXXXX"
-steak_test_no_limit,8,TRUE,TRUE,FALSE,0,TRUE,5,3,FALSE,"XXXXXXXXXXXXXXX 
+steak_test_no_limit,8,TRUE,TRUE,FALSE,0,TRUE,5,10,FALSE,"XXXXXXXXXXXXXXX 
 XXXXXXXXXXPXXXX 
 XO        2 XXX 
 XM          XXX 
@@ -89,7 +89,7 @@ XX   1      BXX
 XS          XXX 
 XXXXXXXXXWXXXXX 
 XXXXXXXXXXXXXXX"
-steak_tshape_no_limit,9,TRUE,TRUE,FALSE,0,TRUE,5,3,FALSE,"XXXXXXXXXXXXXXX                 
+steak_tshape_no_limit,9,TRUE,TRUE,FALSE,0,TRUE,5,10,FALSE,"XXXXXXXXXXXXXXX                 
 XXXPXMOXXDXBXXX                 
 XX           XX                 
 XX    XXX    XX                 
@@ -99,7 +99,7 @@ XX        2  XX
 XS           XX                 
 XXXXXXXXXXXXXXX                 
 XXXXXXXXXXXXXXX"
-steak_island_60,10,TRUE,TRUE,TRUE,60,TRUE,5,3,FALSE,"XXXXXXXXXXXXXXX                 
+steak_island_60,10,TRUE,TRUE,TRUE,60,TRUE,5,10,FALSE,"XXXXXXXXXXXXXXX                 
 XXXPXXXXDXMOXXX                 
 XX           XX
 XX       1   XX
@@ -109,7 +109,7 @@ XX        2  XX
 XS           XX                 
 XXXXXXXXXXXXXXX                 
 XXXXXXXXXXXXXXX"
-steak_island2_60,11,TRUE,TRUE,TRUE,60,TRUE,5,3,FALSE,"XXXXXXXXXXXXXXX 
+steak_island2_60,11,TRUE,TRUE,TRUE,60,TRUE,5,10,FALSE,"XXXXXXXXXXXXXXX 
 XXXPXXXXXXXXXXX 
 XX           OX 
 XX       1   MX 
@@ -119,7 +119,7 @@ XX        2  XX
 XS           XX 
 XXXXXXXXXXXXXXX 
 XXXXXXXXXXXXXXX"
-steak_parrallel_60,12,TRUE,TRUE,TRUE,60,TRUE,5,3,FALSE,"XXXXXXXXXXXXXXX 
+steak_parrallel_60,12,TRUE,TRUE,TRUE,60,TRUE,5,10,FALSE,"XXXXXXXXXXXXXXX 
 XXXPXMOXXDXXXXX 
 XX           XX 
 XX           XX 
@@ -129,7 +129,7 @@ XX        2  XX
 XS    1      XX 
 XXXXXXXXXXXXXXX 
 XXXXXXXXXXXXXXX"
-steak_test_60,13,TRUE,TRUE,TRUE,60,TRUE,5,3,FALSE,"XXXXXXXXXXXXXXX 
+steak_test_60,13,TRUE,TRUE,TRUE,60,TRUE,5,10,FALSE,"XXXXXXXXXXXXXXX 
 XXXXXXXXXXPXXXX 
 XO        2 XXX 
 XM          XXX 
@@ -139,7 +139,7 @@ XX   1      BXX
 XS          XXX 
 XXXXXXXXXWXXXXX 
 XXXXXXXXXXXXXXX"
-steak_tshape_60,14,TRUE,TRUE,TRUE,60,TRUE,5,3,FALSE,"XXXXXXXXXXXXXXX                 
+steak_tshape_60,14,TRUE,TRUE,TRUE,60,TRUE,5,10,FALSE,"XXXXXXXXXXXXXXX                 
 XXXPXMOXXDXBXXX                 
 XX           XX                 
 XX    XXX    XX                 
@@ -149,7 +149,7 @@ XX        2  XX
 XS           XX                 
 XXXXXXXXXXXXXXX                 
 XXXXXXXXXXXXXXX"
-steak_island_not_aware,15,TRUE,TRUE,TRUE,120,FALSE,5,3,FALSE,"XXXXXXXXXXXXXXX                 
+steak_island_not_aware,15,TRUE,TRUE,TRUE,120,FALSE,5,10,FALSE,"XXXXXXXXXXXXXXX                 
 XXXPXXXXDXMOXXX                 
 XX           XX
 XX       1   XX
@@ -159,7 +159,7 @@ XX        2  XX
 XS           XX                 
 XXXXXXXXXXXXXXX                 
 XXXXXXXXXXXXXXX"
-steak_island2_not_aware,16,TRUE,TRUE,TRUE,120,FALSE,5,3,FALSE,"XXXXXXXXXXXXXXX 
+steak_island2_not_aware,16,TRUE,TRUE,TRUE,120,FALSE,5,10,FALSE,"XXXXXXXXXXXXXXX 
 XXXPXXXXXXXXXXX 
 XX           OX 
 XX       1   MX 
@@ -169,7 +169,7 @@ XX        2  XX
 XS           XX 
 XXXXXXXXXXXXXXX 
 XXXXXXXXXXXXXXX"
-steak_parrallel_not_aware,17,TRUE,TRUE,TRUE,120,FALSE,5,3,FALSE,"XXXXXXXXXXXXXXX 
+steak_parrallel_not_aware,17,TRUE,TRUE,TRUE,120,FALSE,5,10,FALSE,"XXXXXXXXXXXXXXX 
 XXXPXMOXXDXXXXX 
 XX           XX 
 XX           XX 
@@ -179,7 +179,7 @@ XX        2  XX
 XS    1      XX 
 XXXXXXXXXXXXXXX 
 XXXXXXXXXXXXXXX"
-steak_test_not_aware,18,TRUE,TRUE,TRUE,120,FALSE,5,3,FALSE,"XXXXXXXXXXXXXXX 
+steak_test_not_aware,18,TRUE,TRUE,TRUE,120,FALSE,5,10,FALSE,"XXXXXXXXXXXXXXX 
 XXXXXXXXXXPXXXX 
 XO        2 XXX 
 XM          XXX 
@@ -189,7 +189,7 @@ XX   1      BXX
 XS          XXX 
 XXXXXXXXXWXXXXX 
 XXXXXXXXXXXXXXX"
-steak_tshape_not_aware,19,TRUE,TRUE,TRUE,120,FALSE,5,3,FALSE,"XXXXXXXXXXXXXXX                 
+steak_tshape_not_aware,19,TRUE,TRUE,TRUE,120,FALSE,5,10,FALSE,"XXXXXXXXXXXXXXX                 
 XXXPXMOXXDXBXXX                 
 XX           XX                 
 XX    XXX    XX                 
@@ -199,7 +199,7 @@ XX        2  XX
 XS           XX                 
 XXXXXXXXXXXXXXX                 
 XXXXXXXXXXXXXXX"
-steak_island_60_not_aware,20,TRUE,TRUE,TRUE,60,FALSE,5,3,FALSE,"XXXXXXXXXXXXXXX                 
+steak_island_60_not_aware,20,TRUE,TRUE,TRUE,60,FALSE,5,10,FALSE,"XXXXXXXXXXXXXXX                 
 XXXPXXXXDXMOXXX                 
 XX           XX
 XX       1   XX
@@ -209,7 +209,7 @@ XX        2  XX
 XS           XX                 
 XXXXXXXXXXXXXXX                 
 XXXXXXXXXXXXXXX"
-steak_island2_60_not_aware,21,TRUE,TRUE,TRUE,60,FALSE,5,3,FALSE,"XXXXXXXXXXXXXXX 
+steak_island2_60_not_aware,21,TRUE,TRUE,TRUE,60,FALSE,5,10,FALSE,"XXXXXXXXXXXXXXX 
 XXXPXXXXXXXXXXX 
 XX           OX 
 XX       1   MX 
@@ -219,7 +219,7 @@ XX        2  XX
 XS           XX 
 XXXXXXXXXXXXXXX 
 XXXXXXXXXXXXXXX"
-steak_parrallel_60_not_aware,22,TRUE,TRUE,TRUE,60,FALSE,5,3,FALSE,"XXXXXXXXXXXXXXX 
+steak_parrallel_60_not_aware,22,TRUE,TRUE,TRUE,60,FALSE,5,10,FALSE,"XXXXXXXXXXXXXXX 
 XXXPXMOXXDXXXXX 
 XX           XX 
 XX           XX 
@@ -229,7 +229,7 @@ XX        2  XX
 XS    1      XX 
 XXXXXXXXXXXXXXX 
 XXXXXXXXXXXXXXX"
-steak_test_60_not_aware,23,TRUE,TRUE,TRUE,60,FALSE,5,3,FALSE,"XXXXXXXXXXXXXXX 
+steak_test_60_not_aware,23,TRUE,TRUE,TRUE,60,FALSE,5,10,FALSE,"XXXXXXXXXXXXXXX 
 XXXXXXXXXXPXXXX 
 XO        2 XXX 
 XM          XXX 
@@ -239,7 +239,7 @@ XX   1      BXX
 XS          XXX 
 XXXXXXXXXWXXXXX 
 XXXXXXXXXXXXXXX"
-steak_tshape_60_not_aware,24,TRUE,TRUE,TRUE,60,FALSE,5,3,FALSE,"XXXXXXXXXXXXXXX                 
+steak_tshape_60_not_aware,24,TRUE,TRUE,TRUE,60,FALSE,5,10,FALSE,"XXXXXXXXXXXXXXX                 
 XXXPXMOXXDXBXXX                 
 XX           XX                 
 XX    XXX    XX                 
