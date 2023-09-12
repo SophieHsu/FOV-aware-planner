@@ -4806,13 +4806,13 @@ class HumanSubtaskQMDPPlanner(MediumLevelMdpPlanner):
 class  SteakHumanSubtaskQMDPPlanner(SteakMediumLevelMDPPlanner):
     def __init__(self, mdp, mlp_params, \
         state_dict = {}, state_idx_dict = {}, action_dict = {}, action_idx_dict = {}, transition_matrix = None, reward_matrix = None, policy_matrix = None, value_matrix = None, \
-        num_states = 0, num_rounds = 0, epsilon = 0.01, discount = 0.8, jmp = None, vision_limited_human = None):
+        num_states = 0, num_rounds = 0, epsilon = 0.01, discount = 0.8, jmp = None, vision_limited_human = None, world_state_cost_dict={}):
 
         super().__init__(mdp, mlp_params, \
         state_dict = {}, state_idx_dict = {}, action_dict = {}, action_idx_dict = {}, transition_matrix = None, reward_matrix = None, policy_matrix = None, value_matrix = None, \
         num_states = 0, num_rounds = 0, epsilon = 0.01, discount = 0.8, jmp=jmp)
 
-        self.world_state_cost_dict = {}
+        self.world_state_cost_dict = world_state_cost_dict
         self.jmp = JointMotionPlanner(mdp, mlp_params) if jmp is None else jmp
         self.mp = self.jmp.motion_planner
         self.subtask_dict = {}
@@ -6797,8 +6797,8 @@ class  SteakHumanSubtaskQMDPPlanner(SteakMediumLevelMDPPlanner):
 
 
 class SteakKnowledgeBasePlanner(SteakHumanSubtaskQMDPPlanner):
-    def __init__(self, mdp, mlp_params, state_dict={}, state_idx_dict={}, action_dict={}, action_idx_dict={}, transition_matrix=None, reward_matrix=None, policy_matrix=None, value_matrix=None, num_states=0, num_rounds=0, epsilon=0.01, discount=0.8, jmp=None, vision_limited_human=None, debug=False, search_depth=5, kb_search_depth=3):
-        super().__init__(mdp, mlp_params, state_dict, state_idx_dict, action_dict, action_idx_dict, transition_matrix, reward_matrix, policy_matrix, value_matrix, num_states, num_rounds, epsilon, discount, jmp, vision_limited_human)
+    def __init__(self, mdp, mlp_params, state_dict={}, state_idx_dict={}, action_dict={}, action_idx_dict={}, transition_matrix=None, reward_matrix=None, policy_matrix=None, value_matrix=None, num_states=0, num_rounds=0, epsilon=0.01, discount=0.8, jmp=None, vision_limited_human=None, debug=False, search_depth=5, kb_search_depth=3, world_state_cost_dict={}, track_state_kb_map={}):
+        super().__init__(mdp, mlp_params, state_dict, state_idx_dict, action_dict, action_idx_dict, transition_matrix, reward_matrix, policy_matrix, value_matrix, num_states, num_rounds, epsilon, discount, jmp, vision_limited_human, world_state_cost_dict)
 
         self.list_objs = ['None', 'meat', 'onion', 'plate', 'hot_plate', 'steak', 'dish']
         self.kb_space = (self.mdp.num_items_for_steak+1) * (self.mdp.chopping_time+1) * (self.mdp.wash_time+1) * len(self.list_objs) # num_in_pot_item * chop_time * wash_time * holding
@@ -6806,6 +6806,7 @@ class SteakKnowledgeBasePlanner(SteakHumanSubtaskQMDPPlanner):
         self.debug = debug
         self.search_depth = search_depth
         self.kb_search_depth = kb_search_depth
+        self.track_state_kb_map = track_state_kb_map
     
     @staticmethod
     def from_pickle_or_compute(mdp, mlp_params, custom_filename=None, force_compute_all=False, info=True, force_compute_more=False, jmp=None, vision_limited_human=None, debug=False, search_depth=5, kb_search_depth=3):
@@ -7629,7 +7630,7 @@ class SteakKnowledgeBasePlanner(SteakHumanSubtaskQMDPPlanner):
 
         return kb_keys
 
-    def get_kb_successor_states(self, start_state, kb, other_agent_action=None, explore_interact=False, track_state_kb_map=None):
+    def get_kb_successor_states(self, start_state, kb, other_agent_action=None, explore_interact=False):
         successor_kb = []
         joint_motion_actions = []
         if explore_interact: 
@@ -7652,11 +7653,11 @@ class SteakKnowledgeBasePlanner(SteakHumanSubtaskQMDPPlanner):
             new_positions, new_orientations = self.mdp.compute_new_positions_and_orientations(start_state.players, joint_action)
             successor_state = self.jmp.derive_state(start_state, tuple(zip(*[new_positions, new_orientations])), [joint_action])
             
-            if (str(successor_state), str(kb)) in track_state_kb_map.keys():
-                successor_kb.append((track_state_kb_map[(str(successor_state), str(kb))], successor_state, 1))
+            if (str(successor_state), str(kb)) in self.track_state_kb_map.keys():
+                successor_kb.append((self.track_state_kb_map[(str(successor_state), str(kb))], successor_state, 1))
             else:
                 tmp_kb = self.sim_human_model.get_knowledge_base(successor_state, rollout_kb=kb)
-                track_state_kb_map[(str(successor_state), str(kb))] = tmp_kb
+                self.track_state_kb_map[(str(successor_state), str(kb))] = tmp_kb
 
                 successor_kb.append((tmp_kb, successor_state, 1))
             
@@ -7674,7 +7675,7 @@ class SteakKnowledgeBasePlanner(SteakHumanSubtaskQMDPPlanner):
         else:
             start_state.order_list = start_state.order_list[:delivery_horizon]
 
-        expand_fn = lambda state, kb, depth: self.get_kb_successor_states(state, kb, None if depth > (len(other_agent_plan)-1) else other_agent_plan[depth], explore_interact=explore_interact, track_state_kb_map={})
+        expand_fn = lambda state, kb, depth: self.get_kb_successor_states(state, kb, None if depth > (len(other_agent_plan)-1) else other_agent_plan[depth], explore_interact=explore_interact)
         heuristic_fn = Steak_Heuristic(self.mp).simple_heuristic
 
         search_problem = SearchTree(start_state, None, expand_fn, heuristic_fn, debug=debug)
