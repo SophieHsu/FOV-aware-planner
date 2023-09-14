@@ -129,7 +129,7 @@ if __name__ == "__main__" :
 
     # np.random.seed(0)
     start_time = time.time()
-    layout_name = 'steak_island2' #'steak_island2' #'steak_parrallel'  'steak_tshape'
+    layout_name = 'steak_tshape' #'steak_island2' #'steak_parrallel'  'steak_tshape'
     scenario_1_mdp = SteakHouseGridworld.from_layout_name(layout_name,  num_items_for_steak=1, chop_time=2, wash_time=2, start_order_list=['steak', 'steak'], cook_time=10)
     # start_state = OvercookedState(
     #     [P((2, 1), s, Obj('onion', (2, 1))),
@@ -151,12 +151,13 @@ if __name__ == "__main__" :
     # human_agent = agent.biasHumanModel(ml_action_manager, [0.5, (1.0-0.5)], 0.5, auto_unstuck=True)
     VISION_LIMIT = True
     VISION_BOUND = 60
-    VISION_LIMIT_AWARE = False
+    VISION_LIMIT_AWARE = True
     EXPLORE = False
     SEARCH_DEPTH = 5
-    KB_SEARCH_DEPTH = 3
-    mlp = planners.MediumLevelPlanner.from_pickle_or_compute(scenario_1_mdp, COUNTERS_PARAMS, force_compute=True)  
-    human_agent = agent.SteakLimitVisionHumanModel(mlp, env.state, auto_unstuck=True, explore=EXPLORE, vision_limit=VISION_LIMIT, vision_bound=VISION_BOUND, debug=True)
+    KB_SEARCH_DEPTH = 6
+    KB_UPDATE_DELAY = 3
+    mlp = planners.MediumLevelPlanner.from_pickle_or_compute(scenario_1_mdp, COUNTERS_PARAMS, force_compute=False)  
+    human_agent = agent.SteakLimitVisionHumanModel(mlp, env.state, auto_unstuck=True, explore=EXPLORE, vision_limit=VISION_LIMIT, vision_bound=VISION_BOUND, kb_update_delay=KB_UPDATE_DELAY, debug=True)
     human_agent.set_agent_index(1)
 
     # human_agent = agent.GreedySteakHumanModel(mlp)
@@ -167,11 +168,11 @@ if __name__ == "__main__" :
     mdp_planner = None
     
     if not VISION_LIMIT_AWARE and VISION_LIMIT:
-        non_limited_human = agent.SteakLimitVisionHumanModel(mlp, env.state, auto_unstuck=True, explore=EXPLORE, vision_limit=False, vision_bound=0, debug=True)
+        non_limited_human = agent.SteakLimitVisionHumanModel(mlp, env.state, auto_unstuck=True, explore=EXPLORE, vision_limit=False, vision_bound=0, kb_update_delay=KB_UPDATE_DELAY, debug=True)
         non_limited_human.set_agent_index(1)
         mdp_planner = planners.SteakKnowledgeBasePlanner.from_pickle_or_compute(scenario_1_mdp, COUNTERS_PARAMS, force_compute_all=True, jmp = mlp.ml_action_manager.joint_motion_planner, vision_limited_human=non_limited_human, debug=True, search_depth=SEARCH_DEPTH, kb_search_depth=KB_SEARCH_DEPTH)
     else:
-        limited_human = agent.SteakLimitVisionHumanModel(mlp, env.state, auto_unstuck=True, explore=EXPLORE, vision_limit=VISION_LIMIT, vision_bound=VISION_BOUND, debug=True)
+        limited_human = agent.SteakLimitVisionHumanModel(mlp, env.state, auto_unstuck=True, explore=EXPLORE, vision_limit=VISION_LIMIT, vision_bound=VISION_BOUND, kb_update_delay=KB_UPDATE_DELAY, debug=True)
         limited_human.set_agent_index(1)
         mdp_planner = planners.SteakKnowledgeBasePlanner.from_pickle_or_compute(scenario_1_mdp, COUNTERS_PARAMS, force_compute_all=True, jmp = mlp.ml_action_manager.joint_motion_planner, vision_limited_human=limited_human, debug=True, search_depth=SEARCH_DEPTH, kb_search_depth=KB_SEARCH_DEPTH)
 

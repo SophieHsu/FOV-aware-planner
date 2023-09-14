@@ -304,7 +304,7 @@ class SearchTree(object):
                 print(iter_count)
 
             curr_state = curr_node.state
-            curr_kb_key = get_kb_key(curr_node.action)
+            curr_kb_key = get_kb_key(curr_node.action[0])
             # print(iter_count, curr_state, curr_node.backwards_cost)
             # print(iter_count, curr_state.num_orders_remaining)
             
@@ -315,10 +315,10 @@ class SearchTree(object):
                 # else:
                 #     kb_prob_track[curr_kb_key] += 1
 
-            if (str(curr_state), str(curr_node.action)) in seen:
+            if (str(curr_state), str(curr_node.action[0]), str(curr_node.action[1])) in seen:
                 continue
             
-            seen.add((str(curr_state), str(curr_node.action)))
+            seen.add((str(curr_state), str(curr_node.action[0]), str(curr_node.action[1])))
 
             if iter_count > self.max_iter_count:
                 print("Expanded more than the maximum number of allowed states")

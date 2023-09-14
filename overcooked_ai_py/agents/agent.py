@@ -718,12 +718,14 @@ class GreedySteakHumanModel(GreedyHumanModel):
 
 class limitVisionHumanModel(GreedyHumanModel):
     def __init__(self, mlp, start_state, hl_boltzmann_rational=False, ll_boltzmann_rational=False, hl_temp=1, ll_temp=1,
-                 auto_unstuck=True, explore=False, vision_limit=True, vision_bound=120, debug=False):
+                 auto_unstuck=True, explore=False, vision_limit=True, vision_bound=120, kb_update_delay=0, debug=False):
         super().__init__(mlp, hl_boltzmann_rational, ll_boltzmann_rational, hl_temp, ll_temp,
                  auto_unstuck)
         self.explore = explore
         self.vision_limit = vision_limit
         self.vision_bound = vision_bound
+        self.kb_update_delay_track = [{}, {}, {}]
+        self.kb_update_delay = kb_update_delay
         self.init_knowledge_base(start_state)
         self.debug = debug
 
@@ -734,7 +736,11 @@ class limitVisionHumanModel(GreedyHumanModel):
             self.knowledge_base[key] = obj
         self.knowledge_base['pot_states'] = self.mlp.mdp.get_pot_states(start_state)
         self.knowledge_base['other_player'] = start_state.players[1]
-    
+        
+        self.kb_update_delay_track[0]['human_holding'] = [None, 0]
+        self.kb_update_delay_track[1]['other_player'] = start_state.players[1].deepcopy()
+        self.kb_update_delay_track[2] = {}
+
     def knowledge_base_key(self, object):
         key = '_'.join((str(object.position[0]), str(object.position[1]), str(object.name)))
         return key
@@ -839,7 +845,7 @@ class limitVisionHumanModel(GreedyHumanModel):
         
     #     return (left_in_bound and right_in_bound)
 
-    def in_bound(self, state, loc, vision_bound=120/2, move_back=False):
+    def in_bound(self, state, loc, vision_bound=120/2, move_back=True):
         if vision_bound == 0:
             return True
         
@@ -1011,8 +1017,8 @@ class limitVisionHumanModel(GreedyHumanModel):
 
 
 class SteakLimitVisionHumanModel(limitVisionHumanModel):
-    def __init__(self, mlp, start_state, hl_boltzmann_rational=False, ll_boltzmann_rational=False, hl_temp=1, ll_temp=1, auto_unstuck=True, explore=False, vision_limit=True, robot_aware=False, vision_bound=120, debug=False):
-        super().__init__(mlp, start_state, hl_boltzmann_rational, ll_boltzmann_rational, hl_temp, ll_temp, auto_unstuck, explore, vision_limit=vision_limit, vision_bound=vision_bound, debug=debug)
+    def __init__(self, mlp, start_state, hl_boltzmann_rational=False, ll_boltzmann_rational=False, hl_temp=1, ll_temp=1, auto_unstuck=True, explore=False, vision_limit=True, robot_aware=False, vision_bound=120, kb_update_delay=0, debug=False):
+        super().__init__(mlp, start_state, hl_boltzmann_rational, ll_boltzmann_rational, hl_temp, ll_temp, auto_unstuck, explore, vision_limit=vision_limit, vision_bound=vision_bound, kb_update_delay=kb_update_delay, debug=debug)
         self.robot_aware = robot_aware
         self.prev_chosen_subtask = None
 
@@ -1023,6 +1029,18 @@ class SteakLimitVisionHumanModel(limitVisionHumanModel):
             new_human_model.knowledge_base[k] = v.deepcopy()
 
         return new_human_model
+    
+    def kb_track_deepcopy(self, kb_track):
+        new_kb_track = {}
+        for k, v in kb_track.items():
+            if type(v) == list:
+                if v[0] is not None and v[0].position is not None:
+                    new_kb_track[k] = [v[0].deepcopy(), v[1]]
+                else:
+                    new_kb_track[k] = [None, v[1]]
+            else:
+                new_kb_track[k] = v.deepcopy()
+        return new_kb_track
 
     def init_knowledge_base(self, start_state):
         self.knowledge_base = {}
@@ -1032,147 +1050,279 @@ class SteakLimitVisionHumanModel(limitVisionHumanModel):
         self.knowledge_base['pot_states'] = self.mlp.mdp.get_pot_states(start_state)
         self.knowledge_base['sink_states'] = self.mlp.mdp.get_sink_status(start_state)
         self.knowledge_base['chop_states'] = self.mlp.mdp.get_chopping_board_status(start_state)
-        self.knowledge_base['other_player'] = start_state.players[1]
+        self.knowledge_base['other_player'] = start_state.players[0]
 
-    def get_knowledge_base(self, state, rollout_kb=None):
-        return self.update(state, rollout_kb=rollout_kb)
+        self.kb_update_delay_track[0]['human_holding'] = [None, self.kb_update_delay]
+        self.kb_update_delay_track[1]['other_player'] = start_state.players[0].deepcopy()
+        self.kb_update_delay_track[2] = {}
 
-    def update(self, state, rollout_kb=None):
+    def get_knowledge_base(self, state, rollout_kb=None, rollout_info=[]):
+        return self.update(state, rollout_kb=rollout_kb, rollout_info=rollout_info)
+
+    def update_kb_key_object(self, obj, tmp_kb, prev_kb):
+        if 'steak' in obj.name:
+            if obj.position in self.mlp.mdp.get_pot_locations():
+                _, _, cooking_time = obj.state
+                if cooking_time < self.mlp.mdp.steak_cooking_time:
+                    if obj.position in tmp_kb['pot_states']['empty']:
+                        tmp_kb['pot_states']['empty'].remove(obj.position)
+                    if obj.position in tmp_kb['pot_states'][obj.name]['empty']:
+                        tmp_kb['pot_states'][obj.name]['empty'].remove(obj.position)
+                    if obj.id not in tmp_kb['pot_states'][obj.name]['cooking']:
+                        tmp_kb['pot_states'][obj.name]['cooking'].append(obj.id)
+                    if obj.id in tmp_kb['pot_states'][obj.name]['ready']:
+                        tmp_kb['pot_states'][obj.name]['ready'].remove(obj.id)
+                else:
+                    if obj.position in tmp_kb['pot_states']['empty']:
+                        tmp_kb['pot_states']['empty'].remove(obj.position)
+                    if obj.position in tmp_kb['pot_states'][obj.name]['empty']:
+                        tmp_kb['pot_states'][obj.name]['empty'].remove(obj.position)
+                    if obj.id in tmp_kb['pot_states'][obj.name]['cooking']:
+                        tmp_kb['pot_states'][obj.name]['cooking'].remove(obj.id)
+                    if obj.id not in tmp_kb['pot_states'][obj.name]['ready']:
+                        tmp_kb['pot_states'][obj.name]['ready'].append(obj.id)
+            else:
+                if obj.id in prev_kb.keys():
+                    empty_pot_loc = prev_kb[obj.id].position
+                    if obj.id in tmp_kb['pot_states'][obj.name]['ready'] or obj.id in tmp_kb['pot_states'][obj.name]['cooking']:
+                        if empty_pot_loc not in tmp_kb['pot_states'][obj.name]['empty']:
+                            tmp_kb['pot_states'][obj.name]['empty'].append(empty_pot_loc)
+                        if empty_pot_loc not in tmp_kb['pot_states']['empty']:
+                            tmp_kb['pot_states']['empty'].append(empty_pot_loc)
+
+                    if obj.id in tmp_kb['pot_states'][obj.name]['ready']:
+                        tmp_kb['pot_states'][obj.name]['ready'].remove(obj.id)
+                    if obj.id in tmp_kb['pot_states'][obj.name]['cooking']:
+                        tmp_kb['pot_states'][obj.name]['cooking'].remove(obj.id)
+
+        elif 'garnish' in obj.name:
+            chop_time = obj.state
+            if obj.position in self.mlp.mdp.get_chopping_board_locations():
+                if chop_time >= 0 and chop_time < self.mlp.mdp.chopping_time:
+                    if obj.position in tmp_kb['chop_states']['empty']:
+                        tmp_kb['chop_states']['empty'].remove(obj.position)
+                    if obj.id not in tmp_kb['chop_states']['full']:
+                        tmp_kb['chop_states']['full'].append(obj.id)
+                    if obj.id in tmp_kb['chop_states']['ready']:
+                        tmp_kb['chop_states']['ready'].remove(obj.id)
+                elif chop_time >= self.mlp.mdp.chopping_time:
+                    if obj.position in tmp_kb['chop_states']['empty']:
+                        tmp_kb['chop_states']['empty'].remove(obj.position)
+                    if obj.id in tmp_kb['chop_states']['full']:
+                        tmp_kb['chop_states']['full'].remove(obj.id)
+                    if obj.id not in tmp_kb['chop_states']['ready']:
+                        tmp_kb['chop_states']['ready'].append(obj.id)
+                else:
+                    print(tmp_kb['chop_states'])
+                    print(obj)
+                    raise ValueError()
+            else:
+                if obj.id in prev_kb.keys():
+                    empty_board_loc = prev_kb[obj.id].position
+                    if obj.id in tmp_kb['chop_states']['ready'] or obj.id in tmp_kb['chop_states']['full']:
+                        if empty_board_loc not in tmp_kb['chop_states']['empty']:
+                            tmp_kb['chop_states']['empty'].append(empty_board_loc)
+                    if obj.id in tmp_kb['chop_states']['ready']:
+                        tmp_kb['chop_states']['ready'].remove(obj.id)
+                    if obj.id in tmp_kb['chop_states']['full']:
+                        tmp_kb['chop_states']['full'].remove(obj.id)
+
+        elif 'hot_plate' in obj.name:
+            wash_time = obj.state
+            if obj.position in self.mlp.mdp.get_sink_locations():
+                if wash_time >= 0 and wash_time < self.mlp.mdp.wash_time:
+                    if obj.position in tmp_kb['sink_states']['empty']:
+                        tmp_kb['sink_states']['empty'].remove(obj.position)
+                    if obj.id not in tmp_kb['sink_states']['full']:
+                        tmp_kb['sink_states']['full'].append(obj.id)
+                    if obj.id in tmp_kb['sink_states']['ready']:
+                        tmp_kb['sink_states']['ready'].remove(obj.id)
+                elif wash_time >= self.mlp.mdp.wash_time:
+                    if obj.position in tmp_kb['sink_states']['empty']:
+                        tmp_kb['sink_states']['empty'].remove(obj.position)
+                    if obj.id in tmp_kb['sink_states']['full']:
+                        tmp_kb['sink_states']['full'].remove(obj.id)
+                    if obj.id not in tmp_kb['sink_states']['ready']:
+                        tmp_kb['sink_states']['ready'].append(obj.id)
+                else:
+                    print(tmp_kb['sink_states'])
+                    print(obj)
+                    raise ValueError()
+            else:
+                if obj.id in prev_kb.keys():
+                    empty_sink_loc = prev_kb[obj.id].position
+                    if obj.id in tmp_kb['sink_states']['ready'] or obj.id in tmp_kb['sink_states']['full']:
+                        if empty_sink_loc not in tmp_kb['sink_states']['empty']:
+                            tmp_kb['sink_states']['empty'].append(empty_sink_loc)
+                    if obj.id in tmp_kb['sink_states']['ready']:
+                        tmp_kb['sink_states']['ready'].remove(obj.id)
+                    if obj.id in tmp_kb['sink_states']['full']:
+                        tmp_kb['sink_states']['full'].remove(obj.id)
+        return tmp_kb
+
+    def update(self, state, rollout_kb=None, rollout_info=None):
         # right_pt, left_pt = self.get_vision_bound(state, half_bound=self.vision_bound/2)
+        other_player = state.players[1 - self.agent_index]
 
         if rollout_kb is not None:
+            [rollout_track, rollout_untrack, rollout_remove] = rollout_info
+            prev_kb = copy.deepcopy(rollout_kb)
+            prev_track = self.kb_track_deepcopy(rollout_track)
+            prev_untrack = self.kb_track_deepcopy(rollout_untrack)
             tmp_kb = copy.deepcopy(rollout_kb)
-            prev_kb = rollout_kb
+            tmp_track = self.kb_track_deepcopy(rollout_track)
+            tmp_untrack = self.kb_track_deepcopy(rollout_untrack)
+            prev_remove_obj_id_list = self.kb_track_deepcopy(rollout_remove)
+            tmp_remove_obj_id_list = self.kb_track_deepcopy(rollout_remove)
         else:
-            prev_kb = copy.deepcopy(self.knowledge_base)
+            prev_kb = copy.deepcopy(self.knowledge_base) # copy.deepcopy(self.knowledge_base)
+            prev_track = self.kb_track_deepcopy(self.kb_update_delay_track[0])
+            prev_untrack = self.kb_track_deepcopy(self.kb_update_delay_track[1])
             tmp_kb = self.knowledge_base
+            tmp_track = self.kb_update_delay_track[0]
+            tmp_untrack = self.kb_update_delay_track[1]
+            prev_remove_obj_id_list = self.kb_track_deepcopy(self.kb_update_delay_track[2])
+            tmp_remove_obj_id_list = self.kb_update_delay_track[2]
 
-        for obj in state.all_objects_list:
-            if self.in_bound(state, obj.position, vision_bound=self.vision_bound/2):
-                tmp_kb[obj.id] = obj.deepcopy()
+        ### Update the tracking
+        new_track, new_untrack = {}, {}
+        all_object_lists_id = {o.id:o for o in state.all_objects_list}
+        # prev_track is a dictionary with object id as key and a list of [obj, consecutive seen count]
 
-        del_list = []
-        for obj_id, obj in tmp_kb.items():
-            if obj_id not in ['pot_states', 'chop_states', 'sink_states', 'other_player'] and self.in_bound(state, obj.position, vision_bound=self.vision_bound/2):
-                if obj.id not in [i.id for i in state.all_objects_list]:
-                    obj.position = None
-                    del_list.append(obj_id)
-                # else:
-                #     tmp_kb[obj.id] = obj
-                if 'steak' in obj.name:
-                    if obj.position in self.mlp.mdp.get_pot_locations():
-                        item_name, item_num, cooking_time = obj.state
-                        if cooking_time < self.mlp.mdp.steak_cooking_time:
-                            if obj.position in tmp_kb['pot_states']['empty']:
-                                tmp_kb['pot_states']['empty'].remove(obj.position)
-                            if obj.position in tmp_kb['pot_states'][obj.name]['empty']:
-                                tmp_kb['pot_states'][obj.name]['empty'].remove(obj.position)
-                            if obj.id not in tmp_kb['pot_states'][obj.name]['cooking']:
-                                tmp_kb['pot_states'][obj.name]['cooking'].append(obj.id)
-                            if obj.id in tmp_kb['pot_states'][obj.name]['ready']:
-                                tmp_kb['pot_states'][obj.name]['ready'].remove(obj.id)
+        for obj_key in set([o2 for o2 in all_object_lists_id] + [o1 for o1 in prev_track.keys()]):
+            if obj_key in all_object_lists_id: obj = all_object_lists_id[obj_key]
+            else: obj = prev_track[obj_key][0]
+
+            if obj_key == 'human_holding':
+                obj = state.players[self.agent_index].held_object
+
+            if obj is not None:
+                obj_in_bound = (self.in_bound(state, obj.position, vision_bound=self.vision_bound/2))
+                if obj_in_bound:
+                    if 'other_player' == obj_key: #in prev_track.keys() and obj == prev_track['other_player'][0]:
+                        obj_count = min(self.kb_update_delay, prev_track['other_player'][1] + 1)
+                        tmp_track['other_player'] = [other_player.deepcopy(), obj_count]
+                    
+                    # is player object
+                    elif (obj_key in all_object_lists_id) or (obj_key == 'human_holding' and obj.id in all_object_lists_id):
+                        obj_count = 1
+                        if obj.id in prev_track.keys(): obj_count = min(self.kb_update_delay, prev_track[obj.id][1] + 1)
+                        elif obj.id in tmp_track.keys():
+                            obj_count = tmp_track[obj.id][1]
+                        if obj.position == state.players[self.agent_index].position:
+                            obj_count = self.kb_update_delay
+                            tmp_track['human_holding'] = [state.players[self.agent_index].held_object.deepcopy(), self.kb_update_delay]
+                        tmp_track[obj.id] = [all_object_lists_id[obj.id].deepcopy(), obj_count]
+                    
+                    # previous human held now dropped and changed object name
+                    elif prev_track['human_holding'][0] != None and obj.id == prev_track['human_holding'][0].id and obj != None:
+                        # if obj.id not in tmp_remove_obj_id_list.keys():
+                        tmp_remove_obj_id_list[obj.id] = [obj.deepcopy(), self.kb_update_delay]
+
+                        if obj.name == 'dish':
+                            tmp_track['human_holding'] = [None, self.kb_update_delay]
                         else:
-                            if obj.position in tmp_kb['pot_states']['empty']:
-                                tmp_kb['pot_states']['empty'].remove(obj.position)
-                            if obj.position in tmp_kb['pot_states'][obj.name]['empty']:
-                                tmp_kb['pot_states'][obj.name]['empty'].remove(obj.position)
-                            if obj.id in tmp_kb['pot_states'][obj.name]['cooking']:
-                                tmp_kb['pot_states'][obj.name]['cooking'].remove(obj.id)
-                            if obj.id not in tmp_kb['pot_states'][obj.name]['ready']:
-                                tmp_kb['pot_states'][obj.name]['ready'].append(obj.id)
+                            # set the newly dropped inbound object to have the same count as the threshold
+                            if obj.name == 'meat':
+                                new_obj = state.all_objects_by_type['steak'][-1]
+                                tmp_track['human_holding'] = [None, self.kb_update_delay]
+                            elif obj.name == 'onion':
+                                new_obj = state.all_objects_by_type['garnish'][-1]
+                                tmp_track['human_holding'] = [None, self.kb_update_delay]
+                            elif obj.name == 'plate':
+                                new_obj = state.all_objects_by_type['hot_plate'][-1]
+                                tmp_track['human_holding'] = [None, self.kb_update_delay]
+                            elif obj.name == 'hot_plate':
+                                new_obj = state.all_objects_by_type['steak'][-1]
+                                tmp_track['human_holding'] = [new_obj.deepcopy(), self.kb_update_delay]
+                            elif obj.name == 'steak':
+                                new_obj = state.all_objects_by_type['dish'][-1]
+                                tmp_track['human_holding'] = [new_obj.deepcopy(), self.kb_update_delay]
+                        
+                            tmp_track[new_obj.id] = [new_obj.deepcopy(), self.kb_update_delay]
+
                     else:
-                        if obj.id in prev_kb.keys():
-                            empty_pot_loc = prev_kb[obj.id].position
-                            if obj.id in tmp_kb['pot_states'][obj.name]['ready'] or obj_id in tmp_kb['pot_states'][obj.name]['cooking']:
-                                if empty_pot_loc not in tmp_kb['pot_states'][obj.name]['empty']:
-                                    tmp_kb['pot_states'][obj.name]['empty'].append(empty_pot_loc)
-                                if empty_pot_loc not in tmp_kb['pot_states']['empty']:
-                                    tmp_kb['pot_states']['empty'].append(empty_pot_loc)
+                        # if obj_key != 'human_holding':
+                        if obj_key not in tmp_remove_obj_id_list.keys():
+                            tmp_remove_obj_id_list[obj_key] = [obj.deepcopy(), 0]
 
-                            if obj.id in tmp_kb['pot_states'][obj.name]['ready']:
-                                tmp_kb['pot_states'][obj.name]['ready'].remove(obj.id)
-                            if obj.id in tmp_kb['pot_states'][obj.name]['cooking']:
-                                tmp_kb['pot_states'][obj.name]['cooking'].remove(obj.id)
+                else:
+                    if 'other_player' == obj_key: # and obj_id == prev_track['other_player'][0].id:
+                        tmp_untrack['other_player'] = prev_track['other_player'][0].deepcopy()
+                        del tmp_track['other_player']
+                    elif obj_key in prev_track.keys():
+                        tmp_untrack[obj_key] = prev_track[obj_key][0].deepcopy()
+                        del tmp_track[obj_key]
 
-                elif 'garnish' in obj.name:
-                    chop_time = obj.state
-                    if obj.position in self.mlp.mdp.get_chopping_board_locations():
-                        if chop_time >= 0 and chop_time < self.mlp.mdp.chopping_time:
-                            if obj.position in tmp_kb['chop_states']['empty']:
-                                tmp_kb['chop_states']['empty'].remove(obj.position)
-                            if obj.id not in tmp_kb['chop_states']['full']:
-                                tmp_kb['chop_states']['full'].append(obj.id)
-                            if obj.id in tmp_kb['chop_states']['ready']:
-                                tmp_kb['chop_states']['ready'].remove(obj.id)
-                        elif chop_time >= self.mlp.mdp.chopping_time:
-                            if obj.position in tmp_kb['chop_states']['empty']:
-                                tmp_kb['chop_states']['empty'].remove(obj.position)
-                            if obj.id in tmp_kb['chop_states']['full']:
-                                tmp_kb['chop_states']['full'].remove(obj.id)
-                            if obj.id not in tmp_kb['chop_states']['ready']:
-                                tmp_kb['chop_states']['ready'].append(obj.id)
-                        else:
-                            print(tmp_kb['chop_states'])
-                            print(obj)
-                            raise ValueError()
-                    else:
-                        if obj.id in prev_kb.keys():
-                            empty_board_loc = prev_kb[obj.id].position
-                            if obj.id in tmp_kb['chop_states']['ready'] or obj_id in tmp_kb['chop_states']['full']:
-                                if empty_board_loc not in tmp_kb['chop_states']['empty']:
-                                    tmp_kb['chop_states']['empty'].append(empty_board_loc)
-                            if obj.id in tmp_kb['chop_states']['ready']:
-                                tmp_kb['chop_states']['ready'].remove(obj.id)
-                            if obj.id in tmp_kb['chop_states']['full']:
-                                tmp_kb['chop_states']['full'].remove(obj.id)
+        if 'other_player' not in tmp_track.keys() and self.in_bound(state, other_player.position, vision_bound=self.vision_bound/2):
+            tmp_track['other_player'] = [other_player, 1]
+        
+        for obj_id, obj in prev_untrack.items():
+            obj_in_bound = self.in_bound(state, obj.position, vision_bound=self.vision_bound/2)
+            if obj_in_bound:
+                if obj_id in all_object_lists_id.keys() and obj_id in tmp_track.keys():
+                    # means is not in sight but still exists
+                    del tmp_untrack[obj_id]
+                elif obj_id == 'other_player' and obj_id in tmp_track.keys():
+                    # new position inbound
+                    del tmp_untrack['other_player']
+                else:
+                    if obj_id not in tmp_remove_obj_id_list.keys():
+                        tmp_remove_obj_id_list[obj_id] = [obj.deepcopy(), 0]
 
-                elif 'hot_plate' in obj.name:
-                    wash_time = obj.state
-                    if obj.position in self.mlp.mdp.get_sink_locations():
-                        if wash_time >= 0 and wash_time < self.mlp.mdp.wash_time:
-                            if obj.position in tmp_kb['sink_states']['empty']:
-                                tmp_kb['sink_states']['empty'].remove(obj.position)
-                            if obj.id not in tmp_kb['sink_states']['full']:
-                                tmp_kb['sink_states']['full'].append(obj.id)
-                            if obj.id in tmp_kb['sink_states']['ready']:
-                                tmp_kb['sink_states']['ready'].remove(obj.id)
-                        elif wash_time >= self.mlp.mdp.wash_time:
-                            if obj.position in tmp_kb['sink_states']['empty']:
-                                tmp_kb['sink_states']['empty'].remove(obj.position)
-                            if obj.id in tmp_kb['sink_states']['full']:
-                                tmp_kb['sink_states']['full'].remove(obj.id)
-                            if obj.id not in tmp_kb['sink_states']['ready']:
-                                tmp_kb['sink_states']['ready'].append(obj.id)
-                        else:
-                            print(tmp_kb['sink_states'])
-                            print(obj)
-                            raise ValueError()
-                    else:
-                        if obj.id in prev_kb.keys():
-                            empty_sink_loc = prev_kb[obj.id].position
-                            if obj.id in tmp_kb['sink_states']['ready'] or obj_id in tmp_kb['sink_states']['full']:
-                                if empty_sink_loc not in tmp_kb['sink_states']['empty']:
-                                    tmp_kb['sink_states']['empty'].append(empty_sink_loc)
-                            if obj.id in tmp_kb['sink_states']['ready']:
-                                tmp_kb['sink_states']['ready'].remove(obj.id)
-                            if obj.id in tmp_kb['sink_states']['full']:
-                                tmp_kb['sink_states']['full'].remove(obj.id)
+        ### Update the KB with the removed object list
+        del_remove_list = []
+        for obj_id in tmp_remove_obj_id_list.keys():
+            if obj_id in tmp_track.keys(): del tmp_track[obj_id]
+            if obj_id in tmp_untrack.keys(): del tmp_untrack[obj_id]
 
-        # check if other player is in vision
-        other_player = state.players[1 - self.agent_index]
-        if self.in_bound(state, other_player.position, vision_bound=self.vision_bound/2):
-            # print('Other agent in bound')
-            tmp_kb['other_player'] = other_player.deepcopy()
+            if self.in_bound(state, tmp_remove_obj_id_list[obj_id][0].position, vision_bound=self.vision_bound/2):
+                tmp_remove_obj_id_list[obj_id][1] += 1
 
-        for i in del_list:
-            del tmp_kb[i]
+            if tmp_remove_obj_id_list[obj_id][1] >= self.kb_update_delay:
+                if obj_id != 'other_player' and obj_id in tmp_kb.keys():
+                    tmp_kb[obj_id].position = None
+                    tmp_kb = self.update_kb_key_object(tmp_kb[obj_id], tmp_kb, prev_kb)
+                else:
+                    # do nothing
+                    # tmp_kb['other_player'].position = None
+                    # tmp_kb['other_player'].held_object = None
+                    pass
+                ## Remove the object from all tracking
+                if obj_id != 'other_player' and obj_id in tmp_kb.keys(): del tmp_kb[obj_id]
 
-        # print out knowledge base
+                del_remove_list.append(obj_id)
+        
+        for obj_id in del_remove_list:
+            del tmp_remove_obj_id_list[obj_id]
+            
+        ### Update the KB with the updated tracking list
+        for obj_id, [obj, obj_count] in tmp_track.items():
+            if obj_count >= self.kb_update_delay and obj is not None and obj_id != 'human_holding':
+                ## Update the object in KB
+                tmp_kb[obj_id] = obj
+                if obj_id != 'other_player':
+                    tmp_kb = self.update_kb_key_object(obj, tmp_kb, prev_kb)
+                else:
+                    tmp_kb['other_player'] = obj
+        
+        ## print out knowledge base
         if rollout_kb is None and self.debug:
+            print('tmp_kb:')
             for k, v in tmp_kb.items():
                 print(k, ':', v)
+            print('\ntmp_track:')
+            for k, v in tmp_track.items():
+                print(k, ':', v)
+            print('\ntmp_untrack:')
+            for k, v in tmp_untrack.items():
+                print(k, ':', v)
+            print('')
+            for k, v in tmp_remove_obj_id_list.items():
+                print(k, ':', v)
+            print('')
 
-        return tmp_kb
+        return tmp_kb, [tmp_track, tmp_untrack, tmp_remove_obj_id_list]
 
     def ml_action(self, state):
         """
@@ -1198,38 +1348,26 @@ class SteakLimitVisionHumanModel(limitVisionHumanModel):
         sink_status = self.knowledge_base['sink_states']
         chopping_board_status = self.knowledge_base['chop_states']
         pot_states_dict = self.knowledge_base['pot_states']
+        # for k, o in self.knowledge_base.items():
+        #     if k not in ['sink_states', 'chop_states', 'pot_states', 'other_player']:
+        #         if o.position in self.mlp.mdp.get_counter_locations():
+        #             counter_objects[o.name] = [o.position]
         # NOTE: this most likely will fail in some tomato scenarios
         curr_order = state.curr_order
 
-        if curr_order == 'any':
-            ready_soups = pot_states_dict['onion']['ready'] + pot_states_dict['tomato']['ready']
-            cooking_soups = pot_states_dict['onion']['cooking'] + pot_states_dict['tomato']['cooking']
-        else:
-            empty_pot = pot_states_dict['empty']
-            ready_soups = pot_states_dict[curr_order]['ready']
-            cooking_soups = pot_states_dict[curr_order]['cooking']
-
-        steak_nearly_ready = len(ready_soups) > 0 or len(cooking_soups) > 0
-        other_has_dish = other_player.has_object() and other_player.get_object().name == 'dish'
-        other_has_hot_plate = other_player.has_object() and other_player.get_object().name == 'hot_plate'
-        other_has_steak = other_player.has_object() and other_player.get_object().name == 'steak'
+        empty_pot = pot_states_dict['empty']
+        ready_steaks = pot_states_dict['steak']['ready'] 
+        cooking_steaks = pot_states_dict['steak']['cooking']
 
         garnish_ready = len(chopping_board_status['ready']) > 0
         chopping = len(chopping_board_status['full']) > 0
         board_empty = len(chopping_board_status['empty']) > 0
-        hot_plate_ready = len(sink_status['ready']) > 0
+        hot_plate_ready = (len(sink_status['ready']) > 0)# or (len(counter_objects['hot_plate']) > 0)
         rinsing = len(sink_status['full']) > 0
         sink_empty = len(sink_status['empty']) > 0
         motion_goals = []
         
-        if curr_order == 'any':
-            ready_soups = pot_states_dict['onion']['ready'] + pot_states_dict['tomato']['ready']
-            cooking_soups = pot_states_dict['onion']['cooking'] + pot_states_dict['tomato']['cooking']
-        else:
-            ready_soups = pot_states_dict[curr_order]['ready']
-            cooking_soups = pot_states_dict[curr_order]['cooking']
-
-        steak_nearly_ready = len(ready_soups) > 0 or len(cooking_soups) > 0
+        steak_nearly_ready = len(ready_steaks) > 0 or len(cooking_steaks) > 0# or len(counter_objects['steak']) > 0
         other_has_dish = other_player.has_object() and other_player.get_object().name == 'dish'
         other_has_hot_plate = other_player.has_object() and other_player.get_object().name == 'hot_plate'
         other_has_steak = other_player.has_object() and other_player.get_object().name == 'steak'
@@ -1238,13 +1376,6 @@ class SteakLimitVisionHumanModel(limitVisionHumanModel):
         other_has_plate = other_player.has_object() and other_player.get_object().name == 'plate'
 
         if not player.has_object():
-
-            garnish_ready = len(chopping_board_status['ready']) > 0
-            chopping = len(chopping_board_status['full']) > 0
-            board_empty = len(chopping_board_status['empty']) > 0
-            hot_plate_ready = len(sink_status['ready']) > 0
-            rinsing = len(sink_status['full']) > 0
-            sink_empty = len(sink_status['empty']) > 0
 
             # if 'dish' in counter_objects.keys():
             #     motion_goals = counter_objects['dish']
@@ -1268,7 +1399,7 @@ class SteakLimitVisionHumanModel(limitVisionHumanModel):
             elif not rinsing and not hot_plate_ready and not other_has_plate:
                 motion_goals += am.pickup_plate_actions(counter_objects, state, knowledge_base=self.knowledge_base)
                 chosen_subtask = 'pickup_plate'
-            elif (garnish_ready or other_has_onion) and hot_plate_ready and steak_nearly_ready and not (other_has_hot_plate or other_has_steak):
+            elif (garnish_ready or other_has_onion) and hot_plate_ready and steak_nearly_ready:# and not (other_has_hot_plate):# or other_has_steak)
                 motion_goals += am.pickup_hot_plate_from_sink_actions(counter_objects, state, knowledge_base=self.knowledge_base)
                 chosen_subtask = 'pickup_hot_plate'
             # elif (garnish_ready or other_has_onion) and steak_nearly_ready and other_has_plate and not (other_has_hot_plate or other_has_steak) and not hot_plate_ready:
@@ -1323,34 +1454,34 @@ class SteakLimitVisionHumanModel(limitVisionHumanModel):
 
         motion_goals = [mg for mg in motion_goals if self.mlp.mp.is_valid_motion_start_goal_pair(player.pos_and_or, mg)]
         
-        if len(motion_goals) == 0:
-            motion_goals = [curr_pos_and_or]
-            chosen_subtask = self.prev_chosen_subtask
         # if len(motion_goals) == 0:
-        #     if self.explore: # explore to expand the vision.
-        #         if player.has_object():
-        #             motion_goals += am.place_obj_on_counter_actions(state)
-        #         else:
-        #             motion_goals += am.pickup_plate_actions(counter_objects, knowledge_base=self.knowledge_base)
+        #     motion_goals = [curr_pos_and_or]
+        #     chosen_subtask = self.prev_chosen_subtask
+        if len(motion_goals) == 0:
+            if self.explore: # explore to expand the vision.
+                if player.has_object():
+                    motion_goals += am.place_obj_on_counter_actions(state)
+                else:
+                    motion_goals += am.pickup_plate_actions(counter_objects, knowledge_base=self.knowledge_base)
 
-        #             # get four directions to explore
-        #             for o in Direction.ALL_DIRECTIONS:
-        #                 if o != player.orientation:
-        #                     motion_goals.append(self.mdp._move_if_direction(player.position, player.orientation, o))
-        #             if player.pos_and_or in motion_goals:
-        #                 motion_goals.remove(player.pos_and_or)
-        #         random.shuffle(motion_goals)
-        #         motion_goals = [[mg for mg in motion_goals if self.mlp.mp.is_valid_motion_start_goal_pair(player.pos_and_or, mg)][0]] # directly return on specific motion goal as the interact plan will always cost
+                    # get four directions to explore
+                    for o in Direction.ALL_DIRECTIONS:
+                        if o != player.orientation:
+                            motion_goals.append(self.mdp._move_if_direction(player.position, player.orientation, o))
+                    if player.pos_and_or in motion_goals:
+                        motion_goals.remove(player.pos_and_or)
+                random.shuffle(motion_goals)
+                motion_goals = [[mg for mg in motion_goals if self.mlp.mp.is_valid_motion_start_goal_pair(player.pos_and_or, mg)][0]] # directly return on specific motion goal as the interact plan will always cost
 
-        #         assert len(motion_goals) != 0
-        #     else: # get to the closest key object location
-        #         if player.has_object():
-        #             motion_goals += am.place_obj_on_counter_actions(state)
-        #         else:
-        #             motion_goals += am.pickup_plate_actions(counter_objects, knowledge_base=self.knowledge_base)
-        #             # motion_goals += am.go_to_closest_feature_actions(player)
-        #         motion_goals = [mg for mg in motion_goals if self.mlp.mp.is_valid_motion_start_goal_pair(player.pos_and_or, mg)]
-        #         assert len(motion_goals) != 0
+                assert len(motion_goals) != 0
+            else: # get to the closest key object location
+                if player.has_object():
+                    motion_goals += am.place_obj_on_counter_actions(state)
+                else:
+                    motion_goals += am.pickup_plate_actions(counter_objects, knowledge_base=self.knowledge_base)
+                    # motion_goals += am.go_to_closest_feature_actions(player)
+                motion_goals = [mg for mg in motion_goals if self.mlp.mp.is_valid_motion_start_goal_pair(player.pos_and_or, mg)]
+                assert len(motion_goals) != 0
 
         self.prev_chosen_subtask = chosen_subtask
         print('SteakLimitVisionHumanModel\'s motion_goals:', motion_goals)

@@ -348,11 +348,12 @@ def agents_play(
     VISION_LIMIT = True,
     VISION_BOUND = 120,
     VISION_LIMIT_AWARE = True,
-    EXPLORE = True,
-    agent_unstuck = False,
-    human_unstuck = False,
+    EXPLORE = False,
+    agent_unstuck = True,
+    human_unstuck = True,
     SEARCH_DEPTH = 5,
     KB_SEARCH_DEPTH = 3,
+    KB_UPDATE_DELAY=3,
 ):
     """Function that allows human to play with an ai_agent.
 
@@ -364,7 +365,7 @@ def agents_play(
         horizon (int): max number of timesteps to play.
     """
 
-    print(VISION_LIMIT, VISION_BOUND, VISION_LIMIT_AWARE, EXPLORE, agent_unstuck, human_unstuck, SEARCH_DEPTH, KB_SEARCH_DEPTH)
+    print(VISION_LIMIT, VISION_BOUND, VISION_LIMIT_AWARE, EXPLORE, agent_unstuck, human_unstuck, SEARCH_DEPTH, KB_SEARCH_DEPTH, KB_UPDATE_DELAY)
 
     start_time = time.time()
     grid = lvl_str2grid(lvl_str)
@@ -385,7 +386,7 @@ def agents_play(
     # hmlp = planners.HumanMediumLevelPlanner(mdp, ml_action_manager, [0.5, (1.0-0.5)], 0.5)
     # human_agent = agent.biasHumanModel(ml_action_manager, [0.5, (1.0-0.5)], 0.5, auto_unstuck=True)
     mlp = planners.MediumLevelPlanner.from_pickle_or_compute(mdp, COUNTERS_PARAMS, force_compute=True)  
-    human_agent = agent.SteakLimitVisionHumanModel(mlp, env.state, auto_unstuck=human_unstuck, explore=EXPLORE, vision_limit=VISION_LIMIT, vision_bound=VISION_BOUND, debug=True)
+    human_agent = agent.SteakLimitVisionHumanModel(mlp, env.state, auto_unstuck=human_unstuck, explore=EXPLORE, vision_limit=VISION_LIMIT, vision_bound=VISION_BOUND, kb_update_delay=KB_UPDATE_DELAY, debug=True)
     # human_agent = agent.GreedySteakHumanModel(mlp)
     # human_agent = agent.CoupledPlanningAgent(mlp)
     human_agent.set_agent_index(1)
@@ -398,20 +399,21 @@ def agents_play(
     
     mdp_planner = None
     if not VISION_LIMIT_AWARE and VISION_LIMIT:
-        non_limited_human = agent.SteakLimitVisionHumanModel(mlp, env.state, auto_unstuck=human_unstuck, explore=EXPLORE, vision_limit=False, vision_bound=0, debug=True)
+        non_limited_human = agent.SteakLimitVisionHumanModel(mlp, env.state, auto_unstuck=human_unstuck, explore=EXPLORE, vision_limit=False, vision_bound=0, kb_update_delay=1, debug=True)
         non_limited_human.set_agent_index(1)
         mdp_planner = planners.SteakKnowledgeBasePlanner.from_pickle_or_compute(mdp, COUNTERS_PARAMS, force_compute_all=True, jmp = mlp.ml_action_manager.joint_motion_planner, vision_limited_human=non_limited_human, debug=True, search_depth=SEARCH_DEPTH, kb_search_depth=KB_SEARCH_DEPTH)
     else:
-        limited_human = agent.SteakLimitVisionHumanModel(mlp, env.state, auto_unstuck=human_unstuck, explore=EXPLORE, vision_limit=VISION_LIMIT, vision_bound=VISION_BOUND, debug=True)
+        limited_human = agent.SteakLimitVisionHumanModel(mlp, env.state, auto_unstuck=human_unstuck, explore=EXPLORE, vision_limit=VISION_LIMIT, vision_bound=VISION_BOUND, kb_update_delay=KB_UPDATE_DELAY, debug=True)
         limited_human.set_agent_index(1)
         mdp_planner = planners.SteakKnowledgeBasePlanner.from_pickle_or_compute(mdp, COUNTERS_PARAMS, force_compute_all=True, jmp = mlp.ml_action_manager.joint_motion_planner, vision_limited_human=limited_human, debug=False, search_depth=SEARCH_DEPTH, kb_search_depth=KB_SEARCH_DEPTH)
     
     ai_agent = agent.MediumQMdpPlanningAgent(mdp_planner, greedy=True, auto_unstuck=agent_unstuck, low_level_action_flag=True, vision_limit=VISION_LIMIT)
     ai_agent.set_agent_index(0)
 
-    if agent_save_path is not None:
-        with open(agent_save_path, 'wb') as f:
-            pickle.dump(ai_agent, f)
+    # if VISION_LIMIT_AWARE and VISION_LIMIT:
+    #     if agent_save_path is not None:
+    #         with open(agent_save_path, 'wb') as f:
+    #             pickle.dump(ai_agent, f)
 
     agent_pair = agent.AgentPair(ai_agent, human_agent) # if use QMDP, the first agent has to be the AI agent
     print("It took {} seconds for planning".format(time.time() - start_time))
@@ -422,9 +424,10 @@ def agents_play(
     # print("It took {} seconds to plan".format(time.time() - start_time))
     trajectory = s_t[:,1][:-1].tolist()
 
-    if value_kb_save_path is not None:
-        with open(value_kb_save_path, 'wb') as f:
-            pickle.dump([ai_agent.mdp_planner.world_state_cost_dict, ai_agent.mdp_planner.track_state_kb_map], f)
+    # if VISION_LIMIT_AWARE and VISION_LIMIT:
+    #     if value_kb_save_path is not None:
+    #         with open(value_kb_save_path, 'wb') as f:
+    #             pickle.dump([ai_agent.mdp_planner.world_state_cost_dict, ai_agent.mdp_planner.track_state_kb_map], f)
 
     del mlp, mdp_planner
     gc.collect()
@@ -462,14 +465,12 @@ def write_to_human_exp_log(lvl_type_full, results, lvl_config):
     to_write = [
         lvl_config["lvl_type"] if "lvl_type" in lvl_config else None,
         lvl_config["ID"] if "ID" in lvl_config else None,
-        lvl_config["agent_unstuck"] if "agent_unstuck" in lvl_config else None,
-        lvl_config["human_unstuck"] if "human_unstuck" in lvl_config else None,
         lvl_config["vision_limit"] if "vision_limit" in lvl_config else None,
         lvl_config["vision_bound"] if "vision_bound" in lvl_config else None,
         lvl_config["vision_limit_aware"] if "vision_limit_aware" in lvl_config else None,
-        lvl_config["explore"] if "explore" in lvl_config else None,
         lvl_config["search_depth"] if "search_depth" in lvl_config else None,
         lvl_config["kb_search_depth"] if "kb_search_depth" in lvl_config else None,
+        lvl_config["kb_update_delay"] if "kb_update_delay" in lvl_config else None,
         *results,
         lvl_config["lvl_str"],
     ]
@@ -499,14 +500,12 @@ def create_human_exp_log():
     data_labels = [
         "lvl_type",
         "ID",
-        "agent_unstuck",
-        "human_unstuck",
         "vision_limit",
         "vision_bound",
         "vision_limit_aware",
-        "explore",
         "search_depth",
         "kb_search_depth",
+        "kb_update_delay",
         "complete",
         "joint_actions",
         "total time steps",
@@ -562,7 +561,7 @@ if __name__ == "__main__":
         # read in human study levels
         if not opt.human_play:
             study_lvls = pd.read_csv(
-                os.path.join(LSI_STEAK_STUDY_CONFIG_DIR, "study_lvls.csv"))
+                os.path.join(LSI_STEAK_STUDY_CONFIG_DIR, "test.csv"))
 
             # study_lvls = pd.read_csv(
             #     os.path.join(LSI_STEAK_STUDY_CONFIG_DIR, "new_study_lvls.csv"))
@@ -584,10 +583,10 @@ if __name__ == "__main__":
                 lvl_config = study_lvls.iloc[0]
                 agent_save_path = os.path.join(
                     LSI_STEAK_STUDY_AGENT_DIR,
-                    "{lvl_type}_{lvl_vision}_{lvl_robot_aware}_{lvl_search_depth}_{lvl_kb_depth}.pkl".format(lvl_type=lvl_config["lvl_type"], lvl_vision=lvl_config["vision_bound"], lvl_robot_aware=lvl_config["vision_limit_aware"], lvl_search_depth=lvl_config["search_depth"], lvl_kb_depth=lvl_config["kb_search_depth"]))
+                    "{lvl_type}_{lvl_vision}_{lvl_robot_aware}_{lvl_search_depth}_{lvl_kb_depth}_{kb_update_delay}.pkl".format(lvl_type=lvl_config["lvl_type"], lvl_vision=lvl_config["vision_bound"], lvl_robot_aware=lvl_config["vision_limit_aware"], lvl_search_depth=lvl_config["search_depth"], lvl_kb_depth=lvl_config["kb_search_depth"], kb_update_delay=lvl_config['kb_update_delay']))
                 value_kb_save_path = os.path.join(
                     LSI_STEAK_STUDY_AGENT_DIR,
-                    "{lvl_type}_{lvl_vision}_{lvl_robot_aware}_{lvl_search_depth}_{lvl_kb_depth}_v_and_kb.pkl".format(lvl_type=lvl_config["lvl_type"], lvl_vision=lvl_config["vision_bound"], lvl_robot_aware=lvl_config["vision_limit_aware"], lvl_search_depth=lvl_config["search_depth"], lvl_kb_depth=lvl_config["kb_search_depth"]))
+                    "{lvl_type}_{lvl_vision}_{lvl_robot_aware}_{lvl_search_depth}_{lvl_kb_depth}_{kb_update_delay}_v_and_kb.pkl".format(lvl_type=lvl_config["lvl_type"], lvl_vision=lvl_config["vision_bound"], lvl_robot_aware=lvl_config["vision_limit_aware"], lvl_search_depth=lvl_config["search_depth"], lvl_kb_depth=lvl_config["kb_search_depth"], kb_update_delay=lvl_config['kb_update_delay']))
                 print("trial")
                 print(lvl_config["lvl_str"])
 
@@ -605,18 +604,18 @@ if __name__ == "__main__":
 
                 # shuffle the order if playing all
                 if opt.study == 'all':
-                    # study_lvls = study_lvls
-                    study_lvls = study_lvls.sample(frac=1)
+                    study_lvls = study_lvls
+                    # study_lvls = study_lvls.sample(frac=1)
 
                 # play all of the levels
                 for index, lvl_config in study_lvls.iterrows():
                     # check study type:
                     if correct_study_type(opt.study, lvl_config["lvl_type"]):
                         agent_save_path = os.path.join(
-                            LSI_STEAK_STUDY_AGENT_DIR, "{lvl_type}_{lvl_vision}_{lvl_robot_aware}_{lvl_search_depth}_{lvl_kb_depth}.pkl".format(lvl_type=lvl_config["lvl_type"], lvl_vision=lvl_config["vision_bound"], lvl_robot_aware=lvl_config["vision_limit_aware"], lvl_search_depth=lvl_config["search_depth"], lvl_kb_depth=lvl_config["kb_search_depth"]))
+                            LSI_STEAK_STUDY_AGENT_DIR, "{lvl_type}_{lvl_vision}_{lvl_robot_aware}_{lvl_search_depth}_{lvl_kb_depth}_{kb_update_delay}.pkl".format(lvl_type=lvl_config["lvl_type"], lvl_vision=lvl_config["vision_bound"], lvl_robot_aware=lvl_config["vision_limit_aware"], lvl_search_depth=lvl_config["search_depth"], lvl_kb_depth=lvl_config["kb_search_depth"], kb_update_delay=lvl_config['kb_update_delay']))
                         value_kb_save_path = os.path.join(
                             LSI_STEAK_STUDY_AGENT_DIR,
-                            "{lvl_type}_{lvl_vision}_{lvl_robot_aware}_{lvl_search_depth}_{lvl_kb_depth}_v_and_kb.pkl".format(lvl_type=lvl_config["lvl_type"], lvl_vision=lvl_config["vision_bound"], lvl_robot_aware=lvl_config["vision_limit_aware"], lvl_search_depth=lvl_config["search_depth"], lvl_kb_depth=lvl_config["kb_search_depth"]))
+                            "{lvl_type}_{lvl_vision}_{lvl_robot_aware}_{lvl_search_depth}_{lvl_kb_depth}_{kb_update_delay}_v_and_kb.pkl".format(lvl_type=lvl_config["lvl_type"], lvl_vision=lvl_config["vision_bound"], lvl_robot_aware=lvl_config["vision_limit_aware"], lvl_search_depth=lvl_config["search_depth"], lvl_kb_depth=lvl_config["kb_search_depth"], kb_update_delay=lvl_config['kb_update_delay']))
                         print(lvl_config["lvl_type"])
                         if not opt.human_play:
                             results = agents_play(lvl_config["lvl_str"],
@@ -625,11 +624,9 @@ if __name__ == "__main__":
                                                 VISION_LIMIT = lvl_config["vision_limit"],
                                                 VISION_BOUND = int(lvl_config["vision_bound"]),
                                                 VISION_LIMIT_AWARE = lvl_config["vision_limit_aware"],
-                                                EXPLORE =  lvl_config["explore"],
-                                                agent_unstuck= lvl_config["agent_unstuck"],
-                                                human_unstuck= lvl_config["human_unstuck"],
                                                 SEARCH_DEPTH= lvl_config["search_depth"],
-                                                KB_SEARCH_DEPTH= lvl_config["kb_search_depth"])
+                                                KB_SEARCH_DEPTH= lvl_config["kb_search_depth"],
+                                                KB_UPDATE_DELAY=lvl_config["kb_update_delay"])
                         else:
                             results = human_play(lvl_config["lvl_str"],
                                          agent_save_path=agent_save_path,
@@ -655,10 +652,10 @@ if __name__ == "__main__":
                     print(lvl_str)
                     agent_save_path = os.path.join(
                         LSI_STEAK_STUDY_AGENT_DIR,
-                        "{lvl_type}_{lvl_vision}_{lvl_robot_aware}_{lvl_search_depth}_{lvl_kb_depth}.pkl".format(lvl_type=lvl_config["lvl_type"], lvl_vision=lvl_config["vision_bound"], lvl_robot_aware=lvl_config["vision_limit_aware"], lvl_search_depth=lvl_config["search_depth"], lvl_kb_depth=lvl_config["kb_search_depth"]))
+                        "{lvl_type}_{lvl_vision}_{lvl_robot_aware}_{lvl_search_depth}_{lvl_kb_depth}_{kb_update_delay}.pkl".format(lvl_type=lvl_config["lvl_type"], lvl_vision=lvl_config["vision_bound"], lvl_robot_aware=lvl_config["vision_limit_aware"], lvl_search_depth=lvl_config["search_depth"], lvl_kb_depth=lvl_config["kb_search_depth"], kb_update_delay=lvl_config['kb_update_delay']))
                     value_kb_save_path = os.path.join(
                         LSI_STEAK_STUDY_AGENT_DIR,
-                        "{lvl_type}_{lvl_vision}_{lvl_robot_aware}_{lvl_search_depth}_{lvl_kb_depth}_v_and_kb.pkl".format(lvl_type=lvl_config["lvl_type"], lvl_vision=lvl_config["vision_bound"], lvl_robot_aware=lvl_config["vision_limit_aware"], lvl_search_depth=lvl_config["search_depth"], lvl_kb_depth=lvl_config["kb_search_depth"]))
+                        "{lvl_type}_{lvl_vision}_{lvl_robot_aware}_{lvl_search_depth}_{lvl_kb_depth}_{kb_update_delay}_v_and_kb.pkl".format(lvl_type=lvl_config["lvl_type"], lvl_vision=lvl_config["vision_bound"], lvl_robot_aware=lvl_config["vision_limit_aware"], lvl_search_depth=lvl_config["search_depth"], lvl_kb_depth=lvl_config["kb_search_depth"], kb_update_delay=lvl_config['kb_update_delay']))
                     if not opt.human_play:
                         results = agents_play(lvl_str,
                                         agent_save_path=agent_save_path,
@@ -666,11 +663,9 @@ if __name__ == "__main__":
                                         VISION_LIMIT = lvl_config["vision_limit"],
                                         VISION_BOUND = int(lvl_config["vision_bound"]),
                                         VISION_LIMIT_AWARE = lvl_config["vision_limit_aware"],
-                                        EXPLORE = lvl_config["explore"],
-                                        agent_unstuck = lvl_config["agent_unstuck"],
-                                        human_unstuck = lvl_config["human_unstuck"],
                                         SEARCH_DEPTH= lvl_config["search_depth"],
-                                        KB_SEARCH_DEPTH= lvl_config["kb_search_depth"])
+                                        KB_SEARCH_DEPTH= lvl_config["kb_search_depth"],
+                                        KB_UPDATE_DELAY=lvl_config["kb_update_delay"])
                     else:
                         results = human_play(lvl_str,
                                         agent_save_path=agent_save_path,

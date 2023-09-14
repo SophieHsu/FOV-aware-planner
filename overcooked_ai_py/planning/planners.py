@@ -1158,9 +1158,15 @@ class MediumLevelActionManager(object):
         hot_plate_on_counter = []
         if knowledge_base is not None:
             for obj_id, obj in knowledge_base.items():
-                if obj_id not in ['pot_states', 'chop_states', 'sink_states', 'other_player']:
-                    if obj.name == 'hot_plate':
+                if obj_id in knowledge_base['sink_states']['ready']:
+                    hot_plate_loc += [obj.position]
+                if len(hot_plate_loc) == 0:
+                    for obj_id in knowledge_base['sink_states']['full']:
                         hot_plate_loc += [obj.position]
+                if len(hot_plate_loc) == 0:
+                    robot_obj = knowledge_base['other_player'].held_object.name if knowledge_base['other_player'].held_object is not None else 'None'
+                    if robot_obj == 'plate':
+                        hot_plate_loc += knowledge_base['sink_states']['empty']
         else:
             sink_locations = self.mdp.get_sink_locations()
             for loc in sink_locations:
@@ -5416,7 +5422,7 @@ class  SteakHumanSubtaskQMDPPlanner(SteakMediumLevelMDPPlanner):
                 next_subtasks += ['pickup_onion']
             elif next_wash_time < 0 and other_agent_obj != 'plate':
                 next_subtasks += ['pickup_plate']
-            elif (next_chop_time >= self.mdp.chopping_time or other_agent_obj == 'onion') and next_wash_time >= self.mdp.wash_time and next_num_item_in_pot > 0 and not (other_agent_obj == 'hot_plate' or other_agent_obj == 'steak'):
+            elif (next_chop_time >= self.mdp.chopping_time or other_agent_obj == 'onion') and next_wash_time >= self.mdp.wash_time and next_num_item_in_pot > 0:# and not (other_agent_obj == 'hot_plate' or other_agent_obj == 'steak'):
                 next_subtasks += ['pickup_hot_plate']
             # elif (next_chop_time >= self.mdp.chopping_time or other_agent_obj == 'onion') and next_wash_time < self.mdp.wash_time and other_agent_obj == 'plate' and not (other_agent_obj == 'hot_plate' or other_agent_obj == 'steak'):
             #     next_subtasks += ['pickup_hot_plate']
@@ -7420,7 +7426,7 @@ class SteakKnowledgeBasePlanner(SteakHumanSubtaskQMDPPlanner):
                 next_subtasks += ['pickup_onion']
             elif next_wash_time < 0 and robot_obj != 'plate':
                 next_subtasks += ['pickup_plate']
-            elif (next_chop_time >= self.mdp.chopping_time or robot_obj == 'onion') and next_wash_time >= self.mdp.wash_time and next_num_item_in_pot > 0 and not (robot_obj == 'hot_plate' or robot_obj == 'steak'):
+            elif (next_chop_time >= self.mdp.chopping_time or robot_obj == 'onion') and next_wash_time >= self.mdp.wash_time and next_num_item_in_pot > 0:# and not (robot_obj == 'hot_plate' or robot_obj == 'steak'):
                 next_subtasks += ['pickup_hot_plate']
             # elif (next_chop_time >= self.mdp.chopping_time or robot_obj == 'onion') and next_wash_time < self.mdp.wash_time and robot_obj == 'plate' and not (robot_obj == 'hot_plate' or robot_obj == 'steak'):
             #     next_subtasks += ['pickup_hot_plate']
@@ -7653,22 +7659,22 @@ class SteakKnowledgeBasePlanner(SteakHumanSubtaskQMDPPlanner):
             new_positions, new_orientations = self.mdp.compute_new_positions_and_orientations(start_state.players, joint_action)
             successor_state = self.jmp.derive_state(start_state, tuple(zip(*[new_positions, new_orientations])), [joint_action])
             
-            if (str(successor_state), str(kb)) in self.track_state_kb_map.keys():
-                successor_kb.append((self.track_state_kb_map[(str(successor_state), str(kb))], successor_state, 1))
+            if (str(successor_state), str(kb[0]), str(kb[1][0]), str(kb[1][1]), str(kb[1][2])) in self.track_state_kb_map.keys():
+                successor_kb.append((self.track_state_kb_map[(str(successor_state), str(kb[0]), str(kb[1][0]), str(kb[1][1]), str(kb[1][2]))], successor_state, 1))
             else:
-                tmp_kb = self.sim_human_model.get_knowledge_base(successor_state, rollout_kb=kb)
-                self.track_state_kb_map[(str(successor_state), str(kb))] = tmp_kb
+                tmp_kb, tmp_track = self.sim_human_model.get_knowledge_base(successor_state, rollout_kb=kb[0], rollout_info=kb[1])
+                self.track_state_kb_map[(str(successor_state), str(kb[0]), str(kb[1][0]), str(kb[1][1]), str(kb[1][2]))] = [tmp_kb, tmp_track]
 
-                successor_kb.append((tmp_kb, successor_state, 1))
+                successor_kb.append(([tmp_kb, tmp_track], successor_state, 1))
             
             # del dummy_sim_human
 
         # del dummy_state
         return successor_kb
 
-    def roll_out_for_kb(self, start_world_state, one_step_human_kb, delivery_horizon=4, debug=False, search_time=0.01, search_depth=5, other_agent_plan=None, explore_interact=False):
+    def roll_out_for_kb(self, start_world_state, one_step_human_kb, one_step_human_kb_track, delivery_horizon=4, debug=False, search_time=0.01, search_depth=5, other_agent_plan=None, explore_interact=False):
         start_state = start_world_state.deepcopy()
-        start_kb = self.sim_human_model.get_knowledge_base(start_state, rollout_kb=one_step_human_kb)
+        start_kb, start_track = self.sim_human_model.get_knowledge_base(start_state, rollout_kb=one_step_human_kb, rollout_info=one_step_human_kb_track)
 
         if start_state.order_list is None:
             start_state.order_list = ["any"] * delivery_horizon
@@ -7679,7 +7685,7 @@ class SteakKnowledgeBasePlanner(SteakHumanSubtaskQMDPPlanner):
         heuristic_fn = Steak_Heuristic(self.mp).simple_heuristic
 
         search_problem = SearchTree(start_state, None, expand_fn, heuristic_fn, debug=debug)
-        _, _, kb_prob_dict = search_problem.bfs_track_path(lambda kb: self.get_kb_key(kb), kb_root=start_kb, info=False, time_limit=search_time, path_limit=len(other_agent_plan)-1, search_depth=search_depth)
+        _, _, kb_prob_dict = search_problem.bfs_track_path(lambda kb: self.get_kb_key(kb), kb_root=[start_kb, start_track], info=False, time_limit=search_time, path_limit=len(other_agent_plan)-1, search_depth=search_depth)
         # _, _, kb_prob_dict = search_problem.bfs(kb_key_root=self.get_kb_key(start_kb), info=False, time_limit=search_time, path_limit=len(other_agent_plan)-1, search_depth=search_depth)
         
         return kb_prob_dict
@@ -7779,9 +7785,10 @@ class SteakKnowledgeBasePlanner(SteakHumanSubtaskQMDPPlanner):
                 mdp_state_idx = self.get_mdp_state_idx(mdp_state_key)
                 curr_belief = self.get_key_from_value(self.subtask_idx_dict, i)
                 if self.sim_human_model is not None:
-                    curr_kb = self.get_kb_key(self.sim_human_model.get_knowledge_base(world_state))
+                    curr_kb, curr_kb_track = self.sim_human_model.get_knowledge_base(world_state)
+                    curr_kb_key = self.get_kb_key(curr_kb)
                 else:
-                    curr_kb = self.get_kb_key(world_state)
+                    curr_kb_key = self.get_kb_key(world_state)
 
                 # assume the robot doesn't move and compute the human's trajectory to complete its subtask. This is for later speeding up our roll out step.
                 human_subtask = self.subtask_dict[self.state_dict[mdp_state_key][-1]]
@@ -7823,13 +7830,13 @@ class SteakKnowledgeBasePlanner(SteakHumanSubtaskQMDPPlanner):
 
                         if human_changed_world: 
                             # one_la_human_subtasks, _ = self.human_state_subtask_transition(self.state_dict[mdp_state_key][-1], robot_world_state_info[1:])
-                            kb_robot_world_state_info = self.get_kb_key(self.sim_human_model.get_knowledge_base(one_la_successor_state, rollout_kb=curr_kb)).split('.')[:-1] + [robot_world_state_info[4]]
+                            kb_robot_world_state_info = self.get_kb_key(self.sim_human_model.get_knowledge_base(one_la_successor_state, rollout_kb=curr_kb, rollout_info=curr_kb_track)[0]).split('.')[:-1] + [robot_world_state_info[4]]
                             one_la_human_subtasks, _ = self.human_state_subtask_transition(self.state_dict[mdp_state_key][-1], kb_robot_world_state_info)
                     ## TODO: why not consider the robot changing the world? Only commented out since it seems to work better for initial steps to find the reasonable actions
                     # the idea is update the human subtask when the enivornment changes
                     elif (agent_holding0 != agent_holding1) or (self.state_dict[mdp_state_key][1:4] != robot_world_state_info[1:4]): #or (human_next_la == 'interact'):
                         if self.sim_human_model is not None:
-                            one_la_kb_key = self.get_kb_key(self.sim_human_model.get_knowledge_base(one_la_successor_state, rollout_kb=curr_kb))
+                            one_la_kb_key = self.get_kb_key(self.sim_human_model.get_knowledge_base(one_la_successor_state, rollout_kb=curr_kb, rollout_info=curr_kb_track)[0])
                         else:
                             one_la_kb_key = self.get_kb_key(one_la_successor_state)
 
@@ -8030,7 +8037,7 @@ class SteakKnowledgeBasePlanner(SteakHumanSubtaskQMDPPlanner):
         KB_SEARCH_DEPTH = self.kb_search_depth
 
         # update sim human
-        curr_human_kb = self.sim_human_model.get_knowledge_base(world_state)
+        curr_human_kb, curr_human_kb_track = self.sim_human_model.get_knowledge_base(world_state)
         curr_kb_key = self.get_kb_key(curr_human_kb)
 
         ## Reason over all belief over human's subtask
@@ -8064,7 +8071,7 @@ class SteakKnowledgeBasePlanner(SteakHumanSubtaskQMDPPlanner):
 
                         # one step human subtask (either same subtask or changes due to a change in human's kb)
                         one_step_human_subtasks = [curr_subtask]
-                        one_step_human_kb = self.sim_human_model.get_knowledge_base(one_step_world_state, rollout_kb=curr_human_kb)
+                        one_step_human_kb, one_step_human_kb_track = self.sim_human_model.get_knowledge_base(one_step_world_state, rollout_kb=curr_human_kb, rollout_info=curr_human_kb_track)
                         one_step_human_kb_key = self.get_kb_key(one_step_human_kb)
                         if self.debug: print('one step human kb key:', one_step_human_kb_key)
                         
@@ -8077,7 +8084,7 @@ class SteakKnowledgeBasePlanner(SteakHumanSubtaskQMDPPlanner):
                         if self.debug: print('one_step_human_subtasks:', one_step_human_subtasks)
                         
                         ### Get next possible kbs (roll out for n number of steps)
-                        rollout_kbs_and_probs = self.roll_out_for_kb(one_step_world_state, one_step_human_kb, search_depth=KB_SEARCH_DEPTH, other_agent_plan=next_human_las[1:], explore_interact=False)
+                        rollout_kbs_and_probs = self.roll_out_for_kb(one_step_world_state, one_step_human_kb, one_step_human_kb_track, search_depth=KB_SEARCH_DEPTH, other_agent_plan=next_human_las[1:], explore_interact=False)
                         if self.debug: print('rollout_kbs_and_probs:', rollout_kbs_and_probs)
                         
                         ### For each possible one step state and kb, get next high-level state and its value
@@ -8196,7 +8203,7 @@ class SteakKnowledgeBasePlanner(SteakHumanSubtaskQMDPPlanner):
         action_cost = np.zeros((len(belief), Action.NUM_ACTIONS), dtype=float)
 
         # update sim human
-        curr_human_kb = self.sim_human_model.get_knowledge_base(world_state)
+        curr_human_kb, curr_human_kb_track = self.sim_human_model.get_knowledge_base(world_state)
         curr_kb_key = self.get_kb_key(curr_human_kb)
 
         ## Reason over all belief over human's subtask
@@ -8231,7 +8238,7 @@ class SteakKnowledgeBasePlanner(SteakHumanSubtaskQMDPPlanner):
 
                         # one step human subtask (either same subtask or changes due to a change in human's kb)
                         one_step_human_subtasks = [curr_subtask]
-                        one_step_human_kb = self.sim_human_model.get_knowledge_base(one_step_world_state, rollout_kb=curr_human_kb)
+                        one_step_human_kb, one_step_human_kb_track = self.sim_human_model.get_knowledge_base(one_step_world_state, rollout_kb=curr_human_kb, rollout_info=curr_human_kb_track)
                         one_step_human_kb_key = self.get_kb_key(one_step_human_kb)
                         if self.debug: print('one step human kb key:', one_step_human_kb_key)
                         
@@ -8245,7 +8252,7 @@ class SteakKnowledgeBasePlanner(SteakHumanSubtaskQMDPPlanner):
                         rollout_kbs_and_probs = []
                         if not (las[0] == 'interact' or next_human_la == 'interact'):
                             ### Get next possible kbs (roll out for n number of steps)
-                            rollout_kbs_and_probs = self.roll_out_for_kb(one_step_world_state, one_step_human_kb, search_depth=KB_SEARCH_DEPTH, other_agent_plan=next_human_las[1:], explore_interact=False)
+                            rollout_kbs_and_probs = self.roll_out_for_kb(one_step_world_state, one_step_human_kb, one_step_human_kb_track, search_depth=KB_SEARCH_DEPTH, other_agent_plan=next_human_las[1:], explore_interact=False)
                             if self.debug: print('rollout_kbs_and_probs:', rollout_kbs_and_probs)
                         
                         ### For each possible one step state and kb, get next high-level state and its value
