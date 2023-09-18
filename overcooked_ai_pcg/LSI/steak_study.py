@@ -14,14 +14,14 @@ from pprint import pprint
 from overcooked_ai_pcg import (LSI_STEAK_STUDY_RESULT_DIR,
                                LSI_STEAK_STUDY_CONFIG_DIR,
                                LSI_STEAK_STUDY_AGENT_DIR)
-from overcooked_ai_pcg.helper import init_steak_env, init_steak_qmdp_agent, lvl_str2grid
+from overcooked_ai_pcg.helper import init_steak_env, init_steak_qmdp_agent, lvl_str2grid, BASE_PARAMS
 import overcooked_ai_py.agents.agent as agent
 import overcooked_ai_py.planning.planners as planners
 from overcooked_ai_py.agents.agent import HumanPlayer, StayAgent
 from overcooked_ai_py.mdp.overcooked_mdp import Direction, Action, SteakHouseGridworld
 from overcooked_ai_py.mdp.overcooked_env import MAX_HORIZON, OvercookedEnv
 
-HUMAN_STUDY_ENV_HORIZON = 300
+HUMAN_STUDY_ENV_HORIZON = 400
 
 SUB_STUDY_TYPES = [
     'even_workloads',
@@ -42,7 +42,26 @@ NON_TRIAL_STUDY_TYPES = [
     *SUB_STUDY_TYPES,
 ]
 
-DETAILED_STUDY_TYPES = [f"{x}-{i}" for x in SUB_STUDY_TYPES for i in range(3)]
+DETAILED_STUDY_TYPES = [ 
+    'None-1-120',
+    'None-1_120_not_aware',
+    'Side-3-120',#use
+    'Side-3_120_not_aware',
+    'Mid-2-120',
+    'Mid-2_120_not_aware', #preferred
+    'Side-2_120_not_aware',
+    'Side-2-120',
+    'None-2-120',
+    'None-2_120_not_aware', #tied
+    'Mid-1_120_not_aware', #tied
+    'Mid-1-120',
+    'Side-1-120',
+    'Side-1_120_not_aware',
+    'Mid-3_120_not_aware', #no concensus
+    'Mid-3-120',
+    'None-3_120_not_aware',
+    'None-3-120',
+]
 
 ALL_STUDY_TYPES = [
     'all',
@@ -72,10 +91,11 @@ class OvercookedGame:
         slow_time (bool): whether the AI agent take multiple actions each time
             the human take one action.
     """
-    def __init__(self, env, agent, agent_idx, rand_seed, slow_time=False):
+    def __init__(self, env, agent, agent_idx, rand_seed, human_agent=None, slow_time=False, fog=False, trial=False, vision_aware=True):
         self._running = True
         self._display_surf = None
         self.env = env
+        self.trial = trial
         self.agent = agent
         self.agent_idx = agent_idx
         self.human_player = HumanPlayer()
@@ -83,12 +103,21 @@ class OvercookedGame:
         self.total_sparse_reward = 0
         self.last_state = None
         self.rand_seed = rand_seed
+        self.fog = fog
+        self.path = []
+        self.next_path = []
+        self.curr_s = 'None'
+        self.next_s = 'None'
+        self.human_agent = human_agent
+        self.vision_aware = vision_aware
+        self.loop_time_start = time.time()
 
         # Saves when each soup (order) was delivered
         self.checkpoints = [env.horizon - 1] * env.num_orders
         self.cur_order = 0
         self.timestep = 0
         self.joint_actions = []
+        self.step_time = 1
 
     def on_init(self):
         pygame.init()
@@ -99,7 +128,9 @@ class OvercookedGame:
         self.human_player.set_agent_index(1 - self.agent_idx)
         self.human_player.set_mdp(self.env.mdp)
 
-        self.env.render("fog")
+        self.env.render(mode="right_panel_init", view_angle=self.human_agent.vision_bound)
+        for box in self.env.mdp.rend_boxes:
+            box.render_checkbox()
         self._running = True
         np.random.seed(self.rand_seed)
 
@@ -135,6 +166,38 @@ class OvercookedGame:
                         if done:
                             break
 
+        if event.type == pygame.MOUSEBUTTONDOWN:    
+            for box in self.env.mdp.rend_boxes:
+                box.update_checkbox(event)
+                if box.checked is True:
+                    # only update when the task change
+                    if (self.next_s != box.caption) or (self.next_s in ['chop onion', 'heat hot plate', 'up', 'down', 'left', 'right', 'stay', 'interact']) :
+                        subtask = box.caption
+                        self.next_s = box.caption
+                        if subtask in ['up', 'down', 'left', 'right', 'stay', 'interact']:
+                            if 'up' in subtask:
+                                self.next_path = [Direction.NORTH]
+                            elif 'down' in subtask:
+                                self.next_path = [Direction.SOUTH]
+                            elif 'left' in subtask:
+                                self.next_path = [Direction.WEST]
+                            elif 'right' in subtask:
+                                self.next_path = [Direction.EAST]
+                            elif 'stay' in subtask:
+                                self.next_path = [Action.STAY]
+                            elif 'interact' in subtask:
+                                self.next_path = [Action.INTERACT]
+                        else:
+                            s = '_'.join(subtask.split())
+                            _, _, self.next_path = self.human_agent.action(self.env.state, chosen_subtask=s, return_path=True)
+                            
+                    for b in self.env.mdp.rend_boxes:
+                        if b != box:
+                            b.checked = False
+        
+        for box in self.env.mdp.rend_boxes:
+            box.render_checkbox()
+
         if event.type == pygame.QUIT or done:
             self._running = False
             self.last_state = next_state
@@ -164,10 +227,52 @@ class OvercookedGame:
         return done, next_state
 
     def on_loop(self):
-        pass
+        replanned = False
+
+        # recheck if the path is done before interact
+        if len(self.path) == 1 and self.path[0] == 'interact' and self.curr_s not in ['interact']:
+            s = '_'.join(self.curr_s.split())
+            _, _, self.path = self.human_agent.action(self.env.state, chosen_subtask=s, return_path=True)
+            if len(self.path) > 1:
+                self.path = [Action.STAY] + self.path
+                replanned = True
+        
+        # if len(self.path) == 0 and self.curr_s not in ['chop onion', 'heat hot plate', 'turn up', 'turn down', 'turn left', 'turn right', 'stay', 'interact', 'None']:
+
+        if len(self.path) == 0:
+            s = '_'.join(self.next_s.split())
+            if self.next_s not in ['up', 'down', 'left', 'right', 'stay', 'interact', 'None']:
+                _, _, self.next_path = self.human_agent.action(self.env.state, chosen_subtask=s, return_path=True)
+
+            self.path = self.next_path
+            self.next_path = []
+            self.curr_s = self.next_s
+            self.next_s = 'None'
+
+            if len(self.next_path) == 0:
+                for box in self.env.mdp.rend_boxes:
+                    box.checked = False
+                    box.render_checkbox()
+        
+        if len(self.path) > 0:
+            human_action = self.path.pop(0)
+            done, next_state = self.step_env(human_action)
+
+            if done:
+                self._running = False
+                self.last_state = next_state
 
     def on_render(self):
-        self.env.render(mode="fog")
+        # if self.fog:
+        # time.sleep(max(0, self.step_time - time.time()-self.loop_time_start))
+        if not self.trial and self.vision_aware:
+            self.env.render(mode="right_panel", view_angle=self.human_agent.vision_bound, info=self.curr_s)
+        else:
+            self.env.render(mode="not_aware", view_angle=self.human_agent.vision_bound, info=self.curr_s)
+        time.sleep(0.2)
+        # self.loop_time_start = time.time()
+        # else:
+        #     self.env.render()
 
     def on_cleanup(self):
         pygame.quit()
@@ -194,10 +299,15 @@ class OvercookedGame:
             fitness *= self.env.horizon
             fitness -= checked_time
 
+        # if value_kb_save_path is not None:
+        #     with open(value_kb_save_path, 'wb') as f:
+        #         pickle.dump([self.agent.mdp_planner.world_state_cost_dict, self.agent.mdp_planner.track_state_kb_map], f)
+
         return (self.total_sparse_reward, self.joint_actions, len(self.joint_actions))
 
-def load_steak_qmdp_agent(env, agent_save_path, value_kb_save_path):
+def load_steak_qmdp_agent(env, agent_save_path, value_kb_save_path, lvl_config):
     ai_agent = None
+    print(agent_save_path, value_kb_save_path)
     if agent_save_path is not None:
         # agent saved before, load it.
         if os.path.exists(agent_save_path):
@@ -211,28 +321,12 @@ def load_steak_qmdp_agent(env, agent_save_path, value_kb_save_path):
     
     # agent not found, recreate it and save it if a path is given.
     if ai_agent == None:
-        ai_agent = init_steak_qmdp_agent(env)
+        ai_agent = init_steak_qmdp_agent(env, search_depth=lvl_config['search_depth'], kb_search_depth=lvl_config['kb_search_depth'], vision_limit=lvl_config['vision_limit'], vision_bound=lvl_config['vision_bound'], kb_update_delay=lvl_config['kb_update_delay'])
         ai_agent.set_agent_index(0)
         if agent_save_path is not None:
             with open(agent_save_path, 'wb') as f:
                 pickle.dump(ai_agent, f)
     return ai_agent
-
-# def load_value_and_kb(env, value_kb_save_path):
-#     if value_kb_save_path is not None:
-#         # agent saved before, load it.
-#         if os.path.exists(value_kb_save_path):
-#             with open(value_kb_save_path, 'rb') as f:
-#                 ai_agent = pickle.load(f)
-
-#     # agent not found, recreate it and save it if a path is given.
-#     if ai_agent == None:
-#         ai_agent = init_steak_qmdp_agent(env)
-#         ai_agent.set_agent_index(0)
-#         if value_kb_save_path is not None:
-#             with open(value_kb_save_path, 'wb') as f:
-#                 pickle.dump(ai_agent, f)
-#     return ai_agent
 
 
 def load_human_log_data(log_index):
@@ -277,6 +371,7 @@ def replay_with_joint_actions(lvl_str, joint_actions, plot=True, log_dir=None, l
     cur_order = 0
 
     while not done:
+
         if plot:
             if view_angle > 0: 
                 env.render("fog", view_angle=view_angle)
@@ -287,6 +382,11 @@ def replay_with_joint_actions(lvl_str, joint_actions, plot=True, log_dir=None, l
             if img_name is not None:
                 cur_name = img_name(t)
                 pygame.image.save(env.mdp.viewer, cur_name)
+
+        if t == 0:
+            pygame.image.save(
+            env.mdp.viewer,
+            os.path.join(log_dir, log_name+".png"))
 
         ai_agent.update_logs(env.state, joint_actions[i][0])
         player.update_logs(env.state, joint_actions[i][1])
@@ -305,9 +405,9 @@ def replay_with_joint_actions(lvl_str, joint_actions, plot=True, log_dir=None, l
     os.system("ffmpeg -r 5 -i \"{}%*.png\"  {}{}.mp4".format(img_dir+'/', log_dir+'/', log_name))
     shutil.rmtree(img_dir) 
 
-    pygame.image.save(
-        env.mdp.viewer,
-        os.path.join(log_dir, log_name+".png"))
+    # pygame.image.save(
+    #     env.mdp.viewer,
+    #     os.path.join(log_dir, log_name+".png"))
 
     # recalculate the bcs
     workloads = next_state.get_player_workload()
@@ -316,12 +416,34 @@ def replay_with_joint_actions(lvl_str, joint_actions, plot=True, log_dir=None, l
     return workloads, concurr_active, stuck_time, checkpoints, i
 
 
+def load_steak_human_agent(env, human_save_path, vision_bound):
+    human_agent = None
+    if human_save_path is not None:
+        # agent saved before, load it.
+        if os.path.exists(human_save_path):
+            with open(human_save_path, 'rb') as f:
+                human_agent = pickle.load(f)
+        else:
+            mlp = planners.MediumLevelPlanner.from_pickle_or_compute(env.mdp, BASE_PARAMS, force_compute=True)
+
+            human_agent = agent.SteakLimitVisionHumanModel(mlp, env.state, auto_unstuck=True, explore=False, vision_limit=True, vision_bound=vision_bound, debug=False)
+            human_agent.set_agent_index(1)
+
+            if human_save_path is not None:
+                with open(human_save_path, 'wb') as f:
+                    pickle.dump(human_agent, f)
+
+    return human_agent
+
 def human_play(
     lvl_str,
     ai_agent=None,
+    human_save_path=None,
     agent_save_path=None,
     value_kb_save_path=None,
     horizon=HUMAN_STUDY_ENV_HORIZON,
+    trial = False,
+    lvl_config=None
 ):
     """Function that allows human to play with an ai_agent.
 
@@ -334,8 +456,12 @@ def human_play(
     """
     env = init_steak_env(lvl_str, horizon=horizon)
     if ai_agent is None:
-        ai_agent = load_steak_qmdp_agent(env, agent_save_path, value_kb_save_path)
-    theApp = OvercookedGame(env, ai_agent, agent_idx=0, rand_seed=10)
+        ai_agent = load_steak_qmdp_agent(env, agent_save_path, value_kb_save_path, lvl_config)
+    if trial:
+        human_agent = load_steak_human_agent(env, human_save_path, vision_bound=lvl_config['vision_bound'])
+    else:
+        human_agent = load_steak_human_agent(env, human_save_path, vision_bound=120)
+    theApp = OvercookedGame(env, ai_agent, agent_idx=0, rand_seed=10, human_agent=human_agent, trial=trial, vision_aware=lvl_config['vision_limit_aware'])
     return theApp.on_execute()
 
 
@@ -410,10 +536,10 @@ def agents_play(
     ai_agent = agent.MediumQMdpPlanningAgent(mdp_planner, greedy=True, auto_unstuck=agent_unstuck, low_level_action_flag=True, vision_limit=VISION_LIMIT)
     ai_agent.set_agent_index(0)
 
-    # if VISION_LIMIT_AWARE and VISION_LIMIT:
-    #     if agent_save_path is not None:
-    #         with open(agent_save_path, 'wb') as f:
-    #             pickle.dump(ai_agent, f)
+    if VISION_LIMIT_AWARE and VISION_LIMIT:
+        if agent_save_path is not None:
+            with open(agent_save_path, 'wb') as f:
+                pickle.dump(ai_agent, f)
 
     agent_pair = agent.AgentPair(ai_agent, human_agent) # if use QMDP, the first agent has to be the AI agent
     print("It took {} seconds for planning".format(time.time() - start_time))
@@ -424,10 +550,10 @@ def agents_play(
     # print("It took {} seconds to plan".format(time.time() - start_time))
     trajectory = s_t[:,1][:-1].tolist()
 
-    # if VISION_LIMIT_AWARE and VISION_LIMIT:
-    #     if value_kb_save_path is not None:
-    #         with open(value_kb_save_path, 'wb') as f:
-    #             pickle.dump([ai_agent.mdp_planner.world_state_cost_dict, ai_agent.mdp_planner.track_state_kb_map], f)
+    if VISION_LIMIT_AWARE and VISION_LIMIT:
+        if value_kb_save_path is not None:
+            with open(value_kb_save_path, 'wb') as f:
+                pickle.dump([ai_agent.mdp_planner.world_state_cost_dict, ai_agent.mdp_planner.track_state_kb_map], f)
 
     del mlp, mdp_planner
     gc.collect()
@@ -553,6 +679,11 @@ if __name__ == "__main__":
                         action='store_true',
                         help='Whether to continue running a previous study',
                         default=False)
+    parser.add_argument('-m',
+                        '--human_play_mode',
+                        help='Integer: index of the agent look ahead',
+                        required=False,
+                        default=-1)
     opt = parser.parse_args()
 
     np.random.seed(1)
@@ -560,14 +691,24 @@ if __name__ == "__main__":
     if not opt.replay:
         # read in human study levels
         if not opt.human_play:
-            study_lvls = pd.read_csv(
-                os.path.join(LSI_STEAK_STUDY_CONFIG_DIR, "test.csv"))
-
+            study_lvls = None
+            if opt.human_play_mode == '0':
+                study_lvls = pd.read_csv(
+                os.path.join(LSI_STEAK_STUDY_CONFIG_DIR, "all.csv"))
+            elif opt.human_play_mode == '1':
+                study_lvls = pd.read_csv(
+                os.path.join(LSI_STEAK_STUDY_CONFIG_DIR, "all-2.csv"))
+            elif opt.human_play_mode == '2':
+                study_lvls = pd.read_csv(
+                os.path.join(LSI_STEAK_STUDY_CONFIG_DIR, "real_study_lvls.csv"))
+            elif opt.human_play_mode == '3':
+                study_lvls = pd.read_csv(
+                os.path.join(LSI_STEAK_STUDY_CONFIG_DIR, "real_user_lvls.csv"))
             # study_lvls = pd.read_csv(
             #     os.path.join(LSI_STEAK_STUDY_CONFIG_DIR, "new_study_lvls.csv"))
         else:
             study_lvls = pd.read_csv(
-                os.path.join(LSI_STEAK_STUDY_CONFIG_DIR, "human_study_lvls.csv"))
+                os.path.join(LSI_STEAK_STUDY_CONFIG_DIR, "real_user_lvls.csv"))
         # running a new study
         if not opt.reload:
             # quit if study type not recognized
@@ -580,23 +721,41 @@ if __name__ == "__main__":
             if opt.study == 'trial':
                 study_lvls = pd.read_csv(
                 os.path.join(LSI_STEAK_STUDY_CONFIG_DIR, "trial_lvls.csv"))
-                lvl_config = study_lvls.iloc[0]
-                agent_save_path = os.path.join(
-                    LSI_STEAK_STUDY_AGENT_DIR,
-                    "{lvl_type}_{lvl_vision}_{lvl_robot_aware}_{lvl_search_depth}_{lvl_kb_depth}_{kb_update_delay}.pkl".format(lvl_type=lvl_config["lvl_type"], lvl_vision=lvl_config["vision_bound"], lvl_robot_aware=lvl_config["vision_limit_aware"], lvl_search_depth=lvl_config["search_depth"], lvl_kb_depth=lvl_config["kb_search_depth"], kb_update_delay=lvl_config['kb_update_delay']))
-                value_kb_save_path = os.path.join(
-                    LSI_STEAK_STUDY_AGENT_DIR,
-                    "{lvl_type}_{lvl_vision}_{lvl_robot_aware}_{lvl_search_depth}_{lvl_kb_depth}_{kb_update_delay}_v_and_kb.pkl".format(lvl_type=lvl_config["lvl_type"], lvl_vision=lvl_config["vision_bound"], lvl_robot_aware=lvl_config["vision_limit_aware"], lvl_search_depth=lvl_config["search_depth"], lvl_kb_depth=lvl_config["kb_search_depth"], kb_update_delay=lvl_config['kb_update_delay']))
-                print("trial")
-                print(lvl_config["lvl_str"])
+                # lvl_config = study_lvls.iloc[0]
 
                 for index, lvl_config in study_lvls.iterrows():
-                    human_play(
-                        lvl_config["lvl_str"],
-                        ai_agent=StayAgent(),
-                        agent_save_path=agent_save_path,
-                        value_kb_save_path=value_kb_save_path,
-                    )
+                    human_save_path = os.path.join(
+                        LSI_STEAK_STUDY_AGENT_DIR,
+                        "{lvl_type}_{lvl_vision}_{lvl_robot_aware}_{lvl_search_depth}_{lvl_kb_depth}_{kb_update_delay}_human.pkl".format(lvl_type=lvl_config["lvl_type"], lvl_vision=lvl_config["vision_bound"], lvl_robot_aware=lvl_config["vision_limit_aware"], lvl_search_depth=lvl_config["search_depth"], lvl_kb_depth=lvl_config["kb_search_depth"], kb_update_delay=lvl_config['kb_update_delay']))
+                    if index < 3:
+                        print("trial")
+                        print(lvl_config["lvl_str"])
+                    
+                        human_play(
+                            lvl_config["lvl_str"],
+                            ai_agent=StayAgent(),
+                            human_save_path=human_save_path,
+                            trial=True,
+                            lvl_config=lvl_config
+                        )
+                    else:
+                        agent_save_path = os.path.join(
+                            LSI_STEAK_STUDY_AGENT_DIR,
+                            "{lvl_type}_{lvl_vision}_{lvl_robot_aware}_{lvl_search_depth}_{lvl_kb_depth}_{kb_update_delay}.pkl".format(lvl_type=lvl_config["lvl_type"], lvl_vision=lvl_config["vision_bound"], lvl_robot_aware=lvl_config["vision_limit_aware"], lvl_search_depth=lvl_config["search_depth"], lvl_kb_depth=lvl_config["kb_search_depth"], kb_update_delay=lvl_config['kb_update_delay']))
+                        value_kb_save_path = os.path.join(
+                            LSI_STEAK_STUDY_AGENT_DIR,
+                            "{lvl_type}_{lvl_vision}_{lvl_robot_aware}_{lvl_search_depth}_{lvl_kb_depth}_{kb_update_delay}_v_and_kb.pkl".format(lvl_type=lvl_config["lvl_type"], lvl_vision=lvl_config["vision_bound"], lvl_robot_aware=lvl_config["vision_limit_aware"], lvl_search_depth=lvl_config["search_depth"], lvl_kb_depth=lvl_config["kb_search_depth"], kb_update_delay=lvl_config['kb_update_delay']))
+                        print("trial")
+                        print(lvl_config["lvl_str"])
+                    
+                        human_play(
+                            lvl_config["lvl_str"],
+                            human_save_path=human_save_path,
+                            agent_save_path=agent_save_path,
+                            value_kb_save_path=value_kb_save_path,
+                            trial=False,
+                            lvl_config=lvl_config,
+                        )
 
             elif opt.study in NON_TRIAL_STUDY_TYPES:
                 # initialize the result log files
@@ -616,6 +775,9 @@ if __name__ == "__main__":
                         value_kb_save_path = os.path.join(
                             LSI_STEAK_STUDY_AGENT_DIR,
                             "{lvl_type}_{lvl_vision}_{lvl_robot_aware}_{lvl_search_depth}_{lvl_kb_depth}_{kb_update_delay}_v_and_kb.pkl".format(lvl_type=lvl_config["lvl_type"], lvl_vision=lvl_config["vision_bound"], lvl_robot_aware=lvl_config["vision_limit_aware"], lvl_search_depth=lvl_config["search_depth"], lvl_kb_depth=lvl_config["kb_search_depth"], kb_update_delay=lvl_config['kb_update_delay']))
+                        human_save_path = os.path.join(
+                            LSI_STEAK_STUDY_AGENT_DIR,
+                            "{lvl_type}_{lvl_vision}_{lvl_robot_aware}_{lvl_search_depth}_{lvl_kb_depth}_{kb_update_delay}_human.pkl".format(lvl_type=lvl_config["lvl_type"], lvl_vision=lvl_config["vision_bound"], lvl_robot_aware=lvl_config["vision_limit_aware"], lvl_search_depth=lvl_config["search_depth"], lvl_kb_depth=lvl_config["kb_search_depth"], kb_update_delay=lvl_config['kb_update_delay']))
                         print(lvl_config["lvl_type"])
                         if not opt.human_play:
                             results = agents_play(lvl_config["lvl_str"],
@@ -629,8 +791,10 @@ if __name__ == "__main__":
                                                 KB_UPDATE_DELAY=lvl_config["kb_update_delay"])
                         else:
                             results = human_play(lvl_config["lvl_str"],
+                                                 human_save_path = human_save_path,
                                          agent_save_path=agent_save_path,
-                                        value_kb_save_path=value_kb_save_path)
+                                        value_kb_save_path=value_kb_save_path,
+                                        lvl_config=lvl_config)
                         # write the results
                         if lvl_config["lvl_type"] != "trial":
                             write_to_human_exp_log(human_log_csv, results,
@@ -656,6 +820,9 @@ if __name__ == "__main__":
                     value_kb_save_path = os.path.join(
                         LSI_STEAK_STUDY_AGENT_DIR,
                         "{lvl_type}_{lvl_vision}_{lvl_robot_aware}_{lvl_search_depth}_{lvl_kb_depth}_{kb_update_delay}_v_and_kb.pkl".format(lvl_type=lvl_config["lvl_type"], lvl_vision=lvl_config["vision_bound"], lvl_robot_aware=lvl_config["vision_limit_aware"], lvl_search_depth=lvl_config["search_depth"], lvl_kb_depth=lvl_config["kb_search_depth"], kb_update_delay=lvl_config['kb_update_delay']))
+                    human_save_path = os.path.join(
+                            LSI_STEAK_STUDY_AGENT_DIR,
+                            "{lvl_type}_{lvl_vision}_{lvl_robot_aware}_{lvl_search_depth}_{lvl_kb_depth}_{kb_update_delay}_human.pkl".format(lvl_type=lvl_config["lvl_type"], lvl_vision=lvl_config["vision_bound"], lvl_robot_aware=lvl_config["vision_limit_aware"], lvl_search_depth=lvl_config["search_depth"], lvl_kb_depth=lvl_config["kb_search_depth"], kb_update_delay=lvl_config['kb_update_delay']))
                     if not opt.human_play:
                         results = agents_play(lvl_str,
                                         agent_save_path=agent_save_path,
@@ -668,8 +835,10 @@ if __name__ == "__main__":
                                         KB_UPDATE_DELAY=lvl_config["kb_update_delay"])
                     else:
                         results = human_play(lvl_str,
+                                             human_save_path=human_save_path,
                                         agent_save_path=agent_save_path,
-                                        value_kb_save_path=value_kb_save_path)
+                                        value_kb_save_path=value_kb_save_path,
+                                        lvl_config=lvl_config)
                     # write the results
                     if lvl_config["lvl_type"] != "trial":
                         write_to_human_exp_log(human_log_csv, results,

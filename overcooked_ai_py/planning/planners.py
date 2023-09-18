@@ -5414,19 +5414,19 @@ class  SteakHumanSubtaskQMDPPlanner(SteakMediumLevelMDPPlanner):
         if player_obj == 'None':
             if next_chop_time >= 0 and next_chop_time < self.mdp.chopping_time and (subtask == 'chop_onion' or subtask == 'drop_onion'):
                 next_subtasks += ['chop_onion']
-            elif next_wash_time >= 0 and next_wash_time < self.mdp.wash_time and (subtask == 'heat_hot_plate' or subtask == 'drop_plate'):
+            if next_wash_time >= 0 and next_wash_time < self.mdp.wash_time and (subtask == 'heat_hot_plate' or subtask == 'drop_plate'):
                 next_subtasks += ['heat_hot_plate']
-            elif next_num_item_in_pot == 0 and len(next_orders) > 0 and other_agent_obj != 'meat':
+            if next_num_item_in_pot == 0 and len(next_orders) > 0 and other_agent_obj != 'meat':
                 next_subtasks += ['pickup_meat']
-            elif next_chop_time < 0 and other_agent_obj != 'onion':
+            if next_chop_time < 0 and other_agent_obj != 'onion':
                 next_subtasks += ['pickup_onion']
-            elif next_wash_time < 0 and other_agent_obj != 'plate':
+            if next_wash_time < 0 and other_agent_obj != 'plate':
                 next_subtasks += ['pickup_plate']
-            elif (next_chop_time >= self.mdp.chopping_time or other_agent_obj == 'onion') and next_wash_time >= self.mdp.wash_time and next_num_item_in_pot > 0:# and not (other_agent_obj == 'hot_plate' or other_agent_obj == 'steak'):
+            if (next_chop_time >= self.mdp.chopping_time or other_agent_obj == 'onion') and next_wash_time >= self.mdp.wash_time and next_num_item_in_pot > 0:# and not (other_agent_obj == 'hot_plate' or other_agent_obj == 'steak'):
                 next_subtasks += ['pickup_hot_plate']
             # elif (next_chop_time >= self.mdp.chopping_time or other_agent_obj == 'onion') and next_wash_time < self.mdp.wash_time and other_agent_obj == 'plate' and not (other_agent_obj == 'hot_plate' or other_agent_obj == 'steak'):
             #     next_subtasks += ['pickup_hot_plate']
-            else:
+            if len(next_subtasks) == 0:
                 next_subtasks += ['pickup_plate']
         else:
             if player_obj == 'onion':
@@ -8112,8 +8112,8 @@ class SteakKnowledgeBasePlanner(SteakHumanSubtaskQMDPPlanner):
                                 for _, rollout_state_key, rollout_cost in rollout_states_keys:
                                     rollout_state_idx = self.state_idx_dict[rollout_state_key]
                                     # next_mdp_state_idx_arr = np.where(self.s_kb_trans_matrix[rollout_state_idx] > 0.000001)[0]
-                                    next_mdp_state_idx_arr = np.where(self.optimal_s_kb_trans_matrix[rollout_state_idx] > 0.000001)[0]
-                                    # next_mdp_state_idx_arr = np.where(self.optimal_non_subtask_s_kb_trans_matrix[rollout_state_idx] > 0.000001)[0]
+                                    # next_mdp_state_idx_arr = np.where(self.optimal_s_kb_trans_matrix[rollout_state_idx] > 0.000001)[0]
+                                    next_mdp_state_idx_arr = np.where(self.optimal_non_subtask_s_kb_trans_matrix[rollout_state_idx] > 0.000001)[0]
 
                                     # get value of the next states and pick the best performing one
                                     max_cost_next_state_idx = next_mdp_state_idx_arr[0]

@@ -400,8 +400,8 @@ class GreedyHumanModel(Agent):
             actions_and_infos_n.append(self.action(state))
         return actions_and_infos_n
 
-    def action(self, state, eps = 0):
-        possible_motion_goals = self.ml_action(state)
+    def action(self, state, eps = 0, chosen_subtask=None, return_path=False):
+        possible_motion_goals = self.ml_action(state, chosen_subtask=chosen_subtask)
 
         #from IPython import embed
         #embed()
@@ -410,7 +410,10 @@ class GreedyHumanModel(Agent):
         # level action we want to perform, select the one with lowest cost
         start_pos_and_or = state.players_pos_and_or[self.agent_index]
 
-        chosen_goal, chosen_action, action_probs = self.choose_motion_goal(start_pos_and_or, possible_motion_goals)
+        if return_path:
+            chosen_goal, chosen_action, action_probs, path = self.choose_motion_goal(start_pos_and_or, possible_motion_goals, return_path=return_path)
+        else:
+            chosen_goal, chosen_action, action_probs = self.choose_motion_goal(start_pos_and_or, possible_motion_goals)
 
         if self.ll_boltzmann_rational and chosen_goal[0] == start_pos_and_or[0]:
             chosen_action, action_probs = self.boltzmann_rational_ll_action(start_pos_and_or, chosen_goal)
@@ -470,24 +473,43 @@ class GreedyHumanModel(Agent):
             state.players[self.agent_index].active_log += [1]
 
         print('greedy human chosen action:', chosen_action, action_probs)
+
+        if return_path:
+            return chosen_action, {"action_probs": action_probs}, path
+        
         return chosen_action, {"action_probs": action_probs}
 
-    def choose_motion_goal(self, start_pos_and_or, motion_goals):
+    def choose_motion_goal(self, start_pos_and_or, motion_goals, return_path=False):
         """
         For each motion goal, consider the optimal motion plan that reaches the desired location.
         Based on the plan's cost, the method chooses a motion goal (either boltzmann rationally
         or rationally), and returns the plan and the corresponding first action on that plan.
         """
+        return_plans = []
+        chosen_goal = None
+        chosen_goal_action = None
+        action_probs = None
+        
         if self.hl_boltzmann_rational:
             possible_plans = [self.mlp.mp.get_plan(start_pos_and_or, goal) for goal in motion_goals]
             plan_costs = [plan[2] for plan in possible_plans]
             goal_idx, action_probs = self.get_boltzmann_rational_action_idx(plan_costs, self.hl_temperature)
             chosen_goal = motion_goals[goal_idx]
             chosen_goal_action = possible_plans[goal_idx][0][0]
+            return_plans = possible_plans[goal_idx][0]
         else:
-            chosen_goal, chosen_goal_action = self.get_lowest_cost_action_and_goal(start_pos_and_or, motion_goals)
-            action_probs = self.a_probs_from_action(chosen_goal_action)
+            if return_path:
+                chosen_goal, chosen_goal_action, return_plans = self.get_lowest_cost_action_and_goal(start_pos_and_or, motion_goals, return_path=return_path)
+            else:
+                chosen_goal, chosen_goal_action = self.get_lowest_cost_action_and_goal(start_pos_and_or, motion_goals)
+            if chosen_goal_action is not None:
+                action_probs = self.a_probs_from_action(chosen_goal_action)
+        
+        if return_path:
+            return chosen_goal, chosen_goal_action, action_probs, return_plans
+        
         return chosen_goal, chosen_goal_action, action_probs
+        
 
     def get_boltzmann_rational_action_idx(self, costs, temperature):
         """Chooses index based on softmax probabilities obtained from cost array"""
@@ -496,19 +518,22 @@ class GreedyHumanModel(Agent):
         action_idx = np.random.choice(len(costs), p=softmax_probs)
         return action_idx, softmax_probs
 
-    def get_lowest_cost_action_and_goal(self, start_pos_and_or, motion_goals):
+    def get_lowest_cost_action_and_goal(self, start_pos_and_or, motion_goals, return_path=False):
         """
         Chooses motion goal that has the lowest cost action plan.
         Returns the motion goal itself and the first action on the plan.
         """
         min_cost = np.Inf
         best_action, best_goal = None, None
+        action_plan = []
         for goal in motion_goals:
             action_plan, _, plan_cost = self.mlp.mp.get_plan(start_pos_and_or, goal)
             if plan_cost < min_cost:
                 best_action = action_plan[0]
                 min_cost = plan_cost
                 best_goal = goal
+        if return_path:
+            return best_goal, best_action, action_plan
         return best_goal, best_action
 
     def boltzmann_rational_ll_action(self, start_pos_and_or, goal, inverted_costs=False):
@@ -609,7 +634,7 @@ class GreedySteakHumanModel(GreedyHumanModel):
     def __init__(self, mlp, hl_boltzmann_rational=False, ll_boltzmann_rational=False, hl_temp=1, ll_temp=1, auto_unstuck=True):
         super().__init__(mlp, hl_boltzmann_rational, ll_boltzmann_rational, hl_temp, ll_temp, auto_unstuck)
 
-    def ml_action(self, state):
+    def ml_action(self, state, chosen_subtask=None):
         """
         Selects a medium level action for the current state.
         Motion goals can be thought of instructions of the form:
@@ -1323,8 +1348,29 @@ class SteakLimitVisionHumanModel(limitVisionHumanModel):
             print('')
 
         return tmp_kb, [tmp_track, tmp_untrack, tmp_remove_obj_id_list]
+    
+    def get_human_traj(self, world_state, human_subtask_obj):
+        # get human holding object name
+        human_obj = 'None' if world_state.players[1-self.agent_index].held_object == None else world_state.players[1-self.agent_index].held_object.name
 
-    def ml_action(self, state):
+        # limit the human to take the optimal action to complete its subtask (robot's belief)
+        possible_human_motion_goals, HUMAN_WAIT = self.map_action_to_location(world_state, human_subtask_obj[0], human_subtask_obj[1], p0_obj=human_obj, player_idx=abs(1-self.agent_index)) # get next world state from human subtask info (aka. mdp action translate into medium level goal position)
+
+        human_cost, human_feature_pos = self.mp.min_cost_to_feature(world_state.players[abs(1-self.agent_index)].pos_and_or, possible_human_motion_goals, with_motion_goal=True)
+        new_human_pos = human_feature_pos if human_feature_pos is not None else world_state.players[(1-self.agent_index)].get_pos_and_or()
+        agent_pos = world_state.players[self.agent_index].get_pos_and_or()
+
+        # shift by one grid if goal position overlappes with the robot agent
+        if agent_pos == new_human_pos:
+            _, new_human_pos = self._shift_same_goal_pos([agent_pos, new_human_pos], np.argmax(np.array([0, human_cost])))
+
+        # get grid path from human's original position to goal
+        ori_human_pos = world_state.players[(1-self.agent_index)].get_pos_and_or()
+        next_las, _, _ = self.mp.get_plan(ori_human_pos, new_human_pos)
+
+        return next_las
+
+    def ml_action(self, state, chosen_subtask = None):
         """
         Selects a medium level action for the current state.
         Motion goals can be thought of instructions of the form:
@@ -1342,7 +1388,6 @@ class SteakLimitVisionHumanModel(limitVisionHumanModel):
         other_player = self.knowledge_base['other_player']
         am = self.mlp.ml_action_manager
         curr_pos_and_or = player.pos_and_or
-        chosen_subtask = None
 
         counter_objects = self.mlp.mdp.get_counter_objects_dict(state, list(self.mlp.mdp.terrain_pos_dict['X']))
         sink_status = self.knowledge_base['sink_states']
@@ -1375,116 +1420,157 @@ class SteakLimitVisionHumanModel(limitVisionHumanModel):
         other_has_onion = other_player.has_object() and other_player.get_object().name == 'onion'
         other_has_plate = other_player.has_object() and other_player.get_object().name == 'plate'
 
-        if not player.has_object():
-
-            # if 'dish' in counter_objects.keys():
-            #     motion_goals = counter_objects['dish']
-            # elif garnish_ready and not other_has_steak and 'steak' in counter_objects.keys():
-            #     motion_goals += counter_objects['steak']
-            # elif steak_nearly_ready and not other_has_hot_plate and 'hot_plate' in counter_objects.keys():
-            #     motion_goals = counter_objects['hot_plate']
-            
-            if chopping and not garnish_ready and self.prev_chosen_subtask in ['drop_onion', 'chop_onion']:
-                motion_goals += am.chop_onion_on_board_actions(state, knowledge_base=self.knowledge_base)
-                chosen_subtask = 'chop_onion'
-            elif rinsing and not hot_plate_ready and self.prev_chosen_subtask in ['drop_plate', 'heat_hot_plate']:
-                motion_goals += am.heat_plate_in_sink_actions(state, knowledge_base=self.knowledge_base)
-                chosen_subtask = 'heat_hot_plate'
-            elif not steak_nearly_ready and state.num_orders_remaining > 0 and not other_has_meat:
-                motion_goals += am.pickup_meat_actions(counter_objects, knowledge_base=self.knowledge_base)
-                chosen_subtask = 'pickup_meat'
-            elif not chopping and not garnish_ready and not other_has_onion:
-                motion_goals += am.pickup_onion_actions(counter_objects, knowledge_base=self.knowledge_base)
-                chosen_subtask = 'pickup_onion'
-            elif not rinsing and not hot_plate_ready and not other_has_plate:
-                motion_goals += am.pickup_plate_actions(counter_objects, state, knowledge_base=self.knowledge_base)
-                chosen_subtask = 'pickup_plate'
-            elif (garnish_ready or other_has_onion) and hot_plate_ready and steak_nearly_ready:# and not (other_has_hot_plate):# or other_has_steak)
-                motion_goals += am.pickup_hot_plate_from_sink_actions(counter_objects, state, knowledge_base=self.knowledge_base)
-                chosen_subtask = 'pickup_hot_plate'
-            # elif (garnish_ready or other_has_onion) and steak_nearly_ready and other_has_plate and not (other_has_hot_plate or other_has_steak) and not hot_plate_ready:
-            #     motion_goals += am.pickup_hot_plate_from_sink_actions(counter_objects, state, knowledge_base=self.knowledge_base)
-            #     chosen_subtask = 'pickup_hot_plate'
+        if chosen_subtask is not None:
+            if chosen_subtask == 'pickup_meat':
+                motion_goals += am.pickup_meat_actions(counter_objects)#, knowledge_base=self.knowledge_base)
+            elif chosen_subtask == 'pickup_onion':
+                motion_goals += am.pickup_onion_actions(counter_objects)#, knowledge_base=self.knowledge_base)
+            elif chosen_subtask == 'pickup_plate':
+                motion_goals += am.pickup_plate_actions(counter_objects, state)#, knowledge_base=self.knowledge_base)
+            elif chosen_subtask == 'pickup_hot_plate':
+                motion_goals += am.pickup_hot_plate_from_sink_actions(counter_objects, state)#, knowledge_base=self.knowledge_base)
                 if len(motion_goals) == 0:
                     if other_has_plate:
-                        motion_goals += self.knowledge_base['sink_states']['full']
+                        motion_goals += self.mlp.mdp.get_sink_status(state)['sink_states']['full']
                         if len(motion_goals) == 0:
-                            motion_goals += self.knowledge_base['sink_states']['empty']
-
-            if len(motion_goals) == 0:
-                motion_goals += am.pickup_plate_actions(counter_objects, knowledge_base=self.knowledge_base)
-                chosen_subtask = 'pickup_plate'
-        else:
-            player_obj = player.get_object()
-
-            if player_obj.name == 'onion':
-                motion_goals = am.put_onion_on_board_actions(state, knowledge_base=self.knowledge_base)
-                chosen_subtask = 'drop_onion'
-            elif player_obj.name == 'meat':
-                motion_goals = am.put_meat_in_pot_actions(pot_states_dict, knowledge_base=self.knowledge_base)
-                chosen_subtask = 'drop_meat'
-            elif player_obj.name == "plate":
-                motion_goals = am.put_plate_in_sink_actions(counter_objects, state, knowledge_base=self.knowledge_base)
-                # if (hot_plate_ready or rinsing) and garnish_ready and (steak_nearly_ready):
-                chosen_subtask = 'drop_plate'
-            elif player_obj.name == 'hot_plate':
-                motion_goals = am.pickup_steak_with_hot_plate_actions(pot_states_dict, only_nearly_ready=True, knowledge_base=self.knowledge_base)
-                chosen_subtask = 'pickup_steak'
+                            motion_goals += self.mlp.mdp.get_sink_status(state)['sink_states']['empty']
+            elif chosen_subtask == 'pickup_steak':
+                motion_goals = am.pickup_steak_with_hot_plate_actions(self.mlp.mdp.get_pot_states(state))#, only_nearly_ready=True, knowledge_base=self.knowledge_base)
                 if len(motion_goals) == 0:
                     if other_has_meat:
-                        motion_goals = pot_states_dict['steak']['cooking'] + pot_states_dict['steak']['partially_full']
+                        motion_goals = self.mlp.mdp.get_pot_states(state)['steak']['cooking'] + self.mlp.mdp.get_pot_states(state)['steak']['partially_full']
                         if len(motion_goals) == 0:
-                            motion_goals = pot_states_dict['empty']
-
-            elif player_obj.name == 'steak':
-                # would go towards chopping board if it does know the human picked up the onion
-                motion_goals = am.add_garnish_to_steak_actions(state, knowledge_base=self.knowledge_base)
-                chosen_subtask = 'pickup_garnish'
+                            motion_goals = self.mlp.mdp.get_pot_states(state)['empty']
+            elif chosen_subtask == 'pickup_garnish':
+                motion_goals = am.add_garnish_to_steak_actions(state)#, knowledge_base=self.knowledge_base)
                 if len(motion_goals) == 0:
                     if other_has_onion:
-                        motion_goals = self.knowledge_base['chop_states']['full']
+                        motion_goals = self.mlp.mdp.get_chopping_board_status(state)['chop_states']['full']
                         if len(motion_goals) == 0:
-                            self.knowledge_base['chop_states']['empty']
-
-            elif player_obj.name == 'dish':
+                            self.mlp.mdp.get_chopping_board_status(state)['chop_states']['empty']
+            elif chosen_subtask == 'drop_meat':
+                motion_goals = am.put_meat_in_pot_actions(self.mlp.mdp.get_pot_states(state))#, knowledge_base=self.knowledge_base)
+            elif chosen_subtask == 'drop_onion':
+                motion_goals = am.put_onion_on_board_actions(state)#, knowledge_base=self.knowledge_base)
+            elif chosen_subtask == 'drop_plate':
+                motion_goals = am.put_plate_in_sink_actions(counter_objects, state)#, knowledge_base=self.knowledge_base)
+            elif chosen_subtask == 'chop_onion':
+                motion_goals += am.chop_onion_on_board_actions(state)#, knowledge_base=self.knowledge_base)
+            elif chosen_subtask == 'heat_hot_plate':
+                motion_goals += am.heat_plate_in_sink_actions(state)#, knowledge_base=self.knowledge_base)
+            elif chosen_subtask == 'deliver_dish':
                 motion_goals = am.deliver_dish_actions()
-                chosen_subtask = 'deliver_dish'
-            # else:
-            #     motion_goals += am.place_obj_on_counter_actions(state)
 
-        motion_goals = [mg for mg in motion_goals if self.mlp.mp.is_valid_motion_start_goal_pair(player.pos_and_or, mg)]
+            motion_goals = [mg for mg in motion_goals if self.mlp.mp.is_valid_motion_start_goal_pair(player.pos_and_or, mg)]
+            
+        else:
+            if not player.has_object():
+
+                # if 'dish' in counter_objects.keys():
+                #     motion_goals = counter_objects['dish']
+                # elif garnish_ready and not other_has_steak and 'steak' in counter_objects.keys():
+                #     motion_goals += counter_objects['steak']
+                # elif steak_nearly_ready and not other_has_hot_plate and 'hot_plate' in counter_objects.keys():
+                #     motion_goals = counter_objects['hot_plate']
+                
+                if chopping and not garnish_ready and self.prev_chosen_subtask in ['drop_onion', 'chop_onion']:
+                    motion_goals += am.chop_onion_on_board_actions(state, knowledge_base=self.knowledge_base)
+                    chosen_subtask = 'chop_onion'
+                elif rinsing and not hot_plate_ready and self.prev_chosen_subtask in ['drop_plate', 'heat_hot_plate']:
+                    motion_goals += am.heat_plate_in_sink_actions(state, knowledge_base=self.knowledge_base)
+                    chosen_subtask = 'heat_hot_plate'
+                elif not steak_nearly_ready and state.num_orders_remaining > 0 and not other_has_meat:
+                    motion_goals += am.pickup_meat_actions(counter_objects, knowledge_base=self.knowledge_base)
+                    chosen_subtask = 'pickup_meat'
+                elif not chopping and not garnish_ready and not other_has_onion:
+                    motion_goals += am.pickup_onion_actions(counter_objects, knowledge_base=self.knowledge_base)
+                    chosen_subtask = 'pickup_onion'
+                elif not rinsing and not hot_plate_ready and not other_has_plate:
+                    motion_goals += am.pickup_plate_actions(counter_objects, state, knowledge_base=self.knowledge_base)
+                    chosen_subtask = 'pickup_plate'
+                elif (garnish_ready or other_has_onion) and hot_plate_ready and steak_nearly_ready:# and not (other_has_hot_plate):# or other_has_steak)
+                    motion_goals += am.pickup_hot_plate_from_sink_actions(counter_objects, state, knowledge_base=self.knowledge_base)
+                    chosen_subtask = 'pickup_hot_plate'
+                # elif (garnish_ready or other_has_onion) and steak_nearly_ready and other_has_plate and not (other_has_hot_plate or other_has_steak) and not hot_plate_ready:
+                #     motion_goals += am.pickup_hot_plate_from_sink_actions(counter_objects, state, knowledge_base=self.knowledge_base)
+                #     chosen_subtask = 'pickup_hot_plate'
+                    if len(motion_goals) == 0:
+                        if other_has_plate:
+                            motion_goals += self.knowledge_base['sink_states']['full']
+                            if len(motion_goals) == 0:
+                                motion_goals += self.knowledge_base['sink_states']['empty']
+
+                if len(motion_goals) == 0:
+                    motion_goals += am.pickup_plate_actions(counter_objects, knowledge_base=self.knowledge_base)
+                    chosen_subtask = 'pickup_plate'
+            else:
+                player_obj = player.get_object()
+
+                if player_obj.name == 'onion':
+                    motion_goals = am.put_onion_on_board_actions(state, knowledge_base=self.knowledge_base)
+                    chosen_subtask = 'drop_onion'
+                elif player_obj.name == 'meat':
+                    motion_goals = am.put_meat_in_pot_actions(pot_states_dict, knowledge_base=self.knowledge_base)
+                    chosen_subtask = 'drop_meat'
+                elif player_obj.name == "plate":
+                    motion_goals = am.put_plate_in_sink_actions(counter_objects, state, knowledge_base=self.knowledge_base)
+                    # if (hot_plate_ready or rinsing) and garnish_ready and (steak_nearly_ready):
+                    chosen_subtask = 'drop_plate'
+                elif player_obj.name == 'hot_plate':
+                    motion_goals = am.pickup_steak_with_hot_plate_actions(pot_states_dict, only_nearly_ready=True, knowledge_base=self.knowledge_base)
+                    chosen_subtask = 'pickup_steak'
+                    if len(motion_goals) == 0:
+                        if other_has_meat:
+                            motion_goals = pot_states_dict['steak']['cooking'] + pot_states_dict['steak']['partially_full']
+                            if len(motion_goals) == 0:
+                                motion_goals = pot_states_dict['empty']
+
+                elif player_obj.name == 'steak':
+                    # would go towards chopping board if it does know the human picked up the onion
+                    motion_goals = am.add_garnish_to_steak_actions(state, knowledge_base=self.knowledge_base)
+                    chosen_subtask = 'pickup_garnish'
+                    if len(motion_goals) == 0:
+                        if other_has_onion:
+                            motion_goals = self.knowledge_base['chop_states']['full']
+                            if len(motion_goals) == 0:
+                                self.knowledge_base['chop_states']['empty']
+
+                elif player_obj.name == 'dish':
+                    motion_goals = am.deliver_dish_actions()
+                    chosen_subtask = 'deliver_dish'
+                # else:
+                #     motion_goals += am.place_obj_on_counter_actions(state)
+
+            motion_goals = [mg for mg in motion_goals if self.mlp.mp.is_valid_motion_start_goal_pair(player.pos_and_or, mg)]
         
-        # if len(motion_goals) == 0:
-        #     motion_goals = [curr_pos_and_or]
-        #     chosen_subtask = self.prev_chosen_subtask
-        if len(motion_goals) == 0:
-            if self.explore: # explore to expand the vision.
-                if player.has_object():
-                    motion_goals += am.place_obj_on_counter_actions(state)
-                else:
-                    motion_goals += am.pickup_plate_actions(counter_objects, knowledge_base=self.knowledge_base)
+            if len(motion_goals) == 0:
+                if self.explore: # explore to expand the vision.
+                    if player.has_object():
+                        motion_goals += am.place_obj_on_counter_actions(state)
+                    else:
+                        motion_goals += am.pickup_plate_actions(counter_objects, knowledge_base=self.knowledge_base)
 
-                    # get four directions to explore
-                    for o in Direction.ALL_DIRECTIONS:
-                        if o != player.orientation:
-                            motion_goals.append(self.mdp._move_if_direction(player.position, player.orientation, o))
-                    if player.pos_and_or in motion_goals:
-                        motion_goals.remove(player.pos_and_or)
-                random.shuffle(motion_goals)
-                motion_goals = [[mg for mg in motion_goals if self.mlp.mp.is_valid_motion_start_goal_pair(player.pos_and_or, mg)][0]] # directly return on specific motion goal as the interact plan will always cost
+                        # get four directions to explore
+                        for o in Direction.ALL_DIRECTIONS:
+                            if o != player.orientation:
+                                motion_goals.append(self.mdp._move_if_direction(player.position, player.orientation, o))
+                        if player.pos_and_or in motion_goals:
+                            motion_goals.remove(player.pos_and_or)
+                    random.shuffle(motion_goals)
+                    motion_goals = [[mg for mg in motion_goals if self.mlp.mp.is_valid_motion_start_goal_pair(player.pos_and_or, mg)][0]] # directly return on specific motion goal as the interact plan will always cost
 
-                assert len(motion_goals) != 0
-            else: # get to the closest key object location
-                if player.has_object():
-                    motion_goals += am.place_obj_on_counter_actions(state)
-                else:
-                    motion_goals += am.pickup_plate_actions(counter_objects, knowledge_base=self.knowledge_base)
-                    # motion_goals += am.go_to_closest_feature_actions(player)
-                motion_goals = [mg for mg in motion_goals if self.mlp.mp.is_valid_motion_start_goal_pair(player.pos_and_or, mg)]
-                assert len(motion_goals) != 0
+                    assert len(motion_goals) != 0
+                else: # get to the closest key object location
+                    if player.has_object():
+                        motion_goals += am.place_obj_on_counter_actions(state)
+                    else:
+                        motion_goals += am.pickup_plate_actions(counter_objects, knowledge_base=self.knowledge_base)
+                        # motion_goals += am.go_to_closest_feature_actions(player)
+                    motion_goals = [mg for mg in motion_goals if self.mlp.mp.is_valid_motion_start_goal_pair(player.pos_and_or, mg)]
+                    assert len(motion_goals) != 0
 
         self.prev_chosen_subtask = chosen_subtask
-        print('SteakLimitVisionHumanModel\'s motion_goals:', motion_goals)
+        # print('SteakLimitVisionHumanModel\'s motion_goals:', motion_goals)
         return motion_goals
 
 class oneGoalHumanModel(Agent):

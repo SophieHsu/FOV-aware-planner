@@ -543,6 +543,7 @@ EVENT_TYPES = [
     'onion_drop',
     'useful_onion_drop',
     'potting_onion',
+    'onion_potting',
 
     # Tomato events
     'tomato_pickup',
@@ -2763,7 +2764,7 @@ class SteakHouseGridworld(OvercookedGridworld):
     # RENDER FUNCTION #
     ###################
 
-    def render(self, state, mode, time_step_left=None, time_passed=None, view_angle=120):
+    def render(self, state, mode, time_step_left=None, time_passed=None, view_angle=120, info=None):
         """
         Function that renders the game
 
@@ -2782,6 +2783,9 @@ class SteakHouseGridworld(OvercookedGridworld):
         # set window size; SPRITE_LENGTH is the length of each squared sprite, which could be tuned in graphics.py
         if mode == "full":
             window_size = self.width*SPRITE_LENGTH,\
+                          self.height*SPRITE_LENGTH + INFO_PANEL_HEIGHT
+        elif mode == "right_panel" or mode == "right_panel_init":
+            window_size = self.width*SPRITE_LENGTH + INFO_PANEL_WIDTH,\
                           self.height*SPRITE_LENGTH + INFO_PANEL_HEIGHT
         else:
             window_size = self.width*SPRITE_LENGTH, self.height*SPRITE_LENGTH
@@ -2884,13 +2888,23 @@ class SteakHouseGridworld(OvercookedGridworld):
                     #     cook_time_text_surface.set_alpha(1)
                     self.viewer.blit(cook_time_text_surface, text_pos)
 
-        if mode == "human" or mode == "full" or mode == "fog":
+        if mode == "human" or mode == "full" or mode == "fog" or mode == "right_panel" or mode == "right_panel_init" or mode=="not_aware":
             # remove chefs from last state
             if self.pre_players_pos is not None:
                 for pos in self.pre_players_pos:
                     x, y = pos
                     blit_terrain(x, y, self.terrain_mtx, self.viewer, mode)
 
+        if mode == "not_aware":
+            PLAYER_HAT_COLOR = {
+                0: 'purplehat',
+                1: 'bluehat'
+            }
+        else:
+            PLAYER_HAT_COLOR = {
+                0: 'greenhat',
+                1: 'bluehat'
+            }
         # render the chefs at new location
         for pos, player in players_dict.items():
             x, y = pos
@@ -2930,8 +2944,23 @@ class SteakHouseGridworld(OvercookedGridworld):
                 self.viewer,
                 (self.width * SPRITE_LENGTH, self.height * SPRITE_LENGTH),
                 state.num_orders_remaining, time_passed)
+            
+        if mode == "right_panel_init":
+            self.rend_boxes = render_game_info_panel(
+                self.viewer,
+                (self.width * SPRITE_LENGTH, self.height * SPRITE_LENGTH),
+                state.num_orders_remaining, time_passed, init=True)
+            
+        elif mode == "right_panel" or mode=="not_aware":
+            render_game_info_panel(
+                self.viewer,
+                (self.width * SPRITE_LENGTH, self.height * SPRITE_LENGTH),
+                state.num_orders_remaining, time_passed, curr_s = info)
+            for box in self.rend_boxes:
+                box.render_checkbox()
+    
 
-        if mode == "fog": # fog the terrain
+        if (mode == "fog" or mode == "right_panel" or mode=="not_aware") and (view_angle != 0): # fog the terrain
             for y, terrain_row in enumerate(self.terrain_mtx):
                 for x, terrain in enumerate(terrain_row):
                     in_view = self.check_viewpoint(state.players[1].position, state.players[1].orientation, x, y, view_angle=view_angle)
@@ -2943,6 +2972,11 @@ class SteakHouseGridworld(OvercookedGridworld):
                         # load_image(os.path.join(ASSETS_DIR, TERRAIN_DIR, 'counter.png'))
                         fog_pgobj.set_alpha(245)
                         self.viewer.blit(fog_pgobj, curr_pos)
+
+            # render_game_info_panel(
+            #     self.viewer,
+            #     (self.width * SPRITE_LENGTH, self.height * SPRITE_LENGTH),
+            #     state.num_orders_remaining, time_passed)
 
         # update display
         pygame.display.update()

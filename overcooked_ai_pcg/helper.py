@@ -696,10 +696,11 @@ def init_qmdp_agent(mdp):
 
     return agent
 
-def init_steak_qmdp_agent(env, search_depth=5, kb_search_depth=3):
+def init_steak_qmdp_agent(env, search_depth=5, kb_search_depth=2, kb_update_delay=2, vision_limit=True, vision_bound=120):
     mlp = MediumLevelPlanner.from_pickle_or_compute(env.mdp, BASE_PARAMS, force_compute=True)
+    print('loading qmdp:', search_depth, kb_search_depth, vision_bound, vision_limit, kb_update_delay)
 
-    human_agent = SteakLimitVisionHumanModel(mlp, env.state, auto_unstuck=True, explore=False, vision_limit=True, vision_bound=120, debug=False)
+    human_agent = SteakLimitVisionHumanModel(mlp, env.state, auto_unstuck=True, explore=False, vision_limit=vision_limit, vision_bound=vision_bound, debug=False)
     human_agent.set_agent_index(1)
 
     qmdp_planner = SteakKnowledgeBasePlanner.from_pickle_or_compute(

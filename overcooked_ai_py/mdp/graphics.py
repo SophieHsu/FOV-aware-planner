@@ -7,7 +7,8 @@ from overcooked_ai_py import ASSETS_DIR, PCG_EXP_IMAGE_DIR
 from overcooked_ai_py.mdp.actions import Action, Direction
 pygame.init()
 
-INFO_PANEL_HEIGHT = 0#60  # height of the game info panel
+INFO_PANEL_HEIGHT = 300  # height of the game info panel
+INFO_PANEL_WIDTH = 0#100
 INFO_PANEL_COLOR = (230, 180, 83)  # some sort of yellow
 SPRITE_LENGTH = 50  # length of each sprite square
 TERRAIN_DIR = 'terrain'
@@ -59,6 +60,73 @@ PLAYER_ARROW_POS_SHIFT = {
     ((0, 1), (0, 1), (0, 1), (0, 1), (0, 1), (0, 1), (0, 1)),
 }
 
+
+class Checkbox:
+    def __init__(self, surface, x, y, idnum, color=(230, 230, 230),
+        caption="", outline_color=(0, 0, 0), check_color=(0, 0, 0),
+        font_size=26, font_color=(0, 0, 0), 
+    text_offset=(18, 1), font='Ariel Black'):
+        self.surface = surface
+        self.x = x
+        self.y = y
+        self.color = color
+        self.caption = caption
+        self.oc = outline_color
+        self.cc = check_color
+        self.fs = font_size
+        self.fc = font_color
+        self.to = text_offset
+        self.ft = font
+
+        #identification for removal and reorginazation
+        self.idnum = idnum
+
+        # checkbox object
+        self.checkbox_obj = pygame.Rect(self.x, self.y, 18, 18)
+        self.checkbox_outline = self.checkbox_obj.copy()
+
+        # variables to test the different states of the checkbox
+        self.checked = False
+
+    def _get_check_box_size(self):
+        txt_size = self.font_surf.get_size()
+        self.w = txt_size[0] + 18
+        self.h = txt_size[1] + 18
+
+    def _draw_button_text(self):
+        self.font = pygame.font.SysFont(self.ft, self.fs)
+        self.font_surf = self.font.render(self.caption, True, self.fc)
+        w, h = self.font.size(self.caption)
+        self.font_pos = (self.x + self.to[0], self.y + 18 / 2 - h / 2 + 
+        self.to[1])
+        self.surface.blit(self.font_surf, self.font_pos)
+        self._get_check_box_size()
+
+    def render_checkbox(self):
+        if self.checked:
+            pygame.draw.rect(self.surface, self.color, self.checkbox_obj)
+            pygame.draw.rect(self.surface, self.oc, self.checkbox_outline, 1)
+            pygame.draw.circle(self.surface, self.cc, (self.x + 9, self.y + 9), 4)
+
+        elif not self.checked:
+            pygame.draw.rect(self.surface, self.color, self.checkbox_obj)
+            pygame.draw.rect(self.surface, self.oc, self.checkbox_outline, 1)
+        self._draw_button_text()
+
+    def _update(self, event_object):
+        x, y = pygame.mouse.get_pos()
+        px, py, w, h = self.checkbox_obj
+        if px < x < px + self.w and py < y < py + self.h:
+            if self.checked:
+                self.checked = False
+            else:
+                self.checked = True
+
+    def update_checkbox(self, event_object):
+        if event_object.type == pygame.MOUSEBUTTONDOWN:
+            self.click = True
+            self._update(event_object)
+            
 
 def get_curr_pos(x, y, mode="human"):
     """
@@ -279,38 +347,13 @@ def render_from_grid(lvl_grid, log_dir, filename):
 
 
 def render_game_info_panel(window, game_window_size, num_orders_remaining,
-                           time_passed):
-#<<<<<<< HEAD
-#    pass
-    # game_window_width, game_window_height = game_window_size
+                           time_passed, curr_s='None', init=False):
 
-    # # get panel rect
-    # panel_rect = pygame.Rect(0, 0, game_window_width,
-    #                          INFO_PANEL_HEIGHT)
-
-    # # fill with background color
-    # window.fill(INFO_PANEL_COLOR, rect=panel_rect)
-
-    # # update num orders left
-    # if num_orders_remaining == np.inf:
-    #     num_orders_remaining = "inf"
-    # num_order_t_surface = get_text_sprite(
-    #     f"Number of orders left: {num_orders_remaining}")
-    # num_order_text_pos = num_order_t_surface.get_rect()
-    # num_order_text_pos.topleft = panel_rect.topleft
-    # window.blit(num_order_t_surface, num_order_text_pos)
-
-    # # update time passed
-    # t_surface = get_text_sprite("Time passed: %3d s" % time_passed)
-    # time_passed_text_pos = t_surface.get_rect()
-    # _, num_order_txt_height = num_order_t_surface.get_size()
-    # time_passed_text_pos.y = num_order_text_pos.y + num_order_txt_height
-    # window.blit(t_surface, time_passed_text_pos)
-#=======
     game_window_width, game_window_height = game_window_size
 
     # get panel rect
-    panel_rect = pygame.Rect(0, 0, game_window_width, INFO_PANEL_HEIGHT)
+    panel_rect = pygame.Rect(0, game_window_height, game_window_width,
+                             INFO_PANEL_HEIGHT)
 
     # fill with background color
     window.fill(INFO_PANEL_COLOR, rect=panel_rect)
@@ -330,4 +373,75 @@ def render_game_info_panel(window, game_window_size, num_orders_remaining,
     _, num_order_txt_height = num_order_t_surface.get_size()
     time_passed_text_pos.y = num_order_text_pos.y + num_order_txt_height
     window.blit(t_surface, time_passed_text_pos)
-#>>>>>>> bce3ff4b5f40e334f942ddc27276ace0cdea63ea
+
+    # # get panel rect
+    # right_panel_rect = pygame.Rect(game_window_width, 0, INFO_PANEL_WIDTH,
+    #                          game_window_height+INFO_PANEL_HEIGHT)
+
+    # # fill with background color
+    # window.fill(INFO_PANEL_COLOR, rect=right_panel_rect)
+    
+    # info text
+    info_t_surface = get_text_sprite(
+        f"Selected next action: {curr_s}")
+    info_t_pos = info_t_surface.get_rect()
+    _, t_surface_h = t_surface.get_size()
+    info_t_pos.y = time_passed_text_pos.y + t_surface_h*2
+    window.blit(info_t_surface, info_t_pos)
+
+    _, info_t_h = info_t_surface.get_size()
+    bh_offset = 5
+    bw_offset = 5
+    
+    if init:
+        b1 = Checkbox(window, panel_rect.x, info_t_pos.y+info_t_h, 0, caption='pickup meat')
+        b1.render_checkbox()
+        b2 = Checkbox(window, panel_rect.x + b1.font_pos[0]+b1.w+bw_offset, info_t_pos.y+info_t_h, 1, caption='pickup onion')
+        b2.render_checkbox()
+        b3 = Checkbox(window, panel_rect.x + b2.font_pos[0]+b2.w+bw_offset, info_t_pos.y+info_t_h, 2, caption='pickup plate')
+        b3.render_checkbox()
+        b4 = Checkbox(window, panel_rect.x + b3.font_pos[0]+b3.w+bw_offset, info_t_pos.y+info_t_h, 3, caption='pickup hot plate')
+        b4.render_checkbox()
+        b5 = Checkbox(window, panel_rect.x + b4.font_pos[0]+b4.w+bw_offset, info_t_pos.y+info_t_h, 4, caption='pickup garnish')
+        b5.render_checkbox()
+        
+
+        second_row_y = info_t_pos.y+info_t_h+b1.h+bh_offset
+        b1_2 = Checkbox(window, panel_rect.x, second_row_y, 6, caption='drop meat')
+        b1_2.render_checkbox()
+        b2_2 = Checkbox(window, b2.x, second_row_y, 7, caption='drop onion')
+        b2_2.render_checkbox()
+        b3_2 = Checkbox(window, b3.x, second_row_y, 8, caption='drop plate')
+        b3_2.render_checkbox()
+        b6 = Checkbox(window, b4.x, second_row_y, 5, caption='pickup steak')
+        b6.render_checkbox()
+        b3_3 = Checkbox(window, b5.x, second_row_y, 14, caption='deliver dish')
+        b3_3.render_checkbox()
+
+        third_row_y = info_t_pos.y+info_t_h+(b1.h*2)+bh_offset
+        b1_3 = Checkbox(window, b2_2.x, third_row_y, 12, caption='chop onion')
+        b1_3.render_checkbox()
+        b2_3 = Checkbox(window, b3_2.x, third_row_y, 13, caption='heat hot plate')
+        b2_3.render_checkbox()
+
+        third_row_y = info_t_pos.y+info_t_h+(b1.h*3)+bh_offset
+        b1_4 = Checkbox(window, panel_rect.x, third_row_y, 15, caption='stay')
+        b1_4.render_checkbox()
+        b2_4 = Checkbox(window, panel_rect.x + b1_4.font_pos[0]+50, third_row_y, 16, caption='up')
+        b2_4.render_checkbox()
+        b3_4 = Checkbox(window, panel_rect.x + b2_4.font_pos[0]+50, third_row_y, 17, caption='interact')
+        b3_4.render_checkbox()
+
+        forth_row_y = info_t_pos.y+info_t_h+(b1.h*4)+bh_offset
+        b4_4 = Checkbox(window, b1_4.x, forth_row_y, 18, caption='left')
+        b4_4.render_checkbox()
+        b5_4 = Checkbox(window, b2_4.x, forth_row_y, 19, caption='down')
+        b5_4.render_checkbox()
+        b6_4 = Checkbox(window, b3_4.x, forth_row_y, 20, caption='right')
+        b6_4.render_checkbox()
+
+        box_list = [b1, b2, b3, b4, b5, b6, b1_2, b2_2, b3_2, b1_3, b2_3, b3_3, b1_4, b2_4, b3_4, b4_4, b5_4, b6_4]
+
+
+
+    if init: return box_list

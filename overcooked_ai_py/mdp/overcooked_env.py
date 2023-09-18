@@ -519,7 +519,7 @@ class OvercookedEnv(object):
     ###################
     # RENDER FUNCTION #
     ###################
-    def render(self, mode="human", time_step_left=None, time_passed=None, view_angle=120):
+    def render(self, mode="human", time_step_left=None, time_passed=None, view_angle=120, info=None):
         if mode == "blur":
             time_step_left = self.horizon - self.t if time_step_left is None else time_step_left
             time_passed = time.time(
@@ -534,7 +534,8 @@ class OvercookedEnv(object):
                         mode,
                         time_step_left=time_step_left,
                         time_passed=time_passed,
-                        view_angle=view_angle)
+                        view_angle=view_angle,
+                        info=info)
 
 
 class OvercookedV0(gym.Env):

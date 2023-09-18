@@ -129,7 +129,7 @@ if __name__ == "__main__" :
 
     # np.random.seed(0)
     start_time = time.time()
-    layout_name = 'steak_tshape' #'steak_island2' #'steak_parrallel'  'steak_tshape'
+    layout_name = 'steak_parrallel' #'steak_island2' #'steak_parrallel'  'steak_tshape'
     scenario_1_mdp = SteakHouseGridworld.from_layout_name(layout_name,  num_items_for_steak=1, chop_time=2, wash_time=2, start_order_list=['steak', 'steak'], cook_time=10)
     # start_state = OvercookedState(
     #     [P((2, 1), s, Obj('onion', (2, 1))),
@@ -151,7 +151,7 @@ if __name__ == "__main__" :
     # human_agent = agent.biasHumanModel(ml_action_manager, [0.5, (1.0-0.5)], 0.5, auto_unstuck=True)
     VISION_LIMIT = True
     VISION_BOUND = 60
-    VISION_LIMIT_AWARE = True
+    VISION_LIMIT_AWARE = False
     EXPLORE = False
     SEARCH_DEPTH = 5
     KB_SEARCH_DEPTH = 6
@@ -204,7 +204,7 @@ if __name__ == "__main__" :
     while not done:
         if t >= 0 and t <= len(s_t):
             if VISION_LIMIT: 
-                env.render("fog", view_angle=VISION_BOUND)
+                env.render("full", view_angle=VISION_BOUND)
             else:
                 env.render()
             time.sleep(0.1)
