@@ -195,7 +195,7 @@ def blit_terrain(x, y, terrain_mtx, viewer, mode="human", in_view=True):
     viewer.blit(terrain_pgobj, curr_pos)
 
 
-def get_player_sprite(player, player_index):
+def get_player_sprite(player, player_index, hat_color=None):
     """
     Returns loaded image of player(aka chef), the player's hat, and the color of the array to draw on top of the player
 
@@ -206,7 +206,7 @@ def get_player_sprite(player, player_index):
     orientation_str = get_orientation_str(player)
 
     player_img_path = ""
-    hat_color = PLAYER_HAT_COLOR[player_index]
+    hat_color = PLAYER_HAT_COLOR[player_index] if hat_color is None else hat_color
     hat_img_path = os.path.join(
         ASSETS_DIR, CHEF_DIR,
         '%s-%s.png' % (orientation_str, PLAYER_HAT_COLOR[player_index]))
@@ -347,7 +347,7 @@ def render_from_grid(lvl_grid, log_dir, filename):
 
 
 def render_game_info_panel(window, game_window_size, num_orders_remaining,
-                           time_passed, curr_s='None', init=False):
+                           time_passed, selected_action_count=0, curr_s='None', init=False):
 
     game_window_width, game_window_height = game_window_size
 
@@ -362,7 +362,7 @@ def render_game_info_panel(window, game_window_size, num_orders_remaining,
     if num_orders_remaining == np.inf:
         num_orders_remaining = "inf"
     num_order_t_surface = get_text_sprite(
-        f"Number of orders left: {num_orders_remaining}")
+        f"Number of orders completed: {2-num_orders_remaining}")
     num_order_text_pos = num_order_t_surface.get_rect()
     num_order_text_pos.topleft = panel_rect.topleft
     window.blit(num_order_t_surface, num_order_text_pos)
@@ -374,6 +374,13 @@ def render_game_info_panel(window, game_window_size, num_orders_remaining,
     time_passed_text_pos.y = num_order_text_pos.y + num_order_txt_height
     window.blit(t_surface, time_passed_text_pos)
 
+    # update selected actions
+    num_action_surface = get_text_sprite(f"Number of selected actions: {selected_action_count}")
+    num_action_pos = num_action_surface.get_rect()
+    _, t_surface_h = t_surface.get_size()
+    num_action_pos.y = time_passed_text_pos.y + t_surface_h
+    window.blit(num_action_surface, num_action_pos)
+
     # # get panel rect
     # right_panel_rect = pygame.Rect(game_window_width, 0, INFO_PANEL_WIDTH,
     #                          game_window_height+INFO_PANEL_HEIGHT)
@@ -383,9 +390,8 @@ def render_game_info_panel(window, game_window_size, num_orders_remaining,
     
     # info text
     info_t_surface = get_text_sprite(
-        f"Selected next action: {curr_s}")
+        f"Selected action: {curr_s}")
     info_t_pos = info_t_surface.get_rect()
-    _, t_surface_h = t_surface.get_size()
     info_t_pos.y = time_passed_text_pos.y + t_surface_h*2
     window.blit(info_t_surface, info_t_pos)
 
@@ -439,8 +445,10 @@ def render_game_info_panel(window, game_window_size, num_orders_remaining,
         b5_4.render_checkbox()
         b6_4 = Checkbox(window, b3_4.x, forth_row_y, 20, caption='right')
         b6_4.render_checkbox()
+        b6_5 = Checkbox(window, b6.x, forth_row_y, 21, caption='stop')
+        b6_5.render_checkbox()
 
-        box_list = [b1, b2, b3, b4, b5, b6, b1_2, b2_2, b3_2, b1_3, b2_3, b3_3, b1_4, b2_4, b3_4, b4_4, b5_4, b6_4]
+        box_list = [b1, b2, b3, b4, b5, b6, b1_2, b2_2, b3_2, b1_3, b2_3, b3_3, b1_4, b2_4, b3_4, b4_4, b5_4, b6_4, b6_5]
 
 
 

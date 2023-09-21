@@ -7,6 +7,7 @@ import toml
 import shutil
 import gc
 import argparse
+import random
 import pickle
 import numpy as np
 import pandas as pd
@@ -20,6 +21,10 @@ import overcooked_ai_py.planning.planners as planners
 from overcooked_ai_py.agents.agent import HumanPlayer, StayAgent
 from overcooked_ai_py.mdp.overcooked_mdp import Direction, Action, SteakHouseGridworld
 from overcooked_ai_py.mdp.overcooked_env import MAX_HORIZON, OvercookedEnv
+
+import matplotlib.pyplot as plt
+import matplotlib.gridspec as gridspec
+import numpy as np
 
 HUMAN_STUDY_ENV_HORIZON = 400
 
@@ -42,25 +47,94 @@ NON_TRIAL_STUDY_TYPES = [
     *SUB_STUDY_TYPES,
 ]
 
+SAME_AGENT_STUDY_TYPES = [
+    'Side-3-120',#use
+    'Side-3_120_not_aware',
+    'Mid-2-120', #smooth
+    'Mid-2_120_not_aware', #smooth (acan)
+    'Mid-1_120_not_aware', #tied (wasn't sure about the sink pick up)
+    'Mid-1-120', #more sure, so can use. #no 
+    'Side-1-120', # super confussed in the beginning # nope
+    'Side-1_120_not_aware', # i prefer this one
+    'Mid-3_120_not_aware', #looked twice to check agent
+    'Mid-3-120',
+    'None-3_120_not_aware', #like
+    'None-3-120', # like more as the agent'
+]
+
 DETAILED_STUDY_TYPES = [ 
     'None-1-120',
     'None-1_120_not_aware',
     'Side-3-120',#use
     'Side-3_120_not_aware',
-    'Mid-2-120',
-    'Mid-2_120_not_aware', #preferred
-    'Side-2_120_not_aware',
+    'Mid-2-120', #smooth
+    'Mid-2_120_not_aware', #smooth (acan)
+    'Side-2_120_not_aware', #cant tell #use as test
     'Side-2-120',
-    'None-2-120',
-    'None-2_120_not_aware', #tied
-    'Mid-1_120_not_aware', #tied
-    'Mid-1-120',
-    'Side-1-120',
-    'Side-1_120_not_aware',
-    'Mid-3_120_not_aware', #no concensus
+    'None-2-120', # gets stuck at grill 
+    'None-2_120_not_aware', #tied # i prefer this
+    'Mid-1_120_not_aware', #tied (wasn't sure about the sink pick up)
+    'Mid-1-120', #more sure, so can use. #no 
+    'Side-1-120', # super confussed in the beginning # nope
+    'Side-1_120_not_aware', # i prefer this one
+    'Mid-3_120_not_aware', #looked twice to check agent
     'Mid-3-120',
-    'None-3_120_not_aware',
+    'None-3_120_not_aware', #like
+    'None-3-120', # like more as the agent does show up in sight
+]
+
+USER_STUDY_AWARE_TYPES = [ 
+    'Side-3-120',#use
+    'Mid-2-120', #smooth
+    'Mid-1-120', #more sure, so can use. #no 
+    'Mid-3-120',
+    'None-3-120', # like more as the agent does show up in sight
+]
+
+RELOAD_STUDY_TYPE0 = [
+    'Mid-2-120',
+    'Side-3-120',
+    'Mid-1-120',
     'None-3-120',
+    'Mid-1_120_not_aware',
+    'None-3_120_not_aware',
+    'Side-3_120_not_aware',
+    'Mid-2_120_not_aware',
+]
+
+RELOAD_STUDY_TYPE1 = [
+    'Mid-1_120_not_aware',
+    'None-3_120_not_aware',
+    'Side-3_120_not_aware',
+    'Mid-2_120_not_aware',
+    'Mid-2-120',
+    'Side-3-120',
+    'Mid-1-120',
+    'None-3-120',
+]
+
+USER_STUDY_UNAWARE_TYPES = [ 
+    'Side-3_120_not_aware',
+    'Mid-2_120_not_aware', #smooth (acan)
+    'Mid-1_120_not_aware', #tied (wasn't sure about the sink pick up)
+    'Mid-3_120_not_aware', #looked twice to check agent
+    'None-3_120_not_aware', #like
+]
+
+USER_STUDY_AWARE_TYPES = [ 
+    'Side-3-120',#use
+    'Mid-2-120', #smooth
+    'Mid-1-120', #more sure, so can use. #no 
+    'Mid-3-120',
+    'None-3-120', # like more as the agent does show up in sight
+]
+
+USER_STUDY_UNAWARE_TYPES = [ 
+    'Side-3_120_not_aware',
+    'Mid-2_120_not_aware', #smooth (acan)
+    'Mid-1_120_not_aware', #tied (wasn't sure about the sink pick up)
+    'Mid-3_120_not_aware', #looked twice to check agent
+    'None-3_120_not_aware', #like
 ]
 
 ALL_STUDY_TYPES = [
@@ -111,6 +185,8 @@ class OvercookedGame:
         self.human_agent = human_agent
         self.vision_aware = vision_aware
         self.loop_time_start = time.time()
+        self.subtask_log = []
+        self.selected_action_count=0
 
         # Saves when each soup (order) was delivered
         self.checkpoints = [env.horizon - 1] * env.num_orders
@@ -172,23 +248,26 @@ class OvercookedGame:
                 if box.checked is True:
                     # only update when the task change
                     if (self.next_s != box.caption) or (self.next_s in ['chop onion', 'heat hot plate', 'up', 'down', 'left', 'right', 'stay', 'interact']) :
-                        subtask = box.caption
+                        self.selected_action_count += 1
                         self.next_s = box.caption
-                        if subtask in ['up', 'down', 'left', 'right', 'stay', 'interact']:
-                            if 'up' in subtask:
+                        if self.next_s in ['up', 'down', 'left', 'right', 'stay', 'interact', 'stop']:
+                            if 'up' in self.next_s:
                                 self.next_path = [Direction.NORTH]
-                            elif 'down' in subtask:
+                            elif 'down' in self.next_s:
                                 self.next_path = [Direction.SOUTH]
-                            elif 'left' in subtask:
+                            elif 'left' in self.next_s:
                                 self.next_path = [Direction.WEST]
-                            elif 'right' in subtask:
+                            elif 'right' in self.next_s:
                                 self.next_path = [Direction.EAST]
-                            elif 'stay' in subtask:
+                            elif 'stay' in self.next_s:
                                 self.next_path = [Action.STAY]
-                            elif 'interact' in subtask:
+                            elif 'stop' in self.next_s:
+                                self.curr_s = self.next_s
+                                self.path = [Action.STAY]
+                            elif 'interact' in self.next_s:
                                 self.next_path = [Action.INTERACT]
                         else:
-                            s = '_'.join(subtask.split())
+                            s = '_'.join(self.next_s.split())
                             _, _, self.next_path = self.human_agent.action(self.env.state, chosen_subtask=s, return_path=True)
                             
                     for b in self.env.mdp.rend_boxes:
@@ -202,7 +281,7 @@ class OvercookedGame:
             self._running = False
             self.last_state = next_state
 
-    def step_env(self, my_action):
+    def step_env(self, my_action, curr_s):
         agent_action = self.agent.action(self.env.state)[0]
 
         if self.agent_idx == 1:
@@ -215,7 +294,9 @@ class OvercookedGame:
             joint_action)
 
         # update logs of human player for bc calculations
-        self.human_player.update_logs(next_state, my_action)
+        self.human_player.update_logs(next_state, my_action, curr_s)
+        self.human_agent.update(self.env.state)
+        self.human_agent.update_kb_log()
 
         if timestep_sparse_reward > 0:
             self.checkpoints[self.cur_order] = self.timestep
@@ -256,19 +337,20 @@ class OvercookedGame:
         
         if len(self.path) > 0:
             human_action = self.path.pop(0)
-            done, next_state = self.step_env(human_action)
+            done, next_state = self.step_env(human_action, self.curr_s)
 
             if done:
                 self._running = False
                 self.last_state = next_state
+                if not self.trial: self.subtask_log = self.env.state.players[self.human_agent.agent_index].subtask_log
 
     def on_render(self):
         # if self.fog:
         # time.sleep(max(0, self.step_time - time.time()-self.loop_time_start))
         if not self.trial and self.vision_aware:
-            self.env.render(mode="right_panel", view_angle=self.human_agent.vision_bound, info=self.curr_s)
+            self.env.render(mode="right_panel", view_angle=self.human_agent.vision_bound, info=self.curr_s, selected_action_count=self.selected_action_count)
         else:
-            self.env.render(mode="not_aware", view_angle=self.human_agent.vision_bound, info=self.curr_s)
+            self.env.render(mode="not_aware", view_angle=self.human_agent.vision_bound, info=self.curr_s, selected_action_count=self.selected_action_count)
         time.sleep(0.2)
         # self.loop_time_start = time.time()
         # else:
@@ -299,11 +381,14 @@ class OvercookedGame:
             fitness *= self.env.horizon
             fitness -= checked_time
 
-        # if value_kb_save_path is not None:
-        #     with open(value_kb_save_path, 'wb') as f:
-        #         pickle.dump([self.agent.mdp_planner.world_state_cost_dict, self.agent.mdp_planner.track_state_kb_map], f)
+        if not self.trial:
+            # if value_kb_save_path is not None:
+            #     with open(value_kb_save_path, 'wb') as f:
+            #         pickle.dump([self.agent.mdp_planner.world_state_cost_dict, self.agent.mdp_planner.track_state_kb_map], f)
 
-        return (self.total_sparse_reward, self.joint_actions, len(self.joint_actions))
+            return (self.total_sparse_reward, self.joint_actions, len(self.joint_actions), self.subtask_log, self.human_agent.kb_log, self.agent.mdp_planner.world_kb_log, self.selected_action_count)
+        else:
+            return (self.total_sparse_reward, self.joint_actions, len(self.joint_actions))
 
 def load_steak_qmdp_agent(env, agent_save_path, value_kb_save_path, lvl_config):
     ai_agent = None
@@ -321,7 +406,7 @@ def load_steak_qmdp_agent(env, agent_save_path, value_kb_save_path, lvl_config):
     
     # agent not found, recreate it and save it if a path is given.
     if ai_agent == None:
-        ai_agent = init_steak_qmdp_agent(env, search_depth=lvl_config['search_depth'], kb_search_depth=lvl_config['kb_search_depth'], vision_limit=lvl_config['vision_limit'], vision_bound=lvl_config['vision_bound'], kb_update_delay=lvl_config['kb_update_delay'])
+        ai_agent = init_steak_qmdp_agent(env, search_depth=lvl_config['search_depth'], kb_search_depth=lvl_config['kb_search_depth'], vision_limit=lvl_config['vision_limit'], vision_bound=lvl_config['vision_bound'], kb_update_delay=lvl_config['kb_update_delay'], vision_limit_aware=lvl_config['vision_limit_aware'])
         ai_agent.set_agent_index(0)
         if agent_save_path is not None:
             with open(agent_save_path, 'wb') as f:
@@ -337,6 +422,104 @@ def load_human_log_data(log_index):
         exit(1)
     human_log_data = pd.read_csv(human_log_csv)
     return human_log_csv, human_log_data
+
+def kb_diff_measure(human_kb, world_kb):
+    diff_measure = np.zeros((len(human_kb),4), dtype=int)
+    for i, (h, w) in enumerate(zip(human_kb, world_kb)):
+        h_obj = h.split('.')
+        w_obj = w.split('.')
+
+        for j, (ho, wo) in enumerate(zip(h_obj, w_obj)):
+            if j < 3:
+                diff = abs(int(ho) - int(wo))
+                if diff == 3: diff = 1
+                diff_measure[i][j] = diff
+            else:
+                if ho != wo:
+                    diff_measure[i][j] = 1
+
+    # print(diff_measure)
+    return diff_measure
+
+def plot_kb_and_subtasks(joint_action, subtask_log, human_kb_log, world_kb_log, log_dir=None, log_name=None):
+    if len(subtask_log) == 0:
+        return
+
+    img_dir = os.path.join(log_dir, log_name)
+
+    # Generate some example data
+    time = np.arange(0, len(joint_action))  # Time values from 0 to 200
+    task_labels = ['stop', 'up/down/left/right', 'stay', 'interact', 'pickup meat', 'drop meat', 'pickup onion', 'drop onion', 'chop onion', 'pickup plate', 'drop plate', 'heat hot plate', 'pickup hot plate', 'pickup steak', 'pickup garnish', 'deliver dish']
+    bar_values = np.random.rand(201) * 5  # Random values for the bottom row (0-5)
+
+    subtask_values = []
+    for s in subtask_log:
+        if s not in ['up', 'down', 'right', 'left']:
+            subtask_values.append(task_labels.index(s))
+        else:
+            subtask_values.append(1)
+    # Create a grid of subplots with shared x-axis and no space in between rows
+    fig = plt.figure(figsize=(16, 5))
+    gs = gridspec.GridSpec(3, 1, height_ratios=[3.5, 1.25, 1])  # 3 rows, 1 column
+    # Adjust the height ratios to make the top graph 1/3 of the height of the bottom graphs
+
+    # Plot the top row (dot graph)
+    ax0 = plt.subplot(gs[0])
+    ax0.scatter(time, subtask_values, marker='.', color='brown')
+    ax0.set_yticks(range(len(task_labels)))
+    ax0.set_yticklabels(task_labels)
+    ax0.set_ylabel('Human selected tasks')
+    ax0.set_title('Actions and Knowledge Difference Log')
+    ax0.set_ylim(-1, len(task_labels))
+    ax0.grid(True, linestyle=':', alpha=0.3)
+
+    actions = [(0,-1), (0,1), (-1, 0), (1,0), (0,0), 'interact']
+    action_labels = ['Up', 'Down', 'Left', 'Right', 'Stay', 'Interact']
+    action_log = []
+    j = np.array(joint_action, dtype=object)
+    for a in j[:,0]:
+        action_log.append(actions.index(a))
+        
+    ax2 = plt.subplot(gs[1], sharex=ax0)
+    ax2.scatter(time, action_log, marker='s', s=9, color='purple')
+    ax2.set_yticks(range(len(action_labels)))
+    ax2.set_yticklabels(action_labels)
+    ax2.set_ylabel('Robot actions')
+    ax2.yaxis.tick_right()
+    ax2.yaxis.set_label_position('right')
+    ax2.set_ylim(-1, len(action_labels))
+    ax2.grid(True, linestyle=':', alpha=0.3)
+
+    kb_diff = kb_diff_measure(human_kb_log, world_kb_log)
+
+    # Plot the bottom row (bar graph)
+    ax1 = plt.subplot(gs[2], sharex=ax0)  # Share x-axis with the top row
+    if len(kb_diff) > 0:
+        b1 = ax1.bar(time, kb_diff[:,0], label='num_item_in_grill', align='center')
+        b2 = ax1.bar(time, kb_diff[:,1], bottom=kb_diff[:,0], label='garnish status', align='center')
+        b3 = ax1.bar(time, kb_diff[:,2], bottom=kb_diff[:,0]+kb_diff[:,1], label='plate status', align='center')
+        b4 = ax1.bar(time, kb_diff[:,3], bottom=kb_diff[:,0]+kb_diff[:,1]+kb_diff[:,2], label='robot held object', align='center')
+
+        handles = [b1, b2, b3, b4]
+        labels = ['num_item_in_grill', 'garnish status', 'plate status', 'robot held object']
+        fig.legend(handles, labels,loc='upper left', bbox_to_anchor=(0.141, 0.88))
+
+    # ax1.bar(time, kb_diff, color='red', width=1.0)
+    ax1.set_xlabel('Timesteps')
+    ax1.set_ylabel('KB. diff.')
+    ax1.set_ylim(0, 5)
+    # ax1.set_title('Bottom Row: Bar Graph')
+    # ax1.legend()
+    ax1.grid(True, linestyle=':', alpha=0.3)
+
+
+    # Remove space between subplots
+    plt.subplots_adjust(hspace=0)
+    # plt.tight_layout()
+    plt.savefig(img_dir+'_kb_subtask.png')
+
+    # Display the plot
+    # plt.show()
 
 
 def replay_with_joint_actions(lvl_str, joint_actions, plot=True, log_dir=None, log_name=None, view_angle=0):
@@ -426,7 +609,7 @@ def load_steak_human_agent(env, human_save_path, vision_bound):
         else:
             mlp = planners.MediumLevelPlanner.from_pickle_or_compute(env.mdp, BASE_PARAMS, force_compute=True)
 
-            human_agent = agent.SteakLimitVisionHumanModel(mlp, env.state, auto_unstuck=True, explore=False, vision_limit=True, vision_bound=vision_bound, debug=False)
+            human_agent = agent.SteakLimitVisionHumanModel(mlp, env.state, auto_unstuck=True, explore=False, vision_limit=True, vision_bound=vision_bound, kb_update_delay=1, debug=False)
             human_agent.set_agent_index(1)
 
             if human_save_path is not None:
@@ -635,6 +818,10 @@ def create_human_exp_log():
         "complete",
         "joint_actions",
         "total time steps",
+        "subtask_log",
+        "human_kb_log",
+        "world_kb_log",
+        "num_subtask_actions",
         "lvl_str",
     ]
 
@@ -648,6 +835,17 @@ def correct_study_type(study_type, lvl_type):
         return True
     else:
         return lvl_type.startswith(study_type)
+
+def gen_save_pths(lvl_config):
+    agent_save_path = os.path.join(
+        LSI_STEAK_STUDY_AGENT_DIR, "{lvl_type}_{lvl_vision}_{lvl_robot_aware}_{lvl_search_depth}_{lvl_kb_depth}_{kb_update_delay}.pkl".format(lvl_type=lvl_config["lvl_type"], lvl_vision=lvl_config["vision_bound"], lvl_robot_aware=lvl_config["vision_limit_aware"], lvl_search_depth=lvl_config["search_depth"], lvl_kb_depth=lvl_config["kb_search_depth"], kb_update_delay=lvl_config['kb_update_delay']))
+    value_kb_save_path = os.path.join(
+        LSI_STEAK_STUDY_AGENT_DIR,
+        "{lvl_type}_{lvl_vision}_{lvl_robot_aware}_{lvl_search_depth}_{lvl_kb_depth}_{kb_update_delay}_v_and_kb.pkl".format(lvl_type=lvl_config["lvl_type"], lvl_vision=lvl_config["vision_bound"], lvl_robot_aware=lvl_config["vision_limit_aware"], lvl_search_depth=lvl_config["search_depth"], lvl_kb_depth=lvl_config["kb_search_depth"], kb_update_delay=lvl_config['kb_update_delay']))
+    human_save_path = os.path.join(
+        LSI_STEAK_STUDY_AGENT_DIR,
+        "{lvl_type}_{lvl_vision}_{lvl_robot_aware}_{lvl_search_depth}_{lvl_kb_depth}_{kb_update_delay}_human.pkl".format(lvl_type=lvl_config["lvl_type"], lvl_vision=lvl_config["vision_bound"], lvl_robot_aware=lvl_config["vision_limit_aware"], lvl_search_depth=lvl_config["search_depth"], lvl_kb_depth=lvl_config["kb_search_depth"], kb_update_delay=lvl_config['kb_update_delay']))
+    return agent_save_path, value_kb_save_path, human_save_path
 
 
 if __name__ == "__main__":
@@ -684,6 +882,14 @@ if __name__ == "__main__":
                         help='Integer: index of the agent look ahead',
                         required=False,
                         default=-1)
+    parser.add_argument('--gen_vid',
+                        action='store_true',
+                        help='Whether to continue running a previous study',
+                        default=False)
+    parser.add_argument('--gen_plot',
+                        action='store_true',
+                        help='Whether to continue running a previous study',
+                        default=False)
     opt = parser.parse_args()
 
     np.random.seed(1)
@@ -706,9 +912,10 @@ if __name__ == "__main__":
                 os.path.join(LSI_STEAK_STUDY_CONFIG_DIR, "real_user_lvls.csv"))
             # study_lvls = pd.read_csv(
             #     os.path.join(LSI_STEAK_STUDY_CONFIG_DIR, "new_study_lvls.csv"))
-        else:
-            study_lvls = pd.read_csv(
-                os.path.join(LSI_STEAK_STUDY_CONFIG_DIR, "real_user_lvls.csv"))
+        # else:
+        #     study_lvls = pd.read_csv(
+        #             os.path.join(LSI_STEAK_STUDY_CONFIG_DIR, "real_user_lvls.csv"))
+        
         # running a new study
         if not opt.reload:
             # quit if study type not recognized
@@ -724,13 +931,10 @@ if __name__ == "__main__":
                 # lvl_config = study_lvls.iloc[0]
 
                 for index, lvl_config in study_lvls.iterrows():
-                    human_save_path = os.path.join(
-                        LSI_STEAK_STUDY_AGENT_DIR,
-                        "{lvl_type}_{lvl_vision}_{lvl_robot_aware}_{lvl_search_depth}_{lvl_kb_depth}_{kb_update_delay}_human.pkl".format(lvl_type=lvl_config["lvl_type"], lvl_vision=lvl_config["vision_bound"], lvl_robot_aware=lvl_config["vision_limit_aware"], lvl_search_depth=lvl_config["search_depth"], lvl_kb_depth=lvl_config["kb_search_depth"], kb_update_delay=lvl_config['kb_update_delay']))
-                    if index < 3:
-                        print("trial")
-                        print(lvl_config["lvl_str"])
-                    
+                    agent_save_path, value_kb_save_path, human_save_path = gen_save_pths(lvl_config)
+                    print("trial")
+                    print(lvl_config["lvl_str"])
+                    if index < 2:
                         human_play(
                             lvl_config["lvl_str"],
                             ai_agent=StayAgent(),
@@ -739,90 +943,101 @@ if __name__ == "__main__":
                             lvl_config=lvl_config
                         )
                     else:
-                        agent_save_path = os.path.join(
-                            LSI_STEAK_STUDY_AGENT_DIR,
-                            "{lvl_type}_{lvl_vision}_{lvl_robot_aware}_{lvl_search_depth}_{lvl_kb_depth}_{kb_update_delay}.pkl".format(lvl_type=lvl_config["lvl_type"], lvl_vision=lvl_config["vision_bound"], lvl_robot_aware=lvl_config["vision_limit_aware"], lvl_search_depth=lvl_config["search_depth"], lvl_kb_depth=lvl_config["kb_search_depth"], kb_update_delay=lvl_config['kb_update_delay']))
-                        value_kb_save_path = os.path.join(
-                            LSI_STEAK_STUDY_AGENT_DIR,
-                            "{lvl_type}_{lvl_vision}_{lvl_robot_aware}_{lvl_search_depth}_{lvl_kb_depth}_{kb_update_delay}_v_and_kb.pkl".format(lvl_type=lvl_config["lvl_type"], lvl_vision=lvl_config["vision_bound"], lvl_robot_aware=lvl_config["vision_limit_aware"], lvl_search_depth=lvl_config["search_depth"], lvl_kb_depth=lvl_config["kb_search_depth"], kb_update_delay=lvl_config['kb_update_delay']))
-                        print("trial")
-                        print(lvl_config["lvl_str"])
-                    
                         human_play(
                             lvl_config["lvl_str"],
                             human_save_path=human_save_path,
                             agent_save_path=agent_save_path,
                             value_kb_save_path=value_kb_save_path,
-                            trial=False,
+                            trial=True,
                             lvl_config=lvl_config,
                         )
 
-            elif opt.study in NON_TRIAL_STUDY_TYPES:
+            else:
                 # initialize the result log files
                 human_log_csv = create_human_exp_log()
 
-                # shuffle the order if playing all
-                if opt.study == 'all':
-                    study_lvls = study_lvls
-                    # study_lvls = study_lvls.sample(frac=1)
+                if opt.human_play:
+                    unaware_lvls = pd.read_csv(
+                        os.path.join(LSI_STEAK_STUDY_CONFIG_DIR, "user_study_unaware.csv"))
+                    aware_lvls = pd.read_csv(
+                        os.path.join(LSI_STEAK_STUDY_CONFIG_DIR, "user_study_aware.csv"))
+                    
+                    if opt.human_play_mode == '0':
+                        user_study_lvls = [aware_lvls, unaware_lvls]
+                    elif opt.human_play_mode == '1':
+                        user_study_lvls = [unaware_lvls, aware_lvls]
 
-                # play all of the levels
-                for index, lvl_config in study_lvls.iterrows():
-                    # check study type:
-                    if correct_study_type(opt.study, lvl_config["lvl_type"]):
-                        agent_save_path = os.path.join(
-                            LSI_STEAK_STUDY_AGENT_DIR, "{lvl_type}_{lvl_vision}_{lvl_robot_aware}_{lvl_search_depth}_{lvl_kb_depth}_{kb_update_delay}.pkl".format(lvl_type=lvl_config["lvl_type"], lvl_vision=lvl_config["vision_bound"], lvl_robot_aware=lvl_config["vision_limit_aware"], lvl_search_depth=lvl_config["search_depth"], lvl_kb_depth=lvl_config["kb_search_depth"], kb_update_delay=lvl_config['kb_update_delay']))
-                        value_kb_save_path = os.path.join(
-                            LSI_STEAK_STUDY_AGENT_DIR,
-                            "{lvl_type}_{lvl_vision}_{lvl_robot_aware}_{lvl_search_depth}_{lvl_kb_depth}_{kb_update_delay}_v_and_kb.pkl".format(lvl_type=lvl_config["lvl_type"], lvl_vision=lvl_config["vision_bound"], lvl_robot_aware=lvl_config["vision_limit_aware"], lvl_search_depth=lvl_config["search_depth"], lvl_kb_depth=lvl_config["kb_search_depth"], kb_update_delay=lvl_config['kb_update_delay']))
-                        human_save_path = os.path.join(
-                            LSI_STEAK_STUDY_AGENT_DIR,
-                            "{lvl_type}_{lvl_vision}_{lvl_robot_aware}_{lvl_search_depth}_{lvl_kb_depth}_{kb_update_delay}_human.pkl".format(lvl_type=lvl_config["lvl_type"], lvl_vision=lvl_config["vision_bound"], lvl_robot_aware=lvl_config["vision_limit_aware"], lvl_search_depth=lvl_config["search_depth"], lvl_kb_depth=lvl_config["kb_search_depth"], kb_update_delay=lvl_config['kb_update_delay']))
-                        print(lvl_config["lvl_type"])
-                        if not opt.human_play:
-                            results = agents_play(lvl_config["lvl_str"],
-                                                agent_save_path=agent_save_path,
-                                                value_kb_save_path = value_kb_save_path,
-                                                VISION_LIMIT = lvl_config["vision_limit"],
-                                                VISION_BOUND = int(lvl_config["vision_bound"]),
-                                                VISION_LIMIT_AWARE = lvl_config["vision_limit_aware"],
-                                                SEARCH_DEPTH= lvl_config["search_depth"],
-                                                KB_SEARCH_DEPTH= lvl_config["kb_search_depth"],
-                                                KB_UPDATE_DELAY=lvl_config["kb_update_delay"])
-                        else:
+                    for lvls in user_study_lvls:
+                        # lvls = study_lvls.sample(frac=1)
+                        # play all of the levels
+                        for index, lvl_config in lvls.iterrows():
+                            agent_save_path, value_kb_save_path, human_save_path = gen_save_pths(lvl_config)
+                            print(lvl_config["lvl_type"])
                             results = human_play(lvl_config["lvl_str"],
-                                                 human_save_path = human_save_path,
-                                         agent_save_path=agent_save_path,
+                                        human_save_path = human_save_path,
+                                        agent_save_path=agent_save_path,
                                         value_kb_save_path=value_kb_save_path,
                                         lvl_config=lvl_config)
-                        # write the results
-                        if lvl_config["lvl_type"] != "trial":
+                            
+                            # write the results
                             write_to_human_exp_log(human_log_csv, results,
-                                                   lvl_config)
+                                                    lvl_config)
+
+                # # shuffle the order if playing all
+                # if opt.study == 'all':
+                #     study_lvls = study_lvls
+                #     # study_lvls = study_lvls.sample(frac=1)
+
+                # # play all of the levels
+                # for index, lvl_config in study_lvls.iterrows():
+                #     # check study type:
+                #     if correct_study_type(opt.study, lvl_config["lvl_type"]):
+                #         agent_save_path, value_kb_save_path, human_save_path = gen_save_pths(lvl_config)
+                #         print(lvl_config["lvl_type"])
+                #         if not opt.human_play:
+                #             results = agents_play(lvl_config["lvl_str"],
+                #                                 agent_save_path=agent_save_path,
+                #                                 value_kb_save_path = value_kb_save_path,
+                #                                 VISION_LIMIT = lvl_config["vision_limit"],
+                #                                 VISION_BOUND = int(lvl_config["vision_bound"]),
+                #                                 VISION_LIMIT_AWARE = lvl_config["vision_limit_aware"],
+                #                                 SEARCH_DEPTH= lvl_config["search_depth"],
+                #                                 KB_SEARCH_DEPTH= lvl_config["kb_search_depth"],
+                #                                 KB_UPDATE_DELAY=lvl_config["kb_update_delay"])
+                #         else:
+                #             results = human_play(lvl_config["lvl_str"],
+                #                         human_save_path = human_save_path,
+                #                         agent_save_path=agent_save_path,
+                #                         value_kb_save_path=value_kb_save_path,
+                #                         lvl_config=lvl_config)
+                #         # write the results
+                #         if lvl_config["lvl_type"] != "trial":
+                #             write_to_human_exp_log(human_log_csv, results,
+                #                                    lvl_config)
 
         # loading an existing study and continue running it.
         else:
             log_index = opt.log_index
             assert int(log_index) >= 0
             human_log_csv, human_log_data = load_human_log_data(log_index)
+            if opt.human_play_mode == '0':
+                study_lvls = pd.read_csv(
+                os.path.join(LSI_STEAK_STUDY_CONFIG_DIR, "all_user_lvls_0.csv"))
+                RELOAD_STUDY_TYPE = RELOAD_STUDY_TYPE0
+            elif opt.human_play_mode == '1':
+                study_lvls = pd.read_csv(
+                os.path.join(LSI_STEAK_STUDY_CONFIG_DIR, "all_user_lvls_1.csv"))
+                RELOAD_STUDY_TYPE = RELOAD_STUDY_TYPE1
 
             # find levels need to run and play them
-            for lvl_type in DETAILED_STUDY_TYPES:
+            for lvl_type in RELOAD_STUDY_TYPE:
                 if lvl_type not in human_log_data["lvl_type"].to_list():
                     lvl_config = study_lvls[study_lvls["lvl_type"] ==
                                             lvl_type].iloc[0]
                     lvl_str = lvl_config["lvl_str"]
                     print(lvl_config["lvl_type"])
                     print(lvl_str)
-                    agent_save_path = os.path.join(
-                        LSI_STEAK_STUDY_AGENT_DIR,
-                        "{lvl_type}_{lvl_vision}_{lvl_robot_aware}_{lvl_search_depth}_{lvl_kb_depth}_{kb_update_delay}.pkl".format(lvl_type=lvl_config["lvl_type"], lvl_vision=lvl_config["vision_bound"], lvl_robot_aware=lvl_config["vision_limit_aware"], lvl_search_depth=lvl_config["search_depth"], lvl_kb_depth=lvl_config["kb_search_depth"], kb_update_delay=lvl_config['kb_update_delay']))
-                    value_kb_save_path = os.path.join(
-                        LSI_STEAK_STUDY_AGENT_DIR,
-                        "{lvl_type}_{lvl_vision}_{lvl_robot_aware}_{lvl_search_depth}_{lvl_kb_depth}_{kb_update_delay}_v_and_kb.pkl".format(lvl_type=lvl_config["lvl_type"], lvl_vision=lvl_config["vision_bound"], lvl_robot_aware=lvl_config["vision_limit_aware"], lvl_search_depth=lvl_config["search_depth"], lvl_kb_depth=lvl_config["kb_search_depth"], kb_update_delay=lvl_config['kb_update_delay']))
-                    human_save_path = os.path.join(
-                            LSI_STEAK_STUDY_AGENT_DIR,
-                            "{lvl_type}_{lvl_vision}_{lvl_robot_aware}_{lvl_search_depth}_{lvl_kb_depth}_{kb_update_delay}_human.pkl".format(lvl_type=lvl_config["lvl_type"], lvl_vision=lvl_config["vision_bound"], lvl_robot_aware=lvl_config["vision_limit_aware"], lvl_search_depth=lvl_config["search_depth"], lvl_kb_depth=lvl_config["kb_search_depth"], kb_update_delay=lvl_config['kb_update_delay']))
+                    agent_save_path, value_kb_save_path, human_save_path = gen_save_pths(lvl_config)
                     if not opt.human_play:
                         results = agents_play(lvl_str,
                                         agent_save_path=agent_save_path,
@@ -835,14 +1050,14 @@ if __name__ == "__main__":
                                         KB_UPDATE_DELAY=lvl_config["kb_update_delay"])
                     else:
                         results = human_play(lvl_str,
-                                             human_save_path=human_save_path,
+                                        human_save_path=human_save_path,
                                         agent_save_path=agent_save_path,
                                         value_kb_save_path=value_kb_save_path,
                                         lvl_config=lvl_config)
                     # write the results
                     if lvl_config["lvl_type"] != "trial":
                         write_to_human_exp_log(human_log_csv, results,
-                                               lvl_config)
+                                            lvl_config)
 
     # replay the specified study
     else:
@@ -858,11 +1073,20 @@ if __name__ == "__main__":
                 lvl_str = lvl_config["lvl_str"]
                 joint_actions = ast.literal_eval(lvl_config["joint_actions"])
 
+                subtask_log = ast.literal_eval(lvl_config["subtask_log"])
+                human_kb_log = ast.literal_eval(lvl_config["human_kb_log"])
+                world_kb_log = ast.literal_eval(lvl_config["world_kb_log"])
+
+                if opt.gen_plot:
+                    plot_kb_and_subtasks(joint_actions, subtask_log, human_kb_log, world_kb_log, log_dir=os.path.join(LSI_STEAK_STUDY_RESULT_DIR, log_index), log_name=lvl_config["lvl_type"])
+                    
                 # replay the game
-                replay_with_joint_actions(lvl_str, joint_actions, log_dir=os.path.join(LSI_STEAK_STUDY_RESULT_DIR, log_index), log_name=lvl_config["lvl_type"], view_angle=lvl_config["vision_bound"])
-    
-                if NO_FOG_COPY and lvl_config["vision_bound"] > 0:
-                    replay_with_joint_actions(lvl_str, joint_actions, log_dir=os.path.join(LSI_STEAK_STUDY_RESULT_DIR, log_index), log_name=lvl_config["lvl_type"]+'_nofog', view_angle=0)
+                if opt.gen_vid:
+                    replay_with_joint_actions(lvl_str, joint_actions, log_dir=os.path.join(LSI_STEAK_STUDY_RESULT_DIR, log_index), log_name=lvl_config["lvl_type"], view_angle=lvl_config["vision_bound"])
+        
+                    if NO_FOG_COPY and lvl_config["vision_bound"] > 0:
+                        replay_with_joint_actions(lvl_str, joint_actions, log_dir=os.path.join(LSI_STEAK_STUDY_RESULT_DIR, log_index), log_name=lvl_config["lvl_type"]+'_nofog', view_angle=0)
+
 
         else:
             # get level string and logged joint actions from log file
@@ -875,8 +1099,20 @@ if __name__ == "__main__":
             joint_actions = ast.literal_eval(human_log_data[
                 human_log_data["lvl_type"] == opt.type]["joint_actions"].iloc[0])
 
-            # replay the game
-            replay_with_joint_actions(lvl_str, joint_actions, log_dir=os.path.join(LSI_STEAK_STUDY_RESULT_DIR, log_index), log_name=lvl_type, view_angle=vision_bound)
+            subtask_log = ast.literal_eval(human_log_data[
+                human_log_data["lvl_type"] == opt.type]["subtask_log"].iloc[0])
+            human_kb_log = ast.literal_eval(human_log_data[
+                human_log_data["lvl_type"] == opt.type]["human_kb_log"].iloc[0])
+            world_kb_log = ast.literal_eval(human_log_data[
+                human_log_data["lvl_type"] == opt.type]["world_kb_log"].iloc[0])
 
-            if NO_FOG_COPY and vision_bound > 0:
-                replay_with_joint_actions(lvl_str, joint_actions, log_dir=os.path.join(LSI_STEAK_STUDY_RESULT_DIR, log_index), log_name=lvl_type+'_nofog', view_angle=0)
+            if opt.gen_plot:
+                plot_kb_and_subtasks(joint_actions, subtask_log, human_kb_log, world_kb_log, log_dir=os.path.join(LSI_STEAK_STUDY_RESULT_DIR, log_index), log_name=lvl_type)
+
+            # replay the game
+            if opt.gen_vid:
+                replay_with_joint_actions(lvl_str, joint_actions, log_dir=os.path.join(LSI_STEAK_STUDY_RESULT_DIR, log_index), log_name=lvl_type, view_angle=vision_bound)
+
+                if NO_FOG_COPY and vision_bound > 0:
+                    replay_with_joint_actions(lvl_str, joint_actions, log_dir=os.path.join(LSI_STEAK_STUDY_RESULT_DIR, log_index), log_name=lvl_type+'_nofog', view_angle=0)
+

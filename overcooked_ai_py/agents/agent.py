@@ -1046,6 +1046,7 @@ class SteakLimitVisionHumanModel(limitVisionHumanModel):
         super().__init__(mlp, start_state, hl_boltzmann_rational, ll_boltzmann_rational, hl_temp, ll_temp, auto_unstuck, explore, vision_limit=vision_limit, vision_bound=vision_bound, kb_update_delay=kb_update_delay, debug=debug)
         self.robot_aware = robot_aware
         self.prev_chosen_subtask = None
+        self.kb_log = []
 
     def deepcopy(self, world_state):
         new_human_model = SteakLimitVisionHumanModel(self.mlp, world_state, auto_unstuck=self.auto_unstuck, explore=self.explore, vision_limit=self.vision_limit)
@@ -1081,6 +1082,41 @@ class SteakLimitVisionHumanModel(limitVisionHumanModel):
         self.kb_update_delay_track[1]['other_player'] = start_state.players[0].deepcopy()
         self.kb_update_delay_track[2] = {}
 
+    def kb_to_state_info(self, kb):
+        num_item_in_pot = 0
+        pots = kb['pot_states']['steak']
+        non_emtpy_pots = pots['cooking'] + pots['ready']
+        if len(non_emtpy_pots) > 0:
+            num_item_in_pot = 1
+        
+        chop_time = -1
+        non_empty_boards = kb['chop_states']['ready'] + kb['chop_states']['full']
+        if len(non_empty_boards) > 0:
+            if kb[non_empty_boards[0]] is not None:
+                chop_time = kb[non_empty_boards[0]].state
+            else:
+                raise ValueError()
+        
+        wash_time = -1
+        non_empty_sink = kb['sink_states']['ready'] + kb['sink_states']['full']
+        if len(non_empty_sink) > 0:
+            if kb[non_empty_sink[0]] is not None:
+                wash_time = kb[non_empty_sink[0]].state
+            else:
+                raise ValueError()
+
+        robot_obj = kb['other_player'].held_object.name if kb['other_player'].held_object is not None else 'None'
+
+        return num_item_in_pot, chop_time, wash_time, robot_obj
+
+    def update_kb_log(self):
+        self.kb_log += [self.get_kb_key(self.knowledge_base)]
+        
+    def get_kb_key(self, kb):
+        num_item_in_pot, chop_time, wash_time, robot_obj = self.kb_to_state_info(kb)
+        kb_key = '.'.join([str(num_item_in_pot), str(chop_time), str(wash_time), str(robot_obj)])
+        return kb_key
+    
     def get_knowledge_base(self, state, rollout_kb=None, rollout_info=[]):
         return self.update(state, rollout_kb=rollout_kb, rollout_info=rollout_info)
 
@@ -1384,6 +1420,7 @@ class SteakLimitVisionHumanModel(limitVisionHumanModel):
         """
 
         self.update(state)
+        
         player = state.players[self.agent_index]
         other_player = self.knowledge_base['other_player']
         am = self.mlp.ml_action_manager
@@ -1431,9 +1468,9 @@ class SteakLimitVisionHumanModel(limitVisionHumanModel):
                 motion_goals += am.pickup_hot_plate_from_sink_actions(counter_objects, state)#, knowledge_base=self.knowledge_base)
                 if len(motion_goals) == 0:
                     if other_has_plate:
-                        motion_goals += self.mlp.mdp.get_sink_status(state)['sink_states']['full']
+                        motion_goals += self.mlp.mdp.get_sink_status(state)['full']
                         if len(motion_goals) == 0:
-                            motion_goals += self.mlp.mdp.get_sink_status(state)['sink_states']['empty']
+                            motion_goals += self.mlp.mdp.get_sink_status(state)['empty']
             elif chosen_subtask == 'pickup_steak':
                 motion_goals = am.pickup_steak_with_hot_plate_actions(self.mlp.mdp.get_pot_states(state))#, only_nearly_ready=True, knowledge_base=self.knowledge_base)
                 if len(motion_goals) == 0:
@@ -1445,9 +1482,9 @@ class SteakLimitVisionHumanModel(limitVisionHumanModel):
                 motion_goals = am.add_garnish_to_steak_actions(state)#, knowledge_base=self.knowledge_base)
                 if len(motion_goals) == 0:
                     if other_has_onion:
-                        motion_goals = self.mlp.mdp.get_chopping_board_status(state)['chop_states']['full']
+                        motion_goals = self.mlp.mdp.get_chopping_board_status(state)['full']
                         if len(motion_goals) == 0:
-                            self.mlp.mdp.get_chopping_board_status(state)['chop_states']['empty']
+                            self.mlp.mdp.get_chopping_board_status(state)['empty']
             elif chosen_subtask == 'drop_meat':
                 motion_goals = am.put_meat_in_pot_actions(self.mlp.mdp.get_pot_states(state))#, knowledge_base=self.knowledge_base)
             elif chosen_subtask == 'drop_onion':
@@ -2535,8 +2572,9 @@ class HumanPlayer(Agent):
     def __init__(self,):
         self.prev_state = None
 
-    def update_logs(self, state, action):
+    def update_logs(self, state, action, curr_s=None):
         """Update necessary logs for calculating bcs."""
+        state.players[self.agent_index].subtask_log += [curr_s]
         if action == Action.STAY:
             state.players[self.agent_index].active_log += [0]
         else:

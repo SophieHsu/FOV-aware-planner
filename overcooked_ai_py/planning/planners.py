@@ -6813,6 +6813,7 @@ class SteakKnowledgeBasePlanner(SteakHumanSubtaskQMDPPlanner):
         self.search_depth = search_depth
         self.kb_search_depth = kb_search_depth
         self.track_state_kb_map = track_state_kb_map
+        self.world_kb_log = []
     
     @staticmethod
     def from_pickle_or_compute(mdp, mlp_params, custom_filename=None, force_compute_all=False, info=True, force_compute_more=False, jmp=None, vision_limited_human=None, debug=False, search_depth=5, kb_search_depth=3):
@@ -7370,49 +7371,6 @@ class SteakKnowledgeBasePlanner(SteakHumanSubtaskQMDPPlanner):
 
         next_num_item_in_pot = num_item_in_pot; next_chop_time = chop_time; next_wash_time = wash_time
         
-        # next_world_infos = []
-        # # update world info: [robot_obj, num_item_in_pot, next_chop_time, wash_time]
-        # if (subtask_action in ['pickup']) and subtask_obj not in ['hot_plate', 'steak', 'garnish']:
-        #     next_world_infos.append([robot_obj, num_item_in_pot, chop_time, wash_time])
-        # elif curr_human_subtask == 'pickup_hot_plate':
-        #     if wash_time >= self.mdp.wash_time:
-        #         next_world_infos.append([robot_obj, num_item_in_pot, chop_time, -1])
-        #     else:
-        #         next_world_infos.append([robot_obj, num_item_in_pot, chop_time, wash_time])
-        # elif curr_human_subtask == 'pickup_steak':
-        #     if num_item_in_pot == 1:
-        #         next_world_infos.append([robot_obj, 0, chop_time, wash_time])
-        #     else:
-        #         next_world_infos.append([robot_obj, num_item_in_pot, chop_time, wash_time])
-        # elif curr_human_subtask == 'pickup_garnish':
-        #     if chop_time >= self.mdp.chopping_time:
-        #         next_world_infos.append([robot_obj, num_item_in_pot, -1, wash_time])
-        #     else:
-        #         next_world_infos.append([robot_obj, num_item_in_pot, chop_time, wash_time])
-        # elif curr_human_subtask == 'drop_meat':
-        #     if num_item_in_pot == 0: next_num_item_in_pot = 1 # meaning you drop at the right location instead of just on the counter
-        #     next_world_infos.append([robot_obj, next_num_item_in_pot, chop_time, wash_time])
-        # elif curr_human_subtask == 'drop_onion':
-        #     if chop_time < 0: next_chop_time = 0 # meaning you drop at the right location instead of just on the counter
-        #     next_world_infos.append([robot_obj, num_item_in_pot, next_chop_time, wash_time])
-        # elif curr_human_subtask == 'drop_plate':
-        #     if wash_time < 0: next_wash_time = 0 # meaning you drop at the right location instead of just on the counter
-        #     next_world_infos.append([robot_obj, num_item_in_pot, chop_time, next_wash_time])
-        # elif curr_human_subtask == 'chop_onion':
-        #     next_chop_time = min(chop_time + 1, self.mdp.chopping_time)
-        #     next_world_infos.append([robot_obj, num_item_in_pot, next_chop_time, wash_time])
-        # elif curr_human_subtask == 'heat_hot_plate':
-        #     next_wash_time = min(wash_time + 1, self.mdp.wash_time)
-        #     next_world_infos.append([robot_obj, num_item_in_pot, chop_time, next_wash_time])
-        # elif curr_human_subtask == 'deliver_dish':
-        #     next_world_infos.append([robot_obj, num_item_in_pot, chop_time, wash_time])
-        # elif curr_human_subtask in ['drop_hot_plate', 'drop_steak', 'drop_dish']:
-        #     next_world_infos.append([robot_obj, num_item_in_pot, chop_time, wash_time])
-        # else:
-        #     next_world_infos.append([robot_obj, num_item_in_pot, chop_time, wash_time])
-        #     print(curr_human_subtask, (num_item_in_pot, chop_time, wash_time), robot_obj)
-        #     raise ValueError()
-        
         # decide next subtask based on the environment
         next_subtasks = []
         if player_obj == 'None':
@@ -7448,137 +7406,11 @@ class SteakKnowledgeBasePlanner(SteakHumanSubtaskQMDPPlanner):
 
         if len(next_subtasks) == 0:
             next_subtasks = [curr_human_subtask]
-
-        # if human_obj == 'None':
-        #     if ((chop_time >= 0) and (chop_time < self.mdp.chopping_time)) or ((chop_time < 0) and (human_obj == 'onion')):
-        #         actions.append('chop_onion')
-        #         next_chop_time = chop_time + 1
-        #         if next_chop_time > self.mdp.chopping_time:
-        #             next_chop_time = self.mdp.chopping_time
-        #         next_world_infos.append([robot_obj, num_item_in_pot, next_chop_time, wash_time])
-        #     elif ((wash_time >= 0) and (wash_time < self.mdp.wash_time)) or ((wash_time < 0) and (human_obj == 'plate')):
-        #         actions.append('heat_hot_plate')
-        #         next_wash_time = wash_time + 1
-        #         if next_wash_time > self.mdp.wash_time:
-        #             next_wash_time = self.mdp.wash_time
-        #         next_world_infos.append([robot_obj, num_item_in_pot, chop_time, next_wash_time])
-
-        #     elif (num_item_in_pot < self.mdp.num_items_for_steak) and (human_obj != 'meat') and (robot_obj != 'meat'):
-        #         actions.append('pickup_meat')
-        #         next_world_infos.append([robot_obj, num_item_in_pot, chop_time, wash_time])
-            
-        #     elif (chop_time < 0) and (human_obj != 'onion') and (robot_obj != 'onion'):
-        #         actions.append('pickup_onion')
-        #         next_world_infos.append([robot_obj, num_item_in_pot, chop_time, wash_time])
-            
-        #     elif (wash_time < 0) and (human_obj != 'plate') and (robot_obj != 'plate'):
-        #         actions.append('pickup_plate')
-        #         next_world_infos.append([robot_obj, num_item_in_pot, chop_time, wash_time])
-
-        #     elif (chop_time == self.mdp.chopping_time) and (wash_time == self.mdp.wash_time):
-        #         actions.append('pickup_hot_plate')
-        #         next_world_infos.append([robot_obj, num_item_in_pot, chop_time, 'None'])
-            
-        #     if len(actions) == 0:
-        #         actions.append('pickup_plate')
-        #         next_world_infos.append([robot_obj, num_item_in_pot, chop_time, wash_time])
-
-        # else:
-        #     if human_obj == 'onion':
-        #         actions.append('drop_onion')
-        #         next_chop_time = chop_time
-        #         if chop_time < 0: next_chop_time = 0 # doesn't change since no avaliable board to drop
-        #         next_world_infos.append([robot_obj, num_item_in_pot, next_chop_time, wash_time])
-
-        #     elif human_obj == 'meat':
-        #         actions.append('drop_meat')
-        #         next_num_item_in_pot = 1
-        #         next_world_infos.append([robot_obj, next_num_item_in_pot, chop_time, wash_time])
-
-        #     elif human_obj == 'plate':
-        #         actions.append('drop_plate')
-        #         next_wash_time = wash_time
-        #         if wash_time < 0: next_wash_time = 0 # doesn't change since no avaliable sink to drop
-        #         next_world_infos.append([robot_obj, num_item_in_pot, chop_time, next_wash_time])
-
-        #     elif (human_obj == 'hot_plate') and (num_item_in_pot == self.mdp.num_items_for_steak):
-        #         actions.append('pickup_steak')
-        #         next_num_item_in_pot = 0
-        #         next_world_infos.append([robot_obj, next_num_item_in_pot, chop_time, wash_time])
-
-        #     elif (human_obj == 'hot_plate') and (num_item_in_pot < self.mdp.num_items_for_steak):
-        #         actions.append('drop_hot_plate')
-        #         next_world_infos.append([robot_obj, num_item_in_pot, chop_time, wash_time])
-
-        #     elif (human_obj == 'steak') and (chop_time == self.mdp.chopping_time):
-        #         actions.append('pickup_garnish')
-        #         next_world_infos.append([robot_obj, num_item_in_pot, 'None', wash_time])
-
-        #     elif (human_obj == 'steak') and (chop_time < self.mdp.chopping_time):
-        #         # actions = 'drop_steak'
-        #         # next_obj = 'None'
-        #         actions.append('pickup_garnish')
-        #         next_world_infos.append([robot_obj, num_item_in_pot, 'None', wash_time])
-
-        #     elif (human_obj == 'dish'):
-        #         actions.append('deliver_dish')
-        #         next_world_infos.append([robot_obj, num_item_in_pot, chop_time, wash_time])
-
-        #     else:
-        #         print(human_obj, [robot_obj, num_item_in_pot, chop_time, wash_time])
-        #         raise ValueError()
             
         return next_subtasks, None
     
     def kb_compare(self, kb1, kb2):
-        # kb1['pot_states']
-        # kb1['sink_states']
-        # kb1['chop_states']
-        # kb1['other_player']
-
-        # diff = DeepDiff(kb1, kb2)
-        # return len(diff['values_changed']) == 0
-
         return all((kb2.get(k) == v for k, v in kb1.items()))
-
-    # def next_kb_prob(self, start_world_state, goal_kb, h_fn=None, delivery_horizon=4, debug=False, search_time=0.01, other_agent_plan=None):
-    #     """
-    #     Solves A* Search problem to find sequence of low-level actions and observe the knowledge base of the new world state.
-
-    #     Returns:
-    #         ml_plan (list): plan not including starting state in form
-    #             [(joint_action, successor_state), ..., (joint_action, goal_state)]
-    #         cost (int): A* Search cost
-    #     """
-    #     start_state = start_world_state.deepcopy()
-    #     start_kb = self.sim_human_model.get_knowledge_base(start_state, rollout_kb=True)
-    #     if self.kb_compare(start_kb, goal_kb):
-    #         return None, 0, 1
-
-    #     if start_state.order_list is None:
-    #         start_state.order_list = ["any"] * delivery_horizon
-    #     else:
-    #         start_state.order_list = start_state.order_list[:delivery_horizon]
-        
-    #     expand_fn = lambda state, depth: self.get_kb_successor_states(state, other_agent_plan[depth])
-    #     goal_fn = lambda state: self.kb_compare(self.sim_human_model.get_knowledge_base(state, rollout_kb=True), goal_kb)
-    #     heuristic_fn = Steak_Heuristic(self.mp).simple_heuristic
-
-    #     search_problem = SearchTree(start_state, goal_fn, expand_fn, heuristic_fn, debug=debug)
-    #     # path_end_state, cost, over_limit = search_problem.bounded_A_star_graph_search(qmdp_root=mdp_state_key, info=False, cost_limit=search_depth, time_limit=search_time_limit)
-    #     ml_plan, cost = search_problem.coupled_A_star_graph_search(info=False, time_limit=search_time, path_limit=len(other_agent_plan)-1)
-    #     prob = 1
-    #     if cost > 0:
-    #         if other_agent_plan is not None:
-    #             prob = 1/pow(Action.NUM_ACTIONS, cost)
-    #         else:
-    #             prob = 1/pow(Action.NUM_ACTIONS*Action.NUM_ACTIONS, cost)
-        
-    #     if len(ml_plan) > 1:
-    #         action_plan, _ = zip(*ml_plan)
-    #         return (action_plan[1][0][-1], action_plan[1][1][-1]), cost, prob
-    #     else:
-    #         return None, 0, 1
 
     def get_kb_key(self, kb):
         num_item_in_pot, chop_time, wash_time, robot_obj = self.kb_to_state_info(kb)
@@ -8040,6 +7872,14 @@ class SteakKnowledgeBasePlanner(SteakHumanSubtaskQMDPPlanner):
         curr_human_kb, curr_human_kb_track = self.sim_human_model.get_knowledge_base(world_state)
         curr_kb_key = self.get_kb_key(curr_human_kb)
 
+        # log world kb
+        [robot_obj1, num_item_in_pot1, chop_time1, wash_time1, _] = self.world_state_to_mdp_state_key(world_state, world_state.players[0], world_state.players[1], RETURN_NON_SUBTASK=True, RETURN_OBJ=True)
+        if chop_time1 == None or chop_time1 == 'None':
+            chop_time1 = -1
+        if wash_time1 == None or wash_time1 == 'None':
+            wash_time1 = -1
+        self.world_kb_log += ['.'.join([str(num_item_in_pot1), str(chop_time1), str(wash_time1), str(robot_obj1)])]
+        
         ## Reason over all belief over human's subtask
         for curr_subtask, belief_prob in belief.items():
             if belief_prob > 0.2 or all(np.array(list((belief.values()))) < 0.072):

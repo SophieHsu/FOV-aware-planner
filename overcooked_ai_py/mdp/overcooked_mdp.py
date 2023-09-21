@@ -183,7 +183,8 @@ class PlayerState(object):
                  num_plate_held=0,
                  num_served=0,
                  active_log=[],
-                 stuck_log=[]):
+                 stuck_log=[],
+                 subtask_log=[]):
         self.position = tuple(position)
         self.orientation = tuple(orientation)
         self.held_object = held_object
@@ -192,6 +193,7 @@ class PlayerState(object):
         self.num_served = num_served
         self.active_log = active_log.copy()
         self.stuck_log = stuck_log.copy()
+        self.subtask_log = subtask_log.copy()
 
         assert self.orientation in Direction.ALL_DIRECTIONS
         if self.held_object is not None:
@@ -234,7 +236,7 @@ class PlayerState(object):
         )
         return PlayerState(self.position, self.orientation, new_obj,
                            self.num_ingre_held, self.num_plate_held,
-                           self.num_served, self.active_log, self.stuck_log)
+                           self.num_served, self.active_log, self.stuck_log, self.subtask_log)
 
     def __eq__(self, other):
         return isinstance(other, PlayerState) and \
@@ -1641,7 +1643,7 @@ class OvercookedGridworld(object):
                 return True
         return False
 
-    def render(self, state, mode, time_step_left=None, time_passed=None, view_angle=120):
+    def render(self, state, mode, time_step_left=None, time_passed=None, selected_action_count=0, view_angle=120):
         """
         Function that renders the game
 
@@ -2764,7 +2766,7 @@ class SteakHouseGridworld(OvercookedGridworld):
     # RENDER FUNCTION #
     ###################
 
-    def render(self, state, mode, time_step_left=None, time_passed=None, view_angle=120, info=None):
+    def render(self, state, mode, time_step_left=None, time_passed=None, view_angle=120, selected_action_count=0, info=None):
         """
         Function that renders the game
 
@@ -2896,12 +2898,12 @@ class SteakHouseGridworld(OvercookedGridworld):
                     blit_terrain(x, y, self.terrain_mtx, self.viewer, mode)
 
         if mode == "not_aware":
-            PLAYER_HAT_COLOR = {
+            player_hat_color = {
                 0: 'purplehat',
                 1: 'bluehat'
             }
         else:
-            PLAYER_HAT_COLOR = {
+            player_hat_color = {
                 0: 'greenhat',
                 1: 'bluehat'
             }
@@ -2918,7 +2920,7 @@ class SteakHouseGridworld(OvercookedGridworld):
             assert len(player_idx_lst) == 1
 
             player_pgobj, player_hat_pgobj = get_player_sprite(
-                player, player_idx_lst[0])
+                player, player_idx_lst[0], hat_color=player_hat_color)
 
             if mode == "blur":
                 transparent = (time_step_left+10)*5
@@ -2949,13 +2951,13 @@ class SteakHouseGridworld(OvercookedGridworld):
             self.rend_boxes = render_game_info_panel(
                 self.viewer,
                 (self.width * SPRITE_LENGTH, self.height * SPRITE_LENGTH),
-                state.num_orders_remaining, time_passed, init=True)
+                state.num_orders_remaining, time_passed, selected_action_count, init=True)
             
         elif mode == "right_panel" or mode=="not_aware":
             render_game_info_panel(
                 self.viewer,
                 (self.width * SPRITE_LENGTH, self.height * SPRITE_LENGTH),
-                state.num_orders_remaining, time_passed, curr_s = info)
+                state.num_orders_remaining, time_passed, selected_action_count, curr_s = info)
             for box in self.rend_boxes:
                 box.render_checkbox()
     
