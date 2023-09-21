@@ -1,5 +1,5 @@
-lvl_type,ID,agent_unstuck,human_unstuck,vision_limit,vision_bound,vision_limit_aware,search_depth,kb_search_depth,explore,lvl_str
-steak_stations,0,TRUE,TRUE,TRUE,120,TRUE,5,3,FALSE,"XXXXXXXXXXXXXXX
+lvl_type,ID,vision_limit,vision_bound,vision_limit_aware,search_depth,kb_search_depth,kb_update_delay,lvl_str
+steak_stations,0,TRUE,120,TRUE,5,3,3,"XXXXXXXXXXXXXXX
 XXBXXXXMXXXXXXX
 XX           XX 
 XO           XX
@@ -9,7 +9,7 @@ XX    2 1    DX
 XS           XX
 XXXXXXXXXXWXXXX 
 XXXXXXXXXXXXXXX"
-steak_stations2,1,TRUE,TRUE,TRUE,120,TRUE,5,3,FALSE,"XXXXXXXXXXXXXXX
+steak_stations2,1,TRUE,120,TRUE,5,3,3,"XXXXXXXXXXXXXXX
 XXBXXXXMXXXWXXX
 XX           XX
 XO           XX
@@ -19,7 +19,7 @@ XX    2 1    DX
 XS           XX
 XXXXXXXXXXXXXXX
 XXXXXXXXXXXXXXX"
-steak_stations3,2,TRUE,TRUE,TRUE,120,TRUE,5,3,FALSE,"XXXXXXXXXXXXXXX
+steak_stations3,2,TRUE,120,TRUE,5,3,3,"XXXXXXXXXXXXXXX
 XXXPXXOXXXXXDXX
 XX           XX
 XM           XX
@@ -29,7 +29,7 @@ XX        2  XX
 XS    1      XX
 XXXXXXXXXXXXXXX
 XXXXXXXXXXXXXXX"
-steak_tshape2,3,TRUE,TRUE,TRUE,120,TRUE,5,3,FALSE,"XXXXXXXXXDXBXXX
+steak_tshape2,3,TRUE,120,TRUE,5,3,3,"XXXXXXXXXDXBXXX
 XX           OX
 XX           XX
 XX    XXX    XX
@@ -40,7 +40,7 @@ XX           XX
 XS        2  XX
 XXXXXXXXXXXPXXX
 XXXXXXXXXXXXXXX"
-steak_stations_no_limit,4,TRUE,TRUE,FALSE,0,TRUE,5,3,FALSE,"XXXXXXXXXXXXXXX
+steak_stations_no_limit,4,FALSE,0,TRUE,5,3,1,"XXXXXXXXXXXXXXX
 XXBXXXXMXXXXXXX
 XX           XX 
 XO           XX
@@ -50,7 +50,7 @@ XX    2 1    DX
 XS           XX
 XXXXXXXXXXWXXXX 
 XXXXXXXXXXXXXXX"
-steak_stations2_no_limit,5,TRUE,TRUE,FALSE,0,TRUE,5,3,FALSE,"XXXXXXXXXXXXXXX
+steak_stations2_no_limit,5,FALSE,0,TRUE,5,3,1,"XXXXXXXXXXXXXXX
 XXBXXXXMXXXWXXX
 XX           XX
 XO           XX
@@ -60,7 +60,7 @@ XX    2 1    DX
 XS           XX
 XXXXXXXXXXXXXXX
 XXXXXXXXXXXXXXX"
-steak_stations3_no_limit,6,TRUE,TRUE,FALSE,0,TRUE,5,3,FALSE,"XXXXXXXXXXXXXXX
+steak_stations3_no_limit,6,FALSE,0,TRUE,5,3,1,"XXXXXXXXXXXXXXX
 XXXPXXOXXXXXDXX
 XX           XX
 XM           XX
@@ -70,7 +70,7 @@ XX        2  XX
 XS    1      XX
 XXXXXXXXXXXXXXX
 XXXXXXXXXXXXXXX"
-steak_tshape2_no_limit,7,TRUE,TRUE,FALSE,0,TRUE,5,3,FALSE,"XXXXXXXXXDXBXXX
+steak_tshape2_no_limit,7,FALSE,0,TRUE,5,3,1,"XXXXXXXXXDXBXXX
 XX           OX
 XX           XX
 XX    XXX    XX
@@ -81,7 +81,7 @@ XX           XX
 XS        2  XX
 XXXXXXXXXXXPXXX
 XXXXXXXXXXXXXXX"
-steak_stations_60,8,TRUE,TRUE,TRUE,60,TRUE,5,3,FALSE,"XXXXXXXXXXXXXXX
+steak_stations_60,8,TRUE,60,TRUE,5,3,3,"XXXXXXXXXXXXXXX
 XXBXXXXMXXXXXXX
 XX           XX 
 XO           XX
@@ -91,7 +91,7 @@ XX    2 1    DX
 XS           XX
 XXXXXXXXXXWXXXX 
 XXXXXXXXXXXXXXX"
-steak_stations2_60,9,TRUE,TRUE,TRUE,60,TRUE,5,3,FALSE,"XXXXXXXXXXXXXXX
+steak_stations2_60,9,TRUE,60,TRUE,5,3,3,"XXXXXXXXXXXXXXX
 XXBXXXXMXXXWXXX
 XX           XX
 XO           XX
@@ -101,7 +101,7 @@ XX    2 1    DX
 XS           XX
 XXXXXXXXXXXXXXX
 XXXXXXXXXXXXXXX"
-steak_stations3_60,10,TRUE,TRUE,TRUE,60,TRUE,5,3,FALSE,"XXXXXXXXXXXXXXX
+steak_stations3_60,10,TRUE,60,TRUE,5,3,3,"XXXXXXXXXXXXXXX
 XXXPXXOXXXXXDXX
 XX           XX
 XM           XX
@@ -111,7 +111,7 @@ XX        2  XX
 XS    1      XX
 XXXXXXXXXXXXXXX
 XXXXXXXXXXXXXXX"
-steak_tshape2_60,11,TRUE,TRUE,TRUE,60,TRUE,5,3,FALSE,"XXXXXXXXXDXBXXX
+steak_tshape2_60,11,TRUE,60,TRUE,5,3,3,"XXXXXXXXXDXBXXX
 XX           OX
 XX           XX
 XX    XXX    XX
@@ -122,7 +122,7 @@ XX           XX
 XS        2  XX
 XXXXXXXXXXXPXXX
 XXXXXXXXXXXXXXX"
-steak_stations_not_aware,12,TRUE,TRUE,TRUE,120,FALSE,5,3,FALSE,"XXXXXXXXXXXXXXX
+steak_stations_not_aware,12,TRUE,120,FALSE,5,3,3,"XXXXXXXXXXXXXXX
 XXBXXXXMXXXXXXX
 XX           XX 
 XO           XX
@@ -132,7 +132,7 @@ XX    2 1    DX
 XS           XX
 XXXXXXXXXXWXXXX 
 XXXXXXXXXXXXXXX"
-steak_stations2_not_aware,13,TRUE,TRUE,TRUE,120,FALSE,5,3,FALSE,"XXXXXXXXXXXXXXX
+steak_stations2_not_aware,13,TRUE,120,FALSE,5,3,3,"XXXXXXXXXXXXXXX
 XXBXXXXMXXXWXXX
 XX           XX
 XO           XX
@@ -142,7 +142,7 @@ XX    2 1    DX
 XS           XX
 XXXXXXXXXXXXXXX
 XXXXXXXXXXXXXXX"
-steak_stations3_not_aware,14,TRUE,TRUE,TRUE,120,FALSE,5,3,FALSE,"XXXXXXXXXXXXXXX
+steak_stations3_not_aware,14,TRUE,120,FALSE,5,3,3,"XXXXXXXXXXXXXXX
 XXXPXXOXXXXXDXX
 XX           XX
 XM           XX
@@ -152,7 +152,7 @@ XX        2  XX
 XS    1      XX
 XXXXXXXXXXXXXXX
 XXXXXXXXXXXXXXX"
-steak_tshape2_not_aware,15,TRUE,TRUE,TRUE,120,FALSE,5,3,FALSE,"XXXXXXXXXDXBXXX
+steak_tshape2_not_aware,15,TRUE,120,FALSE,5,3,3,"XXXXXXXXXDXBXXX
 XX           OX
 XX           XX
 XX    XXX    XX
@@ -163,7 +163,7 @@ XX           XX
 XS        2  XX
 XXXXXXXXXXXPXXX
 XXXXXXXXXXXXXXX"
-steak_stations_60_not_aware,16,TRUE,TRUE,TRUE,60,FALSE,5,3,FALSE,"XXXXXXXXXXXXXXX
+steak_stations_60_not_aware,16,TRUE,60,FALSE,5,3,3,"XXXXXXXXXXXXXXX
 XXBXXXXMXXXXXXX
 XX           XX 
 XO           XX
@@ -173,7 +173,7 @@ XX    2 1    DX
 XS           XX
 XXXXXXXXXXWXXXX 
 XXXXXXXXXXXXXXX"
-steak_stations2_60_not_aware,17,TRUE,TRUE,TRUE,60,FALSE,5,3,FALSE,"XXXXXXXXXXXXXXX
+steak_stations2_60_not_aware,17,TRUE,60,FALSE,5,3,3,"XXXXXXXXXXXXXXX
 XXBXXXXMXXXWXXX
 XX           XX
 XO           XX
@@ -183,7 +183,7 @@ XX    2 1    DX
 XS           XX
 XXXXXXXXXXXXXXX
 XXXXXXXXXXXXXXX"
-steak_stations3_60_not_aware,18,TRUE,TRUE,TRUE,60,FALSE,5,3,FALSE,"XXXXXXXXXXXXXXX
+steak_stations3_60_not_aware,18,TRUE,60,FALSE,5,3,3,"XXXXXXXXXXXXXXX
 XXXPXXOXXXXXDXX
 XX           XX
 XM           XX
@@ -193,7 +193,7 @@ XX        2  XX
 XS    1      XX
 XXXXXXXXXXXXXXX
 XXXXXXXXXXXXXXX"
-steak_tshape2_60_not_aware,19,TRUE,TRUE,TRUE,60,FALSE,5,3,FALSE,"XXXXXXXXXDXBXXX
+steak_tshape2_60_not_aware,19,TRUE,60,FALSE,5,3,3,"XXXXXXXXXDXBXXX
 XX           OX
 XX           XX
 XX    XXX    XX
