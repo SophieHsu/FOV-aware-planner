@@ -1,0 +1,11 @@
+lvl_type,ID,agent_unstuck,human_unstuck,vision_limit,vision_bound,vision_limit_aware,explore,search_depth,kb_search_depth,complete,joint_actions,total time steps,lvl_str
+steak_parrallel,2,True,True,True,120,True,False,5,3,0,[],0,"XXXXXXXXXXXXXXX 
+XXXPXMOXXDXXXXX 
+XX           XX 
+XX           XX 
+XX  XXBXWXX  XX 
+XX  XXXXXXX  XX 
+XX        2  XX 
+XS    1      XX 
+XXXXXXXXXXXXXXX 
+XXXXXXXXXXXXXXX"

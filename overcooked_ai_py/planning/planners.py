@@ -7903,7 +7903,7 @@ class SteakKnowledgeBasePlanner(SteakHumanSubtaskQMDPPlanner):
                 one_step_state_info_dict = {} # one_step_world_state: [[list of (next_high_state, value of next_high_state, depended next kb, next kb prob)], [list of (one_step_cost from one_step_world_state to next_high_state_world_state)]]
                 for one_step_world_state, las in world_state_to_la.items():
                     if len(one_step_world_state.order_list) == 0:
-                        return las[0], None, None
+                        return las[0], None, None, []
                     if one_step_world_state not in one_step_state_info_dict.keys():
                         if self.debug: print('one_step_world_state:', one_step_world_state.players_pos_and_or)
                         ### Map one step world state to a high-level state representation to obtain next high-level state
@@ -8032,7 +8032,7 @@ class SteakKnowledgeBasePlanner(SteakHumanSubtaskQMDPPlanner):
         print("It took {} seconds for this step".format(time.time() - start_time))
         
 
-        return Action.INDEX_TO_ACTION[action_idx], None, None
+        return Action.INDEX_TO_ACTION[action_idx], None, None, q
 
     def step_consider_interact(self, world_state, belief, SEARCH_DEPTH=5, SEARCH_TIME=1, KB_SEARCH_DEPTH=3, debug=False):
         '''

@@ -413,7 +413,7 @@ class OvercookedState(object):
         Make a dummy OvercookedState with no objects and with players facing
         North based on the passed in player positions and order list
         """
-        dummy_pos_and_or = [(pos, Direction.NORTH) for pos in player_positions]
+        dummy_pos_and_or = [(pos, Direction.SOUTH) for pos in player_positions]
         return OvercookedState.from_players_pos_and_or(dummy_pos_and_or,
                                                        order_list)
 

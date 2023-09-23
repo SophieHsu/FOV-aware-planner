@@ -2269,7 +2269,7 @@ class MediumQMdpPlanningAgent(Agent):
         # compute in low-level the action and cost
         # action, action_object_pair, _ = self.mdp_planner.old_step(state, mdp_state_keys, self.belief, self.agent_index, low_level_action=LOW_LEVEL_ACTION, observation=observed_info)
         
-        action, action_object_pair, _ = self.mdp_planner.step(state, dict(zip(list(self.mdp_planner.subtask_dict.keys()), self.belief)))
+        action, action_object_pair, _, q = self.mdp_planner.step(state, dict(zip(list(self.mdp_planner.subtask_dict.keys()), self.belief)))
 
         if not LOW_LEVEL_ACTION:
             action = self.mdp_action_to_low_level_action(state, mdp_state_keys, action_object_pair)
@@ -2292,12 +2292,17 @@ class MediumQMdpPlanningAgent(Agent):
             print('Belief =', self.belief)
             print('Max belief =', list(self.mdp_planner.subtask_dict.keys())[np.argmax(self.belief)])
             print('Action =', action, '\n')
+
+        print('Subtasks:', self.mdp_planner.subtask_dict.keys())
+        print('Belief =', self.belief)
+        print('Max belief =', list(self.mdp_planner.subtask_dict.keys())[np.argmax(self.belief)])
+        print('Action =', action, '\n')
             
         if track_belief:
             self.track_belief.append(self.belief)
         self.prev_action_info = [self.belief.copy(), curr_state_str, action, action_object_pair]
 
-        return action, {"action_probs": action_probs}
+        return action, action_probs, q
 
     def resolve_stuck(self, state, chosen_action, action_probs):
         # HACK: if two agents get stuck and neither performing a pick or drop action, select an action at random that would
