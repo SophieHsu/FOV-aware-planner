@@ -566,10 +566,10 @@ def replay_with_joint_actions(lvl_str, joint_actions, plot=True, log_dir=None, l
                 cur_name = img_name(t)
                 pygame.image.save(env.mdp.viewer, cur_name)
 
-        if t == 0:
-            pygame.image.save(
-            env.mdp.viewer,
-            os.path.join(log_dir, log_name+".png"))
+        # if t == 0:
+        #     pygame.image.save(
+        #     env.mdp.viewer,
+        #     os.path.join(log_dir, log_name+".png"))
 
         ai_agent.update_logs(env.state, joint_actions[i][0])
         player.update_logs(env.state, joint_actions[i][1])
@@ -1020,6 +1020,7 @@ if __name__ == "__main__":
             log_index = opt.log_index
             assert int(log_index) >= 0
             human_log_csv, human_log_data = load_human_log_data(log_index)
+            
             if opt.human_play_mode == '0':
                 study_lvls = pd.read_csv(
                 os.path.join(LSI_STEAK_STUDY_CONFIG_DIR, "all_user_lvls_0.csv"))
