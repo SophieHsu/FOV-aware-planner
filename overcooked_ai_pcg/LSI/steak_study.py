@@ -910,6 +910,16 @@ if __name__ == "__main__":
             elif opt.human_play_mode == '3':
                 study_lvls = pd.read_csv(
                 os.path.join(LSI_STEAK_STUDY_CONFIG_DIR, "real_user_lvls.csv"))
+            elif opt.human_play_mode == '4':
+                study_lvls = pd.read_csv(
+                os.path.join(LSI_STEAK_STUDY_CONFIG_DIR, "real_user_lvls_kb_search0.csv"))
+            elif opt.human_play_mode == '5':
+                study_lvls = pd.read_csv(
+                os.path.join(LSI_STEAK_STUDY_CONFIG_DIR, "real_user_lvls_kb_search6.csv"))
+            elif opt.human_play_mode == '6':
+                study_lvls = pd.read_csv(
+                os.path.join(LSI_STEAK_STUDY_CONFIG_DIR, "real_user_lvls_kb_search3.csv"))
+                
             # study_lvls = pd.read_csv(
             #     os.path.join(LSI_STEAK_STUDY_CONFIG_DIR, "new_study_lvls.csv"))
         # else:
@@ -961,11 +971,13 @@ if __name__ == "__main__":
                         os.path.join(LSI_STEAK_STUDY_CONFIG_DIR, "user_study_unaware.csv"))
                     aware_lvls = pd.read_csv(
                         os.path.join(LSI_STEAK_STUDY_CONFIG_DIR, "user_study_aware.csv"))
+                    aware_not_act_lvls = pd.read_csv(
+                        os.path.join(LSI_STEAK_STUDY_CONFIG_DIR, "user_study_aware_not_act.csv"))
                     
                     if opt.human_play_mode == '0':
-                        user_study_lvls = [aware_lvls, unaware_lvls]
+                        user_study_lvls = [unaware_lvls, aware_not_act_lvls, aware_lvls]
                     elif opt.human_play_mode == '1':
-                        user_study_lvls = [unaware_lvls, aware_lvls]
+                        user_study_lvls = [unaware_lvls, aware_lvls, aware_not_act_lvls]
 
                     for lvls in user_study_lvls:
                         # lvls = study_lvls.sample(frac=1)
@@ -983,7 +995,7 @@ if __name__ == "__main__":
                             write_to_human_exp_log(human_log_csv, results,
                                                     lvl_config)
 
-                # # shuffle the order if playing all
+                # shuffle the order if playing all
                 # if opt.study == 'all':
                 #     study_lvls = study_lvls
                 #     # study_lvls = study_lvls.sample(frac=1)
