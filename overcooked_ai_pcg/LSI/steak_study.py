@@ -296,6 +296,7 @@ class OvercookedGame:
         # update logs of human player for bc calculations
         self.human_player.update_logs(next_state, my_action, curr_s)
         self.human_agent.update(self.env.state)
+        self.agent.mdp_planner.update_world_kb_log(self.env.state)
         self.human_agent.update_kb_log()
 
         if timestep_sparse_reward > 0:
@@ -424,6 +425,7 @@ def load_human_log_data(log_index):
     return human_log_csv, human_log_data
 
 def kb_diff_measure(human_kb, world_kb):
+    diff_count, diff_total = 0, 0
     diff_measure = np.zeros((len(human_kb),4), dtype=int)
     for i, (h, w) in enumerate(zip(human_kb, world_kb)):
         h_obj = h.split('.')
@@ -438,13 +440,18 @@ def kb_diff_measure(human_kb, world_kb):
                 if ho != wo:
                     diff_measure[i][j] = 1
 
-    # print(diff_measure)
-    return diff_measure
+        if sum(diff_measure[i]) > 0: 
+            diff_count += 1
+            diff_total += sum(diff_measure[i])
 
-def plot_kb_and_subtasks(joint_action, subtask_log, human_kb_log, world_kb_log, log_dir=None, log_name=None):
+    # print(diff_measure)
+    return diff_measure, diff_count/len(human_kb), diff_total/len(human_kb)
+
+def plot_kb_and_subtasks(joint_action, subtask_log, human_kb_log, world_kb_log, robot_holding_log, human_holding_log, log_dir=None, log_name=None, log_index=None):
     if len(subtask_log) == 0:
         return
 
+    analysis_log_csv = create_analysis_log()
     img_dir = os.path.join(log_dir, log_name)
 
     # Generate some example data
@@ -520,9 +527,11 @@ def plot_kb_and_subtasks(joint_action, subtask_log, human_kb_log, world_kb_log, 
 
     # Display the plot
     # plt.show()
+    results = []
+    write_to_analysis_log(analysis_log_csv, results, log_name, log_index)
 
 
-def replay_with_joint_actions(lvl_str, joint_actions, plot=True, log_dir=None, log_name=None, view_angle=0):
+def replay_with_joint_actions(lvl_str, joint_actions, plot=True, log_dir=None, log_name=None, view_angle=0, agent_save_path = None):
     """Replay a game play with given level and joint actions.
 
     Args:
@@ -531,6 +540,13 @@ def replay_with_joint_actions(lvl_str, joint_actions, plot=True, log_dir=None, l
     grid = lvl_str2grid(lvl_str)
     mdp = SteakHouseGridworld.from_grid(grid, CONFIG)
     env = OvercookedEnv.from_mdp(mdp, info_level=0, horizon=HUMAN_STUDY_ENV_HORIZON)
+    tmp_ai_agent=None
+    if agent_save_path is not None:
+        # agent saved before, load it.
+        if os.path.exists(agent_save_path):
+            with open(agent_save_path, 'rb') as f:
+                tmp_ai_agent = pickle.load(f)
+
     done = False
     t = 0
 
@@ -552,6 +568,11 @@ def replay_with_joint_actions(lvl_str, joint_actions, plot=True, log_dir=None, l
     total_sparse_reward = 0
     checkpoints = [env.horizon - 1] * env.num_orders
     cur_order = 0
+    world_kb_log = []
+    robot_holding = {}
+    human_holding = {}
+    prev_robot_hold = 'None'
+    prev_human_hold = 'None'
 
     while not done:
 
@@ -575,6 +596,7 @@ def replay_with_joint_actions(lvl_str, joint_actions, plot=True, log_dir=None, l
         player.update_logs(env.state, joint_actions[i][1])
         next_state, timestep_sparse_reward, done, info = env.step(
             joint_actions[i])
+        world_kb_log += tmp_ai_agent.mdp_planner.update_world_kb_log(env.state)
         total_sparse_reward += timestep_sparse_reward
 
         if timestep_sparse_reward > 0:
@@ -592,11 +614,29 @@ def replay_with_joint_actions(lvl_str, joint_actions, plot=True, log_dir=None, l
     #     env.mdp.viewer,
     #     os.path.join(log_dir, log_name+".png"))
 
-    # recalculate the bcs
-    workloads = next_state.get_player_workload()
-    concurr_active = next_state.cal_concurrent_active_sum()
-    stuck_time = next_state.cal_total_stuck_time()
-    return workloads, concurr_active, stuck_time, checkpoints, i
+    if next_state.players[0].held_object is not None:
+        obj_name = next_state.players[0].held_object.name
+        if obj_name != prev_robot_hold:
+            if obj_name not in robot_holding.keys():
+                robot_holding[obj_name] = 1
+            else:
+                robot_holding[obj_name] += 1
+        prev_robot_hold = obj_name
+    else:
+        prev_robot_hold = 'None'
+    
+    if next_state.players[1].held_object is not None:
+        obj_name = next_state.players[1].held_object.name
+        if obj_name != prev_human_hold:
+            if obj_name not in human_holding.keys():
+                human_holding[obj_name] = 1
+            else:
+                human_holding[obj_name] += 1
+        prev_human_hold = obj_name
+    else:
+        prev_human_hold = 'None'
+    
+    return world_kb_log, robot_holding, human_holding
 
 
 def load_steak_human_agent(env, human_save_path, vision_bound):
@@ -829,6 +869,66 @@ def create_human_exp_log():
 
     return human_log_csv
 
+def write_to_analysis_log(path, results, lvl_name, id):
+    """Write to human exp log.
+
+    Args:
+        human_log_csv (str): Path to the human_log.csv file.
+        results (tuple) all of the results returned from the human study.
+        lvl_config (dic): toml config dic of the level.
+    """
+    assert os.path.exists(path)
+
+    to_write = [
+        lvl_name,
+        id,
+        *results,
+    ]
+
+    write_row(path, to_write)
+
+def create_analysis_log():
+    """ Create human_study/result/<exp_id>. <exp_id> would be determined by the
+        first digit that does not exist under the human_exp directory.
+
+        Returns:
+            Path to the csv file to which the result is be written.
+    """
+    # increment from 0 to find a directory name that does not exist yet.
+    exp_dir = 0
+    while os.path.isdir(os.path.join(LSI_STEAK_STUDY_RESULT_DIR,
+                                     str(exp_dir))):
+        exp_dir += 1
+    exp_dir = os.path.join(LSI_STEAK_STUDY_RESULT_DIR, str(exp_dir))
+    os.mkdir(exp_dir)
+
+    # create csv file to store results
+    human_log_csv = os.path.join(exp_dir, 'analysis_log.csv')
+
+    # construct labels
+    data_labels = [
+        "lvl_type",
+        "ID",
+        "total steps",
+        "turn count",
+        "stop",
+        "interact",
+        "fluency",
+        "plate count [ai, human]",
+        "meat count",
+        "onion count",
+        "hot plate count",
+        "steak count",
+        "dish count",
+        "prep diff",
+        "plating diff",
+        "kb diff array",
+        "kb diff time"
+    ]
+
+    write_row(human_log_csv, data_labels)
+
+    return human_log_csv
 
 def correct_study_type(study_type, lvl_type):
     if study_type == "all" and lvl_type != "trial":
@@ -1090,15 +1190,18 @@ if __name__ == "__main__":
                 human_kb_log = ast.literal_eval(lvl_config["human_kb_log"])
                 world_kb_log = ast.literal_eval(lvl_config["world_kb_log"])
 
-                if opt.gen_plot:
-                    plot_kb_and_subtasks(joint_actions, subtask_log, human_kb_log, world_kb_log, log_dir=os.path.join(LSI_STEAK_STUDY_RESULT_DIR, log_index), log_name=lvl_config["lvl_type"])
+                # if opt.gen_plot:
+                #     plot_kb_and_subtasks(joint_actions, subtask_log, human_kb_log, world_kb_log, log_dir=os.path.join(LSI_STEAK_STUDY_RESULT_DIR, log_index), log_name=lvl_config["lvl_type"]+'_'+str(lvl_config["kb_search_depth"]))
                     
                 # replay the game
                 if opt.gen_vid:
-                    replay_with_joint_actions(lvl_str, joint_actions, log_dir=os.path.join(LSI_STEAK_STUDY_RESULT_DIR, log_index), log_name=lvl_config["lvl_type"], view_angle=lvl_config["vision_bound"])
+                    agent_saved_path, _,_ = gen_save_pths(lvl_config)
+                    tmp_world_kb_log, robot_holding_log, human_holding_log = replay_with_joint_actions(lvl_str, joint_actions, log_dir=os.path.join(LSI_STEAK_STUDY_RESULT_DIR, log_index), log_name=lvl_config["lvl_type"]+'_'+str(lvl_config["kb_search_depth"]), view_angle=lvl_config["vision_bound"], agent_save_path=agent_saved_path)
+
+                    plot_kb_and_subtasks(joint_actions, subtask_log, human_kb_log, tmp_world_kb_log, robot_holding_log, human_holding_log, log_dir=os.path.join(LSI_STEAK_STUDY_RESULT_DIR, log_index), log_name=lvl_config["lvl_type"]+'_'+str(lvl_config["kb_search_depth"]), log_index=log_index)
         
-                    if NO_FOG_COPY and lvl_config["vision_bound"] > 0:
-                        replay_with_joint_actions(lvl_str, joint_actions, log_dir=os.path.join(LSI_STEAK_STUDY_RESULT_DIR, log_index), log_name=lvl_config["lvl_type"]+'_nofog', view_angle=0)
+                    # if NO_FOG_COPY and lvl_config["vision_bound"] > 0:
+                    #     replay_with_joint_actions(lvl_str, joint_actions, log_dir=os.path.join(LSI_STEAK_STUDY_RESULT_DIR, log_index), log_name=lvl_config["lvl_type"]+'_'+str(lvl_config["kb_search_depth"])+'_nofog', view_angle=0)
 
 
         else:
