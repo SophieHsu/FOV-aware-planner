@@ -453,14 +453,14 @@ class OvercookedState(object):
         }
 
     @staticmethod
-    def from_dict(state_dict):
+    def from_dict(state_dict, obj_count=0):
         state_dict = copy.deepcopy(state_dict)
         state_dict["players"] = [
             PlayerState.from_dict(p) for p in state_dict["players"]
         ]
         object_list = [ObjectState.from_dict(o) for o in state_dict["objects"]]
         state_dict["objects"] = {ob.position: ob for ob in object_list}
-        return OvercookedState(**state_dict)
+        return OvercookedState(**state_dict, obj_count=obj_count)
 
     @staticmethod
     def from_json(filename):

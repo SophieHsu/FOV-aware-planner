@@ -7869,6 +7869,9 @@ class SteakKnowledgeBasePlanner(SteakHumanSubtaskQMDPPlanner):
         
         return ['.'.join([str(num_item_in_pot1), str(chop_time1), str(wash_time1), str(robot_obj1)])]
     
+    def igibson_overwrite_object_id_dict(self, ids_dict):
+        self.mdp.object_id_dict = ids_dict
+    
     def step(self, world_state, belief, SEARCH_DEPTH=5, SEARCH_TIME=1, KB_SEARCH_DEPTH=3, debug=False):
         '''
         The goal is to obtain the possible obtained value of a low-level action and select the one with the highest.

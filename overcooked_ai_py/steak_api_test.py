@@ -132,11 +132,13 @@ class App:
                 if event.type == pygame.USEREVENT:
                     print('recieved event from port')
                     data = event.data.decode()
-                    state_dict = json.loads(data)
+                    transfer_dict = json.loads(data)
+                    state_dict = transfer_dict['ovc_state']
+                    ids_dict = transfer_dict['ids_dict']
                     # env_obj = map_dict_to_objects(state)
                     # state_obj = map_dict_to_state(state_dict)
-                    state_obj = OvercookedState.from_dict(state_dict)
-                    
+                    state_obj = OvercookedState.from_dict(state_dict, obj_count=len(ids_dict))
+                    self.agent.mdp_planner.igibson_overwrite_object_id_dict(ids_dict)
                     # compare pygame
                     robot_action,action_probs,q = self.agent.action(state_obj)
                     return_data = {'action': robot_action, 'q': q.tolist()}
@@ -208,6 +210,13 @@ if __name__ == "__main__" :
         help="0 for unaware 1 for aware",
     )
 
+    parser.add_argument(
+        "--kbnoact",
+        "-k",
+        default=None,
+        help="0 for unaware 1 for aware",
+    )
+
     args = parser.parse_args()
 
     # np.random.seed(0)
@@ -216,7 +225,7 @@ if __name__ == "__main__" :
     if args.layout is not None:
         layout_name = args.layout
     else:
-        layout_name = 'steak_side_4'# 'steak_mid_2' # 'steak_side_3' # 'steak_api' #'steak_island2' #'steak_parrallel'  'steak_tshape'
+        layout_name = 'steak_mid_2'# 'steak_mid_2' # 'steak_side_3' # 'steak_api' #'steak_island2' #'steak_parrallel'  'steak_tshape'
     scenario_1_mdp = SteakHouseGridworld.from_layout_name(layout_name,  num_items_for_steak=1, chop_time=2, wash_time=2, start_order_list=['steak', 'steak'], cook_time=10)
     # start_state = OvercookedState(
     #     [P((2, 1), s, Obj('onion', (2, 1))),
@@ -240,12 +249,17 @@ if __name__ == "__main__" :
     VISION_LIMIT = True
     VISION_BOUND = 120
 
-    if parser.vision is not None:
-        VISION_LIMIT_AWARE = parser.vision
+    if args.vision is not None:
+        VISION_LIMIT_AWARE = args.vision
     else:
         VISION_LIMIT_AWARE = True
     EXPLORE = False
-    SEARCH_DEPTH = 5
+
+    if args.kbnoact is None:
+        SEARCH_DEPTH = 5
+    else:
+        SEARCH_DEPTH = 0
+
     KB_SEARCH_DEPTH = 3
     KB_UPDATE_DELAY = 1
     mlp = planners.MediumLevelPlanner.from_pickle_or_compute(scenario_1_mdp, COUNTERS_PARAMS, force_compute=False)  
