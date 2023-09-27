@@ -7858,6 +7858,17 @@ class SteakKnowledgeBasePlanner(SteakHumanSubtaskQMDPPlanner):
         
         return Action.INDEX_TO_ACTION[action_idx], None, low_level_action
     
+    def update_world_kb_log(self, state):
+        # log world kb
+        [robot_obj1, num_item_in_pot1, chop_time1, wash_time1, _] = self.world_state_to_mdp_state_key(state, state.players[0], state.players[1], RETURN_NON_SUBTASK=True, RETURN_OBJ=True)
+        if chop_time1 == None or chop_time1 == 'None':
+            chop_time1 = -1
+        if wash_time1 == None or wash_time1 == 'None':
+            wash_time1 = -1
+        self.world_kb_log += ['.'.join([str(num_item_in_pot1), str(chop_time1), str(wash_time1), str(robot_obj1)])]
+        
+        return ['.'.join([str(num_item_in_pot1), str(chop_time1), str(wash_time1), str(robot_obj1)])]
+    
     def step(self, world_state, belief, SEARCH_DEPTH=5, SEARCH_TIME=1, KB_SEARCH_DEPTH=3, debug=False):
         '''
         The goal is to obtain the possible obtained value of a low-level action and select the one with the highest.
@@ -7871,14 +7882,6 @@ class SteakKnowledgeBasePlanner(SteakHumanSubtaskQMDPPlanner):
         # update sim human
         curr_human_kb, curr_human_kb_track = self.sim_human_model.get_knowledge_base(world_state)
         curr_kb_key = self.get_kb_key(curr_human_kb)
-
-        # log world kb
-        [robot_obj1, num_item_in_pot1, chop_time1, wash_time1, _] = self.world_state_to_mdp_state_key(world_state, world_state.players[0], world_state.players[1], RETURN_NON_SUBTASK=True, RETURN_OBJ=True)
-        if chop_time1 == None or chop_time1 == 'None':
-            chop_time1 = -1
-        if wash_time1 == None or wash_time1 == 'None':
-            wash_time1 = -1
-        self.world_kb_log += ['.'.join([str(num_item_in_pot1), str(chop_time1), str(wash_time1), str(robot_obj1)])]
         
         ## Reason over all belief over human's subtask
         for curr_subtask, belief_prob in belief.items():
