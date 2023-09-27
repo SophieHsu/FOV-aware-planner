@@ -1,14 +1,15 @@
 {
     "grid":  
 """XXXXXXXXXXXXXXX
-XXXBXXPXDXXXXXX
-XX        SXXXX
-XW 2      SXXXX
-XX        XXXXX
-XM      1 XXXXX
-XO        XXXXX
-XX        XXXXX
-XXXXXXXXXXXXXXX
+XXXOXMXXXPXXDXX
+XX           XX
+XX 2         XX
+XX        1  XX
+XX   XBWXX   XX
+XX   XXSSX   XX
+XX           XX
+XX           XX
+XX           XX
 XXXXXXXXXXXXXXX""",
     "start_order_list": 'steak, steak',
     "cook_time": 15,
@@ -18,4 +19,3 @@ XXXXXXXXXXXXXXX""",
     'wash_time': 5,
     "rew_shaping_params": None
 }
-
