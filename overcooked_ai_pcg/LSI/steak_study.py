@@ -296,7 +296,7 @@ class OvercookedGame:
         # update logs of human player for bc calculations
         self.human_player.update_logs(next_state, my_action, curr_s)
         self.human_agent.update(self.env.state)
-        self.agent.mdp_planner.update_world_kb_log(self.env.state)
+        if not self.trial: self.agent.mdp_planner.update_world_kb_log(self.env.state)
         self.human_agent.update_kb_log()
 
         if timestep_sparse_reward > 0:
@@ -383,9 +383,9 @@ class OvercookedGame:
             fitness -= checked_time
 
         if not self.trial:
-            # if value_kb_save_path is not None:
-            #     with open(value_kb_save_path, 'wb') as f:
-            #         pickle.dump([self.agent.mdp_planner.world_state_cost_dict, self.agent.mdp_planner.track_state_kb_map], f)
+            if value_kb_save_path is not None:
+                with open(value_kb_save_path, 'wb') as f:
+                    pickle.dump([self.agent.mdp_planner.world_state_cost_dict, self.agent.mdp_planner.track_state_kb_map], f)
 
             return (self.total_sparse_reward, self.joint_actions, len(self.joint_actions), self.subtask_log, self.human_agent.kb_log, self.agent.mdp_planner.world_kb_log, self.selected_action_count)
         else:
@@ -426,6 +426,7 @@ def load_human_log_data(log_index):
 
 def kb_diff_measure(human_kb, world_kb):
     diff_count, diff_total = 0, 0
+    kb_diff = []
     diff_measure = np.zeros((len(human_kb),4), dtype=int)
     for i, (h, w) in enumerate(zip(human_kb, world_kb)):
         h_obj = h.split('.')
@@ -439,19 +440,42 @@ def kb_diff_measure(human_kb, world_kb):
             else:
                 if ho != wo:
                     diff_measure[i][j] = 1
-
+        
+        kb_diff.append(sum(diff_measure[i]))
         if sum(diff_measure[i]) > 0: 
             diff_count += 1
             diff_total += sum(diff_measure[i])
+            
 
     # print(diff_measure)
-    return diff_measure, diff_count/len(human_kb), diff_total/len(human_kb)
+    return diff_measure, kb_diff, round(diff_count/len(human_kb)*100, 2), round(diff_total/len(human_kb)*100, 2)
+
+def obj_held_freq(robot_holding_log, human_holding_log):
+    obj_held_freq_dict = {}
+    obj_diff_dict = {}
+    obj_list = ['onion', 'meat', 'plate', 'hot_plate', 'steak', 'dish']
+    for obj_name in obj_list:
+        obj_held_freq_dict[obj_name] = [robot_holding_log[obj_name], human_holding_log[obj_name]]
+        obj_diff_dict[obj_name] = (robot_holding_log[obj_name] - human_holding_log[obj_name])
+    prep_count = [robot_holding_log['onion'] + robot_holding_log['meat'] + robot_holding_log['plate'], human_holding_log['onion'] + human_holding_log['meat'] + human_holding_log['plate']]
+    prep_count_diff = prep_count[0] - prep_count[1]
+    plating_count = [robot_holding_log['hot_plate'] + robot_holding_log['steak'] + robot_holding_log['dish'],human_holding_log['hot_plate'] + human_holding_log['steak'] + human_holding_log['dish']]
+    plating_count_diff = plating_count[0] - plating_count[1]
+
+    return obj_held_freq_dict, obj_diff_dict, prep_count, prep_count_diff, plating_count, plating_count_diff
+
+def subtask_analysis(subtasks):
+    stop_count = subtasks.count(0)
+    turn_count = subtasks.count(1)
+    stay_count = subtasks.count(2)
+    interact_count = subtasks.count(3)
+    interupt_freq = (stop_count+turn_count+stay_count+interact_count)/len(subtasks)
+    return stop_count, turn_count, stay_count, interact_count, round(interupt_freq*100, 2)
 
 def plot_kb_and_subtasks(joint_action, subtask_log, human_kb_log, world_kb_log, robot_holding_log, human_holding_log, log_dir=None, log_name=None, log_index=None):
     if len(subtask_log) == 0:
         return
 
-    analysis_log_csv = create_analysis_log()
     img_dir = os.path.join(log_dir, log_name)
 
     # Generate some example data
@@ -497,7 +521,7 @@ def plot_kb_and_subtasks(joint_action, subtask_log, human_kb_log, world_kb_log, 
     ax2.set_ylim(-1, len(action_labels))
     ax2.grid(True, linestyle=':', alpha=0.3)
 
-    kb_diff = kb_diff_measure(human_kb_log, world_kb_log)
+    kb_diff, kb_diff_list, kb_diff_freq, kb_diff_avg = kb_diff_measure(human_kb_log, world_kb_log)
 
     # Plot the bottom row (bar graph)
     ax1 = plt.subplot(gs[2], sharex=ax0)  # Share x-axis with the top row
@@ -527,8 +551,14 @@ def plot_kb_and_subtasks(joint_action, subtask_log, human_kb_log, world_kb_log, 
 
     # Display the plot
     # plt.show()
-    results = []
-    write_to_analysis_log(analysis_log_csv, results, log_name, log_index)
+
+    stop_count, turn_count, stay_count, interact_count, interupt_freq = subtask_analysis(subtask_values)
+    obj_held_freq_dict, obj_diff_dict, prep_count, prep_count_diff, plating_count, plating_count_diff = obj_held_freq(robot_holding_log, human_holding_log)
+
+    results = [len(subtask_values), stop_count, turn_count, stay_count, interact_count, interupt_freq, obj_held_freq_dict, obj_diff_dict, prep_count, prep_count_diff, plating_count, plating_count_diff, kb_diff_list, kb_diff_freq, kb_diff_avg]
+
+    
+    return results
 
 
 def replay_with_joint_actions(lvl_str, joint_actions, plot=True, log_dir=None, log_name=None, view_angle=0, agent_save_path = None):
@@ -569,8 +599,8 @@ def replay_with_joint_actions(lvl_str, joint_actions, plot=True, log_dir=None, l
     checkpoints = [env.horizon - 1] * env.num_orders
     cur_order = 0
     world_kb_log = []
-    robot_holding = {}
-    human_holding = {}
+    robot_holding = {'meat': 0, 'onion': 0, 'plate': 0, 'hot_plate': 0, 'steak': 0, 'dish':0}
+    human_holding = {'meat': 0, 'onion': 0, 'plate': 0, 'hot_plate': 0, 'steak': 0, 'dish':0}
     prev_robot_hold = 'None'
     prev_human_hold = 'None'
 
@@ -594,6 +624,28 @@ def replay_with_joint_actions(lvl_str, joint_actions, plot=True, log_dir=None, l
 
         ai_agent.update_logs(env.state, joint_actions[i][0])
         player.update_logs(env.state, joint_actions[i][1])
+        if env.state.players[0].held_object is not None:
+            obj_name = env.state.players[0].held_object.name
+            if obj_name != prev_robot_hold:
+                if obj_name not in robot_holding.keys():
+                    robot_holding[obj_name] = 1
+                else:
+                    robot_holding[obj_name] += 1
+            prev_robot_hold = obj_name
+        else:
+            prev_robot_hold = 'None'
+        
+        if env.state.players[1].held_object is not None:
+            obj_name = env.state.players[1].held_object.name
+            if obj_name != prev_human_hold:
+                if obj_name not in human_holding.keys():
+                    human_holding[obj_name] = 1
+                else:
+                    human_holding[obj_name] += 1
+            prev_human_hold = obj_name
+        else:
+            prev_human_hold = 'None'
+            
         next_state, timestep_sparse_reward, done, info = env.step(
             joint_actions[i])
         world_kb_log += tmp_ai_agent.mdp_planner.update_world_kb_log(env.state)
@@ -614,27 +666,7 @@ def replay_with_joint_actions(lvl_str, joint_actions, plot=True, log_dir=None, l
     #     env.mdp.viewer,
     #     os.path.join(log_dir, log_name+".png"))
 
-    if next_state.players[0].held_object is not None:
-        obj_name = next_state.players[0].held_object.name
-        if obj_name != prev_robot_hold:
-            if obj_name not in robot_holding.keys():
-                robot_holding[obj_name] = 1
-            else:
-                robot_holding[obj_name] += 1
-        prev_robot_hold = obj_name
-    else:
-        prev_robot_hold = 'None'
     
-    if next_state.players[1].held_object is not None:
-        obj_name = next_state.players[1].held_object.name
-        if obj_name != prev_human_hold:
-            if obj_name not in human_holding.keys():
-                human_holding[obj_name] = 1
-            else:
-                human_holding[obj_name] += 1
-        prev_human_hold = obj_name
-    else:
-        prev_human_hold = 'None'
     
     return world_kb_log, robot_holding, human_holding
 
@@ -887,43 +919,37 @@ def write_to_analysis_log(path, results, lvl_name, id):
 
     write_row(path, to_write)
 
-def create_analysis_log():
+def create_analysis_log(log_id):
     """ Create human_study/result/<exp_id>. <exp_id> would be determined by the
         first digit that does not exist under the human_exp directory.
 
         Returns:
             Path to the csv file to which the result is be written.
     """
-    # increment from 0 to find a directory name that does not exist yet.
-    exp_dir = 0
-    while os.path.isdir(os.path.join(LSI_STEAK_STUDY_RESULT_DIR,
-                                     str(exp_dir))):
-        exp_dir += 1
-    exp_dir = os.path.join(LSI_STEAK_STUDY_RESULT_DIR, str(exp_dir))
-    os.mkdir(exp_dir)
+    human_log_csv = os.path.join(LSI_STEAK_STUDY_RESULT_DIR, str(log_id)+'/analysis_log.csv')
 
-    # create csv file to store results
-    human_log_csv = os.path.join(exp_dir, 'analysis_log.csv')
+    if os.path.exists(human_log_csv):
+        os.remove(human_log_csv)
 
     # construct labels
     data_labels = [
         "lvl_type",
         "ID",
-        "total steps",
-        "turn count",
-        "stop",
-        "interact",
-        "fluency",
-        "plate count [ai, human]",
-        "meat count",
-        "onion count",
-        "hot plate count",
-        "steak count",
-        "dish count",
-        "prep diff",
-        "plating diff",
-        "kb diff array",
-        "kb diff time"
+        "total_steps",
+        "stop_count",
+        "turn_count",
+        "stay_count",
+        "interact_count",
+        "interupt_freq",
+        "obj_held_freq_dict",
+        "obj_diff_dict",
+        "prep_count",
+        "prep_count_diff",
+        "plating_count",
+        "plating_count_diff",
+        "kb_diff",
+        "kb_diff_freq",
+        "kb_diff_avg",
     ]
 
     write_row(human_log_csv, data_labels)
@@ -1181,6 +1207,8 @@ if __name__ == "__main__":
         # shuffle the order if playing all
         if opt.type == 'all':
             # play all of the levels
+            analysis_log_csv = create_analysis_log(opt.log_index)
+
             for index, lvl_config in human_log_data.iterrows():
                 # get level string and logged joint actions from log file
                 lvl_str = lvl_config["lvl_str"]
@@ -1198,7 +1226,9 @@ if __name__ == "__main__":
                     agent_saved_path, _,_ = gen_save_pths(lvl_config)
                     tmp_world_kb_log, robot_holding_log, human_holding_log = replay_with_joint_actions(lvl_str, joint_actions, log_dir=os.path.join(LSI_STEAK_STUDY_RESULT_DIR, log_index), log_name=lvl_config["lvl_type"]+'_'+str(lvl_config["kb_search_depth"]), view_angle=lvl_config["vision_bound"], agent_save_path=agent_saved_path)
 
-                    plot_kb_and_subtasks(joint_actions, subtask_log, human_kb_log, tmp_world_kb_log, robot_holding_log, human_holding_log, log_dir=os.path.join(LSI_STEAK_STUDY_RESULT_DIR, log_index), log_name=lvl_config["lvl_type"]+'_'+str(lvl_config["kb_search_depth"]), log_index=log_index)
+                    results = plot_kb_and_subtasks(joint_actions, subtask_log, human_kb_log, tmp_world_kb_log, robot_holding_log, human_holding_log, log_dir=os.path.join(LSI_STEAK_STUDY_RESULT_DIR, log_index), log_name=lvl_config["lvl_type"]+'_'+str(lvl_config["kb_search_depth"]), log_index=log_index)
+
+                    write_to_analysis_log(analysis_log_csv, results, lvl_config["lvl_type"]+'_'+str(lvl_config["kb_search_depth"]), log_index)               
         
                     # if NO_FOG_COPY and lvl_config["vision_bound"] > 0:
                     #     replay_with_joint_actions(lvl_str, joint_actions, log_dir=os.path.join(LSI_STEAK_STUDY_RESULT_DIR, log_index), log_name=lvl_config["lvl_type"]+'_'+str(lvl_config["kb_search_depth"])+'_nofog', view_angle=0)
