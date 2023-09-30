@@ -424,6 +424,15 @@ def load_human_log_data(log_index):
     human_log_data = pd.read_csv(human_log_csv)
     return human_log_csv, human_log_data
 
+def load_analyzed_data(log_index):
+    human_log_csv = os.path.join(LSI_STEAK_STUDY_RESULT_DIR, log_index,
+                                 "analysis.csv")
+    if not os.path.exists(human_log_csv):
+        print("Log dir does not exit.")
+        exit(1)
+    human_log_data = pd.read_csv(human_log_csv)
+    return human_log_csv, human_log_data
+
 def kb_diff_measure(human_kb, world_kb):
     diff_count, diff_total = 0, 0
     kb_diff = []
@@ -448,7 +457,7 @@ def kb_diff_measure(human_kb, world_kb):
             
 
     # print(diff_measure)
-    return diff_measure, kb_diff, round(diff_count/len(human_kb)*100, 2), round(diff_total/len(human_kb)*100, 2)
+    return diff_measure, kb_diff, round(diff_count/len(human_kb)*100, 2), round(diff_total/diff_count, 2)
 
 def obj_held_freq(robot_holding_log, human_holding_log):
     obj_held_freq_dict = {}
@@ -470,9 +479,26 @@ def subtask_analysis(subtasks):
     stay_count = subtasks.count(2)
     interact_count = subtasks.count(3)
     interupt_freq = (stop_count+turn_count+stay_count+interact_count)/len(subtasks)
-    return stop_count, turn_count, stay_count, interact_count, round(interupt_freq*100, 2)
 
-def plot_kb_and_subtasks(joint_action, subtask_log, human_kb_log, world_kb_log, robot_holding_log, human_holding_log, log_dir=None, log_name=None, log_index=None):
+    interrupt_occurance = 0
+    prev_s = 'None'
+    change_of_subtasks = 0
+    undo_counts = 0
+    check_counts = 0
+    for s in subtasks:
+        if prev_s in [0,1] and s == 3: # does an interact to place things down
+            undo_counts += 1
+        if prev_s in [0,1] and s not in [0,1,2,3]: # does a turn or stop and go back to subtask
+            check_counts += 1
+        if s in [0,1] and prev_s not in [0,1,2,3]:
+            interrupt_occurance += 1
+        if s != prev_s and s not in [0,1,2,3]:
+            change_of_subtasks += 1
+        prev_s = s
+    total_different_subtasks = interrupt_occurance + change_of_subtasks
+    return stop_count, turn_count, stay_count, interact_count, undo_counts, check_counts, round(interupt_freq*100, 2), round((interrupt_occurance/total_different_subtasks)*100, 2), round(undo_counts/total_different_subtasks*100,2), round(check_counts/total_different_subtasks*100,2)
+
+def plot_kb_and_subtasks(joint_action, subtask_log, human_kb_log, world_kb_log, robot_holding_log, human_holding_log, robot_in_bound_count, log_dir=None, log_name=None, log_index=None):
     if len(subtask_log) == 0:
         return
 
@@ -552,16 +578,16 @@ def plot_kb_and_subtasks(joint_action, subtask_log, human_kb_log, world_kb_log, 
     # Display the plot
     # plt.show()
 
-    stop_count, turn_count, stay_count, interact_count, interupt_freq = subtask_analysis(subtask_values)
+    stop_count, turn_count, stay_count, interact_count, undo_count, check_count, interrupt_freq, interrupt_occurance, undo_freq, check_freq = subtask_analysis(subtask_values)
     obj_held_freq_dict, obj_diff_dict, prep_count, prep_count_diff, plating_count, plating_count_diff = obj_held_freq(robot_holding_log, human_holding_log)
+    robot_inbound_freq = round(sum(robot_in_bound_count)/len(robot_in_bound_count)*100, 2)
 
-    results = [len(subtask_values), stop_count, turn_count, stay_count, interact_count, interupt_freq, obj_held_freq_dict, obj_diff_dict, prep_count, prep_count_diff, plating_count, plating_count_diff, kb_diff_list, kb_diff_freq, kb_diff_avg]
+    results = [len(subtask_values), interrupt_freq, interrupt_occurance, undo_freq, check_freq, kb_diff_freq, kb_diff_avg, robot_inbound_freq, prep_count, prep_count_diff, plating_count, plating_count_diff, kb_diff_list, robot_in_bound_count, stop_count, turn_count, stay_count, interact_count, undo_count, check_count, obj_held_freq_dict, obj_diff_dict]
 
-    
     return results
 
 
-def replay_with_joint_actions(lvl_str, joint_actions, plot=True, log_dir=None, log_name=None, view_angle=0, agent_save_path = None):
+def replay_with_joint_actions(lvl_str, joint_actions, plot=False, log_dir=None, log_name=None, view_angle=0, agent_save_path = None, human_save_path=None):
     """Replay a game play with given level and joint actions.
 
     Args:
@@ -576,6 +602,14 @@ def replay_with_joint_actions(lvl_str, joint_actions, plot=True, log_dir=None, l
         if os.path.exists(agent_save_path):
             with open(agent_save_path, 'rb') as f:
                 tmp_ai_agent = pickle.load(f)
+
+    tmp_human_agent=None
+    if human_save_path is not None:
+        # agent saved before, load it.
+        if os.path.exists(human_save_path):
+            with open(human_save_path, 'rb') as f:
+                tmp_human_agent = pickle.load(f)
+    tmp_human_agent.set_agent_index(1)
 
     done = False
     t = 0
@@ -603,6 +637,7 @@ def replay_with_joint_actions(lvl_str, joint_actions, plot=True, log_dir=None, l
     human_holding = {'meat': 0, 'onion': 0, 'plate': 0, 'hot_plate': 0, 'steak': 0, 'dish':0}
     prev_robot_hold = 'None'
     prev_human_hold = 'None'
+    robot_in_bound_count = []
 
     while not done:
 
@@ -621,6 +656,12 @@ def replay_with_joint_actions(lvl_str, joint_actions, plot=True, log_dir=None, l
         #     pygame.image.save(
         #     env.mdp.viewer,
         #     os.path.join(log_dir, log_name+".png"))
+
+        next_state, timestep_sparse_reward, done, info = env.step(
+            joint_actions[i])
+        world_kb_log += tmp_ai_agent.mdp_planner.update_world_kb_log(env.state)
+
+        robot_in_bound_count.append(tmp_human_agent.in_bound(env.state, env.state.players[0].position, vision_bound=120/2))
 
         ai_agent.update_logs(env.state, joint_actions[i][0])
         player.update_logs(env.state, joint_actions[i][1])
@@ -646,9 +687,6 @@ def replay_with_joint_actions(lvl_str, joint_actions, plot=True, log_dir=None, l
         else:
             prev_human_hold = 'None'
             
-        next_state, timestep_sparse_reward, done, info = env.step(
-            joint_actions[i])
-        world_kb_log += tmp_ai_agent.mdp_planner.update_world_kb_log(env.state)
         total_sparse_reward += timestep_sparse_reward
 
         if timestep_sparse_reward > 0:
@@ -659,16 +697,15 @@ def replay_with_joint_actions(lvl_str, joint_actions, plot=True, log_dir=None, l
         i += 1
         t += 1
 
-    os.system("ffmpeg -r 5 -i \"{}%*.png\"  {}{}.mp4".format(img_dir+'/', log_dir+'/', log_name))
+    if plot: os.system("ffmpeg -y -r 5 -i \"{}%*.png\"  {}{}.mp4".format(img_dir+'/', log_dir+'/', log_name))
+    # os.system("ffmpeg -r 5 -i \"{}%*.png\"  {}{}.mp4".format(img_dir+'/', log_dir+'/', log_name))
     shutil.rmtree(img_dir) 
 
     # pygame.image.save(
     #     env.mdp.viewer,
     #     os.path.join(log_dir, log_name+".png"))
-
     
-    
-    return world_kb_log, robot_holding, human_holding
+    return world_kb_log, robot_holding, human_holding, robot_in_bound_count
 
 
 def load_steak_human_agent(env, human_save_path, vision_bound):
@@ -936,20 +973,27 @@ def create_analysis_log(log_id):
         "lvl_type",
         "ID",
         "total_steps",
-        "stop_count",
-        "turn_count",
-        "stay_count",
-        "interact_count",
-        "interupt_freq",
-        "obj_held_freq_dict",
-        "obj_diff_dict",
+        "interrupt_freq",
+        "interrupt_occurance",
+        "undo_freq",
+        "check_freq",
+        "kb_diff_freq",
+        "kb_diff_avg",
+        'robot_inbound_freq',
         "prep_count",
         "prep_count_diff",
         "plating_count",
         "plating_count_diff",
-        "kb_diff",
-        "kb_diff_freq",
-        "kb_diff_avg",
+        "kb_diff_list",
+        'robot_in_bound_count',
+        "stop_count",
+        "turn_count",
+        "stay_count",
+        "interact_count",
+        "undo_count",
+        "check_count",
+        "obj_held_freq_dict",
+        "obj_diff_dict",
     ]
 
     write_row(human_log_csv, data_labels)
@@ -1223,10 +1267,10 @@ if __name__ == "__main__":
                     
                 # replay the game
                 if opt.gen_vid:
-                    agent_saved_path, _,_ = gen_save_pths(lvl_config)
-                    tmp_world_kb_log, robot_holding_log, human_holding_log = replay_with_joint_actions(lvl_str, joint_actions, log_dir=os.path.join(LSI_STEAK_STUDY_RESULT_DIR, log_index), log_name=lvl_config["lvl_type"]+'_'+str(lvl_config["kb_search_depth"]), view_angle=lvl_config["vision_bound"], agent_save_path=agent_saved_path)
+                    agent_save_path, _, human_save_path = gen_save_pths(lvl_config)
+                    tmp_world_kb_log, robot_holding_log, human_holding_log, robot_in_bound_count = replay_with_joint_actions(lvl_str, joint_actions, log_dir=os.path.join(LSI_STEAK_STUDY_RESULT_DIR, log_index), log_name=lvl_config["lvl_type"]+'_'+str(lvl_config["kb_search_depth"]), view_angle=lvl_config["vision_bound"], agent_save_path=agent_save_path, human_save_path=human_save_path)
 
-                    results = plot_kb_and_subtasks(joint_actions, subtask_log, human_kb_log, tmp_world_kb_log, robot_holding_log, human_holding_log, log_dir=os.path.join(LSI_STEAK_STUDY_RESULT_DIR, log_index), log_name=lvl_config["lvl_type"]+'_'+str(lvl_config["kb_search_depth"]), log_index=log_index)
+                    results = plot_kb_and_subtasks(joint_actions, subtask_log, human_kb_log, tmp_world_kb_log, robot_holding_log, human_holding_log, robot_in_bound_count, log_dir=os.path.join(LSI_STEAK_STUDY_RESULT_DIR, log_index), log_name=lvl_config["lvl_type"]+'_'+str(lvl_config["kb_search_depth"]), log_index=log_index)
 
                     write_to_analysis_log(analysis_log_csv, results, lvl_config["lvl_type"]+'_'+str(lvl_config["kb_search_depth"]), log_index)               
         
