@@ -2,6 +2,7 @@ import argparse
 import json
 import os
 import pickle
+import pprint
 import socket
 import pygame
 # import matplotlib
@@ -11,6 +12,7 @@ from argparse import ArgumentParser
 import numpy as np
 import gc
 import time
+from overcooked_ai_pcg.LSI.steak_study import create_human_exp_log, write_to_human_exp_log
 from overcooked_ai_pcg.helper import init_steak_qmdp_agent
 
 from overcooked_ai_py.mdp.overcooked_mdp import OvercookedGridworld, SteakHouseGridworld, OvercookedState, Direction, Action, PlayerState, ObjectState
@@ -47,6 +49,7 @@ class App:
         self.agent_idx = player_idx
         self.slow_time = slow_time
         self.layout_name = layout_name
+        self.log = None
         # print("Human player index:", player_idx)
 
     def on_init(self):
@@ -130,11 +133,14 @@ class App:
             for event in pygame.event.get():
                 self.on_event(event)
                 if event.type == pygame.USEREVENT:
+
                     print('recieved event from port')
                     data = event.data.decode()
                     transfer_dict = json.loads(data)
                     state_dict = transfer_dict['ovc_state']
                     ids_dict = transfer_dict['ids_dict']
+                    print('ids length from igibson: ', len(ids_dict))
+                    pprint.pprint(ids_dict)
                     # env_obj = map_dict_to_objects(state)
                     # state_obj = map_dict_to_state(state_dict)
                     state_obj = OvercookedState.from_dict(state_dict, obj_count=len(ids_dict))
@@ -145,6 +151,14 @@ class App:
                     sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
 
                     sock.sendto(json.dumps(return_data).encode(), ("127.0.0.1", 15007))
+                    # self.agent.mdp_planner.update_world_kb_log(self.env.state)
+                    # self.log = self.agent.mdp_planner.world_kb_log
+
+                    # filename = self.layout_name + '_log.txt'
+                    # f = open(filename, 'a')
+                    # f.write('\n'.join(self.log))
+                    # f.close()
+                    # return True
             self.on_loop()
             self.on_render()
         value_kb_save_path = f"data/planners/{self.layout_name}_kb.pkl"
@@ -247,21 +261,36 @@ if __name__ == "__main__" :
     # human_agent = agent.biasHumanModel(ml_action_manager, [0.5, (1.0-0.5)], 0.5, auto_unstuck=True)
 
     VISION_LIMIT = True
-    VISION_BOUND = 120
-
-    if args.vision is not None:
-        VISION_LIMIT_AWARE = args.vision
-    else:
-        VISION_LIMIT_AWARE = True
+    VISION_BOUND = 150
+    
     EXPLORE = False
 
-    if args.kbnoact is None:
-        SEARCH_DEPTH = 5
+    SEARCH_DEPTH = 5
+    
+    # if args.kbnoact is None:
+    if args.vision == "1":
+        KB_SEARCH_DEPTH = 3
     else:
-        SEARCH_DEPTH = 0
+        KB_SEARCH_DEPTH = 0
+        
+    print('kb search depth = ', KB_SEARCH_DEPTH)
 
-    KB_SEARCH_DEPTH = 3
     KB_UPDATE_DELAY = 1
+
+    print(args.vision)
+    # if True:# 
+    if args.vision == "1":
+        VISION_LIMIT_AWARE = True
+        print("aware")
+        ai_agent = load_steak_qmdp_agent(env, f'overcooked_ai_py/data/planners/{layout_name}_steak_knowledge_aware_qmdp.pkl', f'overcooked_ai_py/data/planners/{layout_name}_kb.pkl')
+    else:
+        VISION_LIMIT_AWARE = False
+        print('unaware')
+        ai_agent = load_steak_qmdp_agent(env, f'overcooked_ai_py/data/planners/{layout_name}_steak_knowledge_unaware_qmdp.pkl', f'overcooked_ai_py/data/planners/{layout_name}_kb.pkl')
+    ai_agent.set_agent_index(0)
+
+
+    
     mlp = planners.MediumLevelPlanner.from_pickle_or_compute(scenario_1_mdp, COUNTERS_PARAMS, force_compute=False)  
     human_agent = agent.SteakLimitVisionHumanModel(mlp, env.state, auto_unstuck=True, explore=EXPLORE, vision_limit=VISION_LIMIT, vision_bound=VISION_BOUND, kb_update_delay=KB_UPDATE_DELAY, debug=True)
     human_agent.set_agent_index(1)
@@ -285,9 +314,7 @@ if __name__ == "__main__" :
 
     # ai_agent = agent.MediumQMdpPlanningAgent(mdp_planner, greedy=True, auto_unstuck=True, low_level_action_flag=True, vision_limit=VISION_LIMIT)    
 
-    ai_agent = load_steak_qmdp_agent(env, f'overcooked_ai_py/data/planners/{layout_name}_steak_knowledge_aware_qmdp.pkl', f'overcooked_ai_py/data/planners/{layout_name}_kb.pkl')
 
-    ai_agent.set_agent_index(0)
     # del mlp, mdp_planner
     # gc.collect()
 
@@ -326,6 +353,19 @@ if __name__ == "__main__" :
     # del scenario_1_mdp, env, agent_pair, ai_agent, human_agent
     # gc.collect()
 
+    human_log_csv = create_human_exp_log()
+
     theApp = App(env, ai_agent, human_agent, player_idx=0, slow_time=False, layout_name=layout_name)
-    theApp.on_execute()
+    results = theApp.on_execute()
+    lvl_config = {}
+    lvl_config['layout_name'] = layout_name
+    lvl_config['vision_limit'] = VISION_LIMIT
+    lvl_config['vision_bound'] = VISION_BOUND
+    lvl_config['vision_limit_aware'] = VISION_LIMIT_AWARE
+    lvl_config['explore'] = EXPLORE
+    lvl_config['search_depth'] = SEARCH_DEPTH
+    lvl_config['kb_search_depth'] = KB_SEARCH_DEPTH
+    lvl_config['kb_update_delay'] = KB_UPDATE_DELAY
+
+    # write_to_human_exp_log(human_log_csv, results, lvl_config)
     print("It took {} seconds for playing the entire level".format(time.time() - start_time))

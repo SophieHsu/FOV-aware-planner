@@ -1,1 +1,1 @@
-lvl_type,ID,agent_unstuck,human_unstuck,vision_limit,vision_bound,explore,complete,joint_actions,lvl_str
+lvl_type,ID,vision_limit,vision_bound,vision_limit_aware,search_depth,kb_search_depth,kb_update_delay,complete,joint_actions,total time steps,subtask_log,human_kb_log,world_kb_log,num_subtask_actions,lvl_str

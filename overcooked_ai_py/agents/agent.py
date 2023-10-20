@@ -1294,7 +1294,10 @@ class SteakLimitVisionHumanModel(limitVisionHumanModel):
                                 new_obj = state.all_objects_by_type['hot_plate'][-1]
                                 tmp_track['human_holding'] = [None, self.kb_update_delay]
                             elif obj.name == 'hot_plate':
-                                new_obj = state.all_objects_by_type['steak'][-1]
+                                new_obj = None
+                                for tmp_steak in state.all_objects_by_type['steak']:
+                                    if self.in_bound(state, tmp_steak.position, vision_bound=self.vision_bound/2):
+                                        new_obj = tmp_steak # can overwrite since the last item is the newest object
                                 tmp_track['human_holding'] = [new_obj.deepcopy(), self.kb_update_delay]
                             elif obj.name == 'steak':
                                 new_obj = state.all_objects_by_type['dish'][-1]

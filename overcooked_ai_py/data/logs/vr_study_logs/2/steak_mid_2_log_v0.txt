@@ -1,0 +1,2342 @@
+Start Locations (robot, human): ((3, 9, 'S'), (2, 2, 'S'))
+Kitchen Layout:
+C C G C F C C C P C C D C 
+C X X X X X X X X X X X C 
+C X X X X X X X X X X X C 
+C X X X X X X X X X X X C 
+C X X X C K W C C X X X C 
+C X X X C C T T C X X X C 
+C X X X X X X X X X X X C 
+C X X X X X X X X X X X C 
+C X X X X X X X X X X X C 
+C C C C C C C C C C C C C 
+X X X X X X X X X X X X X 
+X X X X X X X X X X X X X 
+X X X X X X X X X X X X X 
+Logging State at Time:	1695870758.2232292
+Robot ML State:	(3, 9, 'S')
+Human ML State:	(2, 2, 'S')
+Robot LL State:	[-1.49985885  4.49999156  0.00569775]
+Human LL State:	[-2.49999995 -2.5         1.40199984]
+
+
+Plan: []
+Overcooked Q: 	[430.0270235686646, 429.89258446674734, 430.0198287613153, 429.89977927409666, 429.9499616322681, 429.9499616322681]
+Overcooked A: 	N
+Logging State at Time:	1695870759.225939
+Robot ML State:	(3, 9, 'S')
+Human ML State:	(2, 2, 'S')
+Robot LL State:	[-1.49918865  4.49987876  0.00552849]
+Human LL State:	[-2.49999992 -2.5         1.40199973]
+
+Logging State at Time:	1695870760.256949
+Robot ML State:	(3, 9, 'W')
+Human ML State:	(2, 2, 'S')
+Robot LL State:	[-1.49919399  4.49987808  0.00547953]
+Human LL State:	[-2.49999992 -2.5         1.40199973]
+
+Logging State at Time:	1695870761.3471158
+Robot ML State:	(3, 9, 'W')
+Human ML State:	(2, 2, 'S')
+Robot LL State:	[-1.49919647  4.49988243  0.00546924]
+Human LL State:	[-2.49999992 -2.5         1.40199973]
+
+Logging State at Time:	1695870762.4558709
+Robot ML State:	(3, 9, 'W')
+Human ML State:	(2, 2, 'S')
+Robot LL State:	[-1.49919604  4.49988707  0.00546564]
+Human LL State:	[-2.49999992 -2.5         1.40199973]
+
+Logging State at Time:	1695870763.5957382
+Robot ML State:	(3, 9, 'N')
+Human ML State:	(2, 2, 'W')
+Robot LL State:	[-1.49919254  4.49988902  0.00546276]
+Human LL State:	[-2.56157124 -2.48956418  0.7511621 ]
+
+Logging State at Time:	1695870764.596968
+Robot ML State:	(3, 9, 'N')
+Human ML State:	(2, 2, 'W')
+Robot LL State:	[-1.49918821  4.49988947  0.00546027]
+Human LL State:	[-2.55726057 -2.4974106   0.78738826]
+
+
+Plan: []
+Overcooked Q: 	[430.03376761595155, 429.8993264056466, 430.0265726957672, 429.90652132583097, 429.9567044710045, 429.9567044710045]
+Overcooked A: 	N
+Logging State at Time:	1695870765.6055665
+Robot ML State:	(3, 9, 'N')
+Human ML State:	(2, 2, 'W')
+Robot LL State:	[-1.57918188  4.49988903  0.00545953]
+Human LL State:	[-2.57611046 -2.48930351  0.84970174]
+
+Logging State at Time:	1695870766.6109126
+Robot ML State:	(3, 9, 'N')
+Human ML State:	(2, 2, 'N')
+Robot LL State:	[-1.69917761  4.49988876  0.00545372]
+Human LL State:	[-2.55026928 -2.51542953  0.91004347]
+
+Logging State at Time:	1695870767.6329486
+Robot ML State:	(3, 9, 'N')
+Human ML State:	(2, 2, 'N')
+Robot LL State:	[-1.81917324  4.49988846  0.00545044]
+Human LL State:	[-2.55282095 -2.5133381   0.96804758]
+
+Logging State at Time:	1695870768.7142172
+Robot ML State:	(3, 9, 'N')
+Human ML State:	(2, 2, 'N')
+Robot LL State:	[-1.95916801  4.49988808  0.00544699]
+Human LL State:	[-2.5601589  -2.5059223   0.98282198]
+
+Logging State at Time:	1695870769.7156444
+Robot ML State:	(2, 9, 'N')
+Human ML State:	(2, 2, 'N')
+Robot LL State:	[-2.15916033  4.49988753  0.00544195]
+Human LL State:	[-2.67898133 -2.48725487  0.9832678 ]
+
+Logging State at Time:	1695870770.739651
+Robot ML State:	(2, 9, 'N')
+Human ML State:	(2, 2, 'N')
+Robot LL State:	[-2.39915066  4.49988684  0.00543555]
+Human LL State:	[-2.72954088 -2.46405616  0.9889603 ]
+
+
+Plan: []
+Overcooked Q: 	[430.03376762090977, 429.9567044759619, 430.1356836473488, 429.96467884583296, 430.03376762090977, 430.03376762090977]
+Overcooked A: 	E
+Logging State at Time:	1695870771.745033
+Robot ML State:	(2, 9, 'N')
+Human ML State:	(2, 2, 'N')
+Robot LL State:	[-2.47913499  4.49988523  0.00543144]
+Human LL State:	[-2.80882701 -2.42674792  1.0944114 ]
+
+Logging State at Time:	1695870772.7508602
+Robot ML State:	(2, 9, 'E')
+Human ML State:	(1, 2, 'N')
+Robot LL State:	[-2.47912941  4.49987687  0.00541665]
+Human LL State:	[-3.04807675 -2.42975613  1.10013159]
+
+
+Plan: []
+Overcooked Q: 	[267.9734155336438, 267.9587030369086, 267.9587030369086, 267.9905801131681, 267.9734155336438, 267.9734155336438]
+Overcooked A: 	W
+Logging State at Time:	1695870773.793075
+Robot ML State:	(2, 9, 'E')
+Human ML State:	(1, 2, 'N')
+Robot LL State:	[-2.47912696  4.49985392  0.00540371]
+Human LL State:	[-3.25528677 -2.36067194  1.08234739]
+
+Logging State at Time:	1695870774.8069954
+Robot ML State:	(2, 9, 'N')
+Human ML State:	(1, 2, 'N')
+Robot LL State:	[-2.47911659  4.49984788  0.00538946]
+Human LL State:	[-3.46775666 -2.30316625  1.13300214]
+
+Logging State at Time:	1695870775.8070574
+Robot ML State:	(2, 9, 'N')
+Human ML State:	(1, 2, 'N')
+Robot LL State:	[-2.47910529  4.49985048  0.00538113]
+Human LL State:	[-3.47824444 -2.30323286  1.22947592]
+
+Logging State at Time:	1695870776.8168635
+Robot ML State:	(2, 9, 'W')
+Human ML State:	(1, 2, 'N')
+Robot LL State:	[-2.4791008   4.49986486  0.00536899]
+Human LL State:	[-3.60577527 -2.32393454  1.26199995]
+
+
+Plan: []
+Overcooked Q: 	[400.2401213940661, 400.21814708192187, 400.21814708192187, 400.2657580915676, 400.2401213940661, 400.2401213940661]
+Overcooked A: 	W
+Logging State at Time:	1695870777.8168979
+Robot ML State:	(2, 9, 'W')
+Human ML State:	(1, 2, 'N')
+Robot LL State:	[-2.47910022  4.25987989  0.00535834]
+Human LL State:	[-3.81830157 -2.31580874  1.25914142]
+
+Logging State at Time:	1695870778.879981
+Robot ML State:	(2, 9, 'W')
+Human ML State:	(1, 2, 'N')
+Robot LL State:	[-2.47909962  4.05989325  0.00535514]
+Human LL State:	[-3.83529286 -2.33496951  1.24316471]
+
+Logging State at Time:	1695870779.9111688
+Robot ML State:	(2, 8, 'W')
+Human ML State:	(1, 2, 'N')
+Robot LL State:	[-2.47909921  3.9199032   0.00535081]
+Human LL State:	[-3.86138503 -2.35435118  1.2363495 ]
+
+Logging State at Time:	1695870780.94702
+Robot ML State:	(2, 8, 'W')
+Human ML State:	(1, 2, 'N')
+Robot LL State:	[-2.47909858  3.73991661  0.00535053]
+Human LL State:	[-3.70049183 -2.35007885  1.25854303]
+
+Logging State at Time:	1695870781.9770548
+Robot ML State:	(2, 8, 'W')
+Human ML State:	(1, 2, 'W')
+Robot LL State:	[-2.47909782  3.5799474   0.00532631]
+Human LL State:	[-3.55523876 -2.29449902  1.26646674]
+
+Logging State at Time:	1695870783.6289182
+Robot ML State:	(2, 8, 'W')
+Human ML State:	(1, 2, 'W')
+Robot LL State:	[-2.4775072   3.53805506  0.00567921]
+Human LL State:	[-3.50777043 -2.08026615  1.27315964]
+
+
+Plan: []
+Overcooked Q: 	[550.8451869259985, 550.7951601176318, 550.7951601176318, 550.9063308028911, 550.8451869259985, 550.8451869259985]
+Overcooked A: 	W
+Logging State at Time:	1695870784.8977935
+Robot ML State:	(2, 8, 'W')
+Human ML State:	(1, 3, 'S')
+Robot LL State:	[-2.4778711   3.51826255  0.00567149]
+Human LL State:	[-3.40139172 -1.81351424  1.26986963]
+
+Logging State at Time:	1695870785.9539359
+Robot ML State:	(2, 8, 'W')
+Human ML State:	(1, 3, 'S')
+Robot LL State:	[-2.47787286  3.29826049  0.00546122]
+Human LL State:	[-3.15963652 -1.54144581  1.26552255]
+
+Logging State at Time:	1695870786.9557903
+Robot ML State:	(2, 8, 'W')
+Human ML State:	(1, 3, 'S')
+Robot LL State:	[-2.47787279  3.07825832  0.00545284]
+Human LL State:	[-3.04931067 -1.31955491  1.26890499]
+
+Logging State at Time:	1695870787.9709
+Robot ML State:	(2, 7, 'W')
+Human ML State:	(2, 4, 'S')
+Robot LL State:	[-2.47787375  2.57825352  0.00545221]
+Human LL State:	[-2.81939958 -0.93066972  1.26478221]
+
+
+Plan: []
+Overcooked Q: 	[561.1652954789157, 561.1228215691762, 561.2162641706032, 561.1228215691762, 561.1652954789157, 561.1652954789157]
+Overcooked A: 	E
+Logging State at Time:	1695870788.9731743
+Robot ML State:	(2, 7, 'W')
+Human ML State:	(2, 4, 'S')
+Robot LL State:	[-2.47720705  2.51513269  0.00542361]
+Human LL State:	[-2.54927876 -0.36485366  1.26699117]
+
+Logging State at Time:	1695870789.9791558
+Robot ML State:	(2, 7, 'E')
+Human ML State:	(2, 5, 'S')
+Robot LL State:	[-2.47720659  2.51513458  0.00544341]
+Human LL State:	[-2.24250574  0.19166981  1.26731893]
+
+
+Plan: []
+Overcooked Q: 	[561.2781398967346, 561.2158448756583, 561.3560086730799, 561.2158448756583, 561.2781398967346, 561.2781398967346]
+Overcooked A: 	E
+Logging State at Time:	1695870790.9799075
+Robot ML State:	(2, 8, 'E')
+Human ML State:	(3, 5, 'S')
+Robot LL State:	[-2.47720716  3.0351385   0.00544014]
+Human LL State:	[-1.81468724  0.45821745  1.26635506]
+
+Logging State at Time:	1695870792.1511164
+Robot ML State:	(2, 8, 'E')
+Human ML State:	(3, 5, 'S')
+Robot LL State:	[-2.47560895  3.45627546  0.00566306]
+Human LL State:	[-1.50370592  0.47175747  1.26389979]
+
+
+Plan: []
+Overcooked Q: 	[560.7531435547622, 560.7142266872796, 560.7142266872796, 560.8031795272396, 560.7531435547622, 560.7531435547622]
+Overcooked A: 	W
+Logging State at Time:	1695870793.15385
+Robot ML State:	(2, 8, 'N')
+Human ML State:	(3, 5, 'S')
+Robot LL State:	[-2.47561208  3.47628122  0.00540406]
+Human LL State:	[-1.31318616  0.55625589  1.25881402]
+
+
+Plan: []
+Overcooked Q: 	[560.7614263269874, 560.7225088846716, 560.7225088846716, 560.8114630385362, 560.7614263269874, 560.7614263269874]
+Overcooked A: 	W
+Logging State at Time:	1695870794.1749089
+Robot ML State:	(2, 8, 'W')
+Human ML State:	(3, 5, 'S')
+Robot LL State:	[-2.47561292  3.25627789  0.00541453]
+Human LL State:	[-1.25255036  0.5748039   1.25475571]
+
+Logging State at Time:	1695870795.20503
+Robot ML State:	(2, 7, 'W')
+Human ML State:	(3, 5, 'S')
+Robot LL State:	[-2.47561385  2.79627654  0.00540734]
+Human LL State:	[-1.2257079   0.63807309  1.24845859]
+
+Logging State at Time:	1695870796.432086
+Robot ML State:	(2, 7, 'W')
+Human ML State:	(3, 5, 'S')
+Robot LL State:	[-2.47441666  2.53431098  0.00565463]
+Human LL State:	[-1.23305887  0.62702081  1.24921938]
+
+
+Plan: []
+Overcooked Q: 	[485.2017801291297, 485.2263856267304, 485.2017801291297, 485.25504259028963, 485.2263856267304, 485.2263856267304]
+Overcooked A: 	W
+Logging State at Time:	1695870797.45016
+Robot ML State:	(2, 7, 'W')
+Human ML State:	(3, 5, 'S')
+Robot LL State:	[-2.47641138  2.43315373  0.00555836]
+Human LL State:	[-1.26248117  0.58275016  1.24531608]
+
+Logging State at Time:	1695870798.4749184
+Robot ML State:	(2, 7, 'W')
+Human ML State:	(3, 5, 'S')
+Robot LL State:	[-2.47641218  2.03314676  0.00545883]
+Human LL State:	[-1.26548539  0.58702463  1.24465988]
+
+Logging State at Time:	1695870799.4842362
+Robot ML State:	(2, 6, 'W')
+Human ML State:	(3, 5, 'S')
+Robot LL State:	[-2.4764127   1.67314256  0.00545158]
+Human LL State:	[-1.26518599  0.5863316   1.24825977]
+
+Logging State at Time:	1695870800.4930491
+Robot ML State:	(2, 6, 'W')
+Human ML State:	(3, 5, 'S')
+Robot LL State:	[-2.47373969  1.53579436  0.00569363]
+Human LL State:	[-1.35160793  0.58351986  1.25309957]
+
+
+Plan: []
+Overcooked Q: 	[476.29331779637823, 476.2716971805048, 476.284767908408, 476.0167639837742, 476.29331779637823, 476.29331779637823]
+Overcooked A: 	D
+Logging State at Time:	1695870801.5198495
+Robot ML State:	(2, 6, 'W')
+Human ML State:	(3, 5, 'S')
+Robot LL State:	[-2.47374574  1.51579213  0.00541774]
+Human LL State:	[-1.88700646  0.92066789  1.26162349]
+
+Logging State at Time:	1695870802.5214956
+Robot ML State:	(2, 6, 'W')
+Human ML State:	(3, 5, 'S')
+Robot LL State:	[-2.47374628  1.51579852  0.00541696]
+Human LL State:	[-1.83387671  0.76197498  1.26946302]
+
+Logging State at Time:	1695870803.5353343
+Robot ML State:	(2, 6, 'W')
+Human ML State:	(3, 5, 'W')
+Robot LL State:	[-2.47374702  1.51580715  0.00541616]
+Human LL State:	[-1.97094573  0.25946701  1.28143378]
+
+Logging State at Time:	1695870804.5454514
+Robot ML State:	(2, 6, 'W')
+Human ML State:	(2, 5, 'N')
+Robot LL State:	[-2.47374788  1.51581713  0.00541523]
+Human LL State:	[-2.6354769   0.26350495  1.28353636]
+
+Logging State at Time:	1695870805.5457718
+Robot ML State:	(2, 6, 'W')
+Human ML State:	(1, 4, 'N')
+Robot LL State:	[-2.47374869  1.51582614  0.00541435]
+Human LL State:	[-3.16595879 -0.0371124   1.273993  ]
+
+
+Plan: []
+Overcooked Q: 	[485.14897383192516, 485.12097340144294, 485.1609399069703, 485.1418192581878, 485.14897383192516, 485.14897383192516]
+Overcooked A: 	E
+Logging State at Time:	1695870806.5489783
+Robot ML State:	(2, 6, 'N')
+Human ML State:	(1, 4, 'N')
+Robot LL State:	[-2.47374291  1.51583314  0.00541561]
+Human LL State:	[-3.47796942 -0.24216998  1.26325301]
+
+Logging State at Time:	1695870807.5708137
+Robot ML State:	(2, 6, 'E')
+Human ML State:	(1, 4, 'N')
+Robot LL State:	[-2.4737383   1.51583076  0.0054269 ]
+Human LL State:	[-3.62367514 -0.26603349  1.25547112]
+
+
+Plan: []
+Overcooked Q: 	[423.55449302289185, 423.5312386859521, 423.5816230826551, 423.5312386859521, 423.55449302289185, 423.55449302289185]
+Overcooked A: 	E
+Logging State at Time:	1695870808.5929806
+Robot ML State:	(2, 6, 'E')
+Human ML State:	(1, 4, 'N')
+Robot LL State:	[-2.47373793  1.65582504  0.00542781]
+Human LL State:	[-3.61941975 -0.25197555  1.25010472]
+
+Logging State at Time:	1695870809.6187966
+Robot ML State:	(2, 6, 'E')
+Human ML State:	(1, 4, 'N')
+Robot LL State:	[-2.47373829  1.87581921  0.00542876]
+Human LL State:	[-3.61071307 -0.25332014  1.25682071]
+
+Logging State at Time:	1695870810.7176669
+Robot ML State:	(2, 7, 'E')
+Human ML State:	(1, 5, 'N')
+Robot LL State:	[-2.47325821  2.39641815  0.00571033]
+Human LL State:	[-3.63872097  0.24597057  1.26464959]
+
+
+Plan: []
+Overcooked Q: 	[551.6327226701777, 551.5826243391751, 551.6939539636254, 551.5826243391751, 551.6327226701777, 551.6327226701777]
+Overcooked A: 	E
+Logging State at Time:	1695870811.919934
+Robot ML State:	(2, 7, 'E')
+Human ML State:	(1, 5, 'N')
+Robot LL State:	[-2.4737339   2.48073336  0.00569392]
+Human LL State:	[-3.3500016   0.86903792  1.26952966]
+
+Logging State at Time:	1695870812.9218178
+Robot ML State:	(2, 8, 'E')
+Human ML State:	(1, 6, 'N')
+Robot LL State:	[-2.47373478  3.10074278  0.00546169]
+Human LL State:	[-3.11568452  1.59191783  1.27348611]
+
+Logging State at Time:	1695870814.0121546
+Robot ML State:	(2, 8, 'E')
+Human ML State:	(1, 7, 'E')
+Robot LL State:	[-2.47269735  3.46335633  0.00568974]
+Human LL State:	[-3.0811609   2.12350293  1.27423969]
+
+
+Plan: []
+Overcooked Q: 	[551.7764042495533, 565.3696682231636, 565.4276162238014, 565.3696682231636, 565.3965726520311, 565.3965726520311]
+Overcooked A: 	E
+Logging State at Time:	1695870815.0127473
+Robot ML State:	(2, 8, 'E')
+Human ML State:	(1, 7, 'N')
+Robot LL State:	[-2.47395703  3.78267393  0.00548119]
+Human LL State:	[-3.1727536   2.87811753  1.27056324]
+
+Logging State at Time:	1695870816.0167842
+Robot ML State:	(2, 9, 'E')
+Human ML State:	(1, 8, 'N')
+Robot LL State:	[-2.47395712  4.40268491  0.00546265]
+Human LL State:	[-3.31547659  3.43334075  1.26736228]
+
+Logging State at Time:	1695870817.760818
+Robot ML State:	(2, 9, 'E')
+Human ML State:	(1, 8, 'N')
+Robot LL State:	[-2.47276407  4.46554291  0.00557244]
+Human LL State:	[-3.45141657  3.59171477  1.26521977]
+
+
+Plan: []
+Overcooked Q: 	[507.07820080057485, 507.0396168895709, 507.0396168895709, 507.1270790381111, 507.07820080057485, 507.07820080057485]
+Overcooked A: 	W
+Logging State at Time:	1695870818.7869248
+Robot ML State:	(2, 9, 'N')
+Human ML State:	(1, 8, 'N')
+Robot LL State:	[-2.47275772  4.48553218  0.00541832]
+Human LL State:	[-3.57795783  3.64726905  1.24648453]
+
+Logging State at Time:	1695870819.8461404
+Robot ML State:	(2, 9, 'N')
+Human ML State:	(1, 8, 'N')
+Robot LL State:	[-2.47275423  4.48553203  0.0054313 ]
+Human LL State:	[-3.55415061  3.64785681  1.2489886 ]
+
+Logging State at Time:	1695870820.9106894
+Robot ML State:	(2, 9, 'W')
+Human ML State:	(1, 8, 'N')
+Robot LL State:	[-2.47275318  4.48553357  0.00543357]
+Human LL State:	[-3.31790505  3.5714798   1.26512695]
+
+
+Plan: []
+Overcooked Q: 	[477.0448970875071, 476.9860788119427, 477.21950205239455, 476.9860788119427, 477.078398433713, 477.078398433713]
+Overcooked A: 	E
+Logging State at Time:	1695870821.9630644
+Robot ML State:	(2, 9, 'W')
+Human ML State:	(1, 8, 'E')
+Robot LL State:	[-2.47275359  4.48553532  0.00541397]
+Human LL State:	[-3.24161226  3.49172731  1.29477773]
+
+Logging State at Time:	1695870823.0291235
+Robot ML State:	(2, 9, 'N')
+Human ML State:	(1, 8, 'S')
+Robot LL State:	[-2.472751    4.48553706  0.00542227]
+Human LL State:	[-3.24589476  3.41519255  1.30786923]
+
+Logging State at Time:	1695870824.0531082
+Robot ML State:	(2, 9, 'N')
+Human ML State:	(1, 8, 'S')
+Robot LL State:	[-2.47274839  4.48553706  0.00543403]
+Human LL State:	[-3.17029543  3.20682094  1.29980832]
+
+Logging State at Time:	1695870825.0778978
+Robot ML State:	(2, 9, 'E')
+Human ML State:	(1, 7, 'S')
+Robot LL State:	[-2.47274827  4.48553536  0.00543455]
+Human LL State:	[-3.12421787  2.97578659  1.28943812]
+
+
+Plan: []
+Overcooked Q: 	[490.4379857652106, 490.3633206296848, 490.54649324899714, 490.3633206296848, 490.4379857652106, 490.4379857652106]
+Overcooked A: 	E
+Logging State at Time:	1695870826.086895
+Robot ML State:	(2, 10, 'E')
+Human ML State:	(1, 8, 'S')
+Robot LL State:	[-2.47274805  5.00552779  0.00541924]
+Human LL State:	[-3.41460389  3.28889383  1.2891475 ]
+
+Logging State at Time:	1695870827.424225
+Robot ML State:	(2, 10, 'E')
+Human ML State:	(1, 8, 'E')
+Robot LL State:	[-2.47220501  5.40703892  0.00564985]
+Human LL State:	[-3.75578141  3.46166769  1.28361235]
+
+
+Plan: []
+Overcooked Q: 	[434.5283678543984, 434.45088419393943, 434.63167940167716, 434.45088419393943, 434.5283678543984, 434.5283678543984]
+Overcooked A: 	E
+Logging State at Time:	1695870828.6533616
+Robot ML State:	(2, 10, 'E')
+Human ML State:	(1, 9, 'E')
+Robot LL State:	[-2.47208269  5.46897456  0.00574503]
+Human LL State:	[-3.4531498   4.02241968  1.28575973]
+
+Logging State at Time:	1695870829.6789172
+Robot ML State:	(2, 11, 'E')
+Human ML State:	(1, 9, 'E')
+Robot LL State:	[-2.47208407e+00  6.10899086e+00  5.46437221e-03]
+Human LL State:	[-3.28540492  4.84711225  1.28881956]
+
+Logging State at Time:	1695870830.6897447
+Robot ML State:	(2, 11, 'E')
+Human ML State:	(1, 10, 'E')
+Robot LL State:	[-2.47109269e+00  6.45019596e+00  5.59892237e-03]
+Human LL State:	[-3.46935293  5.35057941  1.27820387]
+
+
+Plan: []
+Overcooked Q: 	[517.5816859542476, 517.5816859542476, 517.839960248636, 517.5816859542476, 517.839960248636, 517.839960248636]
+Overcooked A: 	D
+Logging State at Time:	1695870831.6918871
+Robot ML State:	(2, 11, 'E')
+Human ML State:	(1, 10, 'N')
+Robot LL State:	[-2.47109546e+00  6.47018896e+00  5.41640415e-03]
+Human LL State:	[-3.53755935  5.97337442  1.27830518]
+
+Logging State at Time:	1695870832.6947536
+Robot ML State:	(2, 11, 'E')
+Human ML State:	(1, 11, 'N')
+Robot LL State:	[-2.47109561e+00  6.47017849e+00  5.41540607e-03]
+Human LL State:	[-3.60978144  6.19479132  1.26957724]
+
+Logging State at Time:	1695870833.749105
+Robot ML State:	(2, 11, 'E')
+Human ML State:	(1, 11, 'N')
+Robot LL State:	[-2.47109570e+00  6.47017191e+00  5.41478535e-03]
+Human LL State:	[-3.663074    6.22450877  1.26608506]
+
+Logging State at Time:	1695870834.750119
+Robot ML State:	(2, 11, 'E')
+Human ML State:	(1, 11, 'N')
+Robot LL State:	[-2.47109575e+00  6.47016795e+00  5.41441095e-03]
+Human LL State:	[-3.62646977  6.20848103  1.28022486]
+
+Logging State at Time:	1695870835.7927818
+Robot ML State:	(2, 11, 'E')
+Human ML State:	(1, 11, 'N')
+Robot LL State:	[-2.47109581e+00  6.47016415e+00  5.41405712e-03]
+Human LL State:	[-3.53366634  6.07429225  1.28969266]
+
+
+Plan: []
+Overcooked Q: 	[492.4974945657758, 492.3745239054597, 492.4291775322668, 492.3745239054597, 492.4291775322668, 492.4291775322668]
+Overcooked A: 	N
+Logging State at Time:	1695870836.8277988
+Robot ML State:	(2, 11, 'N')
+Human ML State:	(1, 10, 'W')
+Robot LL State:	[-2.47109390e+00  6.47016061e+00  5.39969531e-03]
+Human LL State:	[-3.30960606  5.94365356  1.29237902]
+
+
+Plan: []
+Overcooked Q: 	[595.2132770702444, 595.0245900272675, 595.10714060857, 595.0245900272675, 595.10714060857, 595.10714060857]
+Overcooked A: 	N
+Logging State at Time:	1695870837.8500185
+Robot ML State:	(2, 11, 'N')
+Human ML State:	(1, 10, 'W')
+Robot LL State:	[-2.49109046e+00  6.47016073e+00  5.42022789e-03]
+Human LL State:	[-3.12201249  5.81899379  1.2888211 ]
+
+Logging State at Time:	1695870838.9216993
+Robot ML State:	(2, 11, 'N')
+Human ML State:	(1, 10, 'W')
+Robot LL State:	[-2.73108615e+00  6.47016090e+00  5.42056118e-03]
+Human LL State:	[-3.02144418  5.60813379  1.27719232]
+
+Logging State at Time:	1695870839.9287803
+Robot ML State:	(2, 11, 'N')
+Human ML State:	(2, 10, 'W')
+Robot LL State:	[-2.95108310e+00  6.47016086e+00  5.42613892e-03]
+Human LL State:	[-2.94958101  5.41547953  1.27659205]
+
+Logging State at Time:	1695870840.9802263
+Robot ML State:	(1, 11, 'N')
+Human ML State:	(2, 10, 'S')
+Robot LL State:	[-3.17107991e+00  6.47016135e+00  5.42120740e-03]
+Human LL State:	[-2.78463859  5.31967335  1.28326773]
+
+Logging State at Time:	1695870842.073886
+Robot ML State:	(1, 11, 'N')
+Human ML State:	(2, 9, 'W')
+Robot LL State:	[-3.43238183e+00  6.46883635e+00  5.73351842e-03]
+Human LL State:	[-2.65774253  4.88687346  1.27861989]
+
+
+Plan: []
+Overcooked Q: 	[595.5534734519946, 595.3553518706732, 595.3553518706732, 595.2138364554437, 595.5534734519946, 589.0791764562912]
+Overcooked A: 	D
+Logging State at Time:	1695870843.0760453
+Robot ML State:	(1, 11, 'N')
+Human ML State:	(2, 9, 'W')
+Robot LL State:	[-3.47251007e+00  6.46830142e+00  5.41449225e-03]
+Human LL State:	[-2.51918049  4.19492079  1.27670047]
+
+Logging State at Time:	1695870844.0777721
+Robot ML State:	(1, 11, 'N')
+Human ML State:	(2, 8, 'W')
+Robot LL State:	[-3.47250335e+00  6.46830226e+00  5.41373086e-03]
+Human LL State:	[-2.40473515  3.56678569  1.27702473]
+
+Logging State at Time:	1695870845.0779495
+Robot ML State:	(1, 11, 'N')
+Human ML State:	(2, 7, 'W')
+Robot LL State:	[-3.47249699e+00  6.46830307e+00  5.41289279e-03]
+Human LL State:	[-2.26069886  2.96755031  1.27763372]
+
+Logging State at Time:	1695870846.0857122
+Robot ML State:	(1, 11, 'N')
+Human ML State:	(3, 7, 'W')
+Robot LL State:	[-3.47249059e+00  6.46830390e+00  5.41204822e-03]
+Human LL State:	[-1.94752109  2.45197235  1.27561781]
+
+Logging State at Time:	1695870847.087114
+Robot ML State:	(1, 11, 'N')
+Human ML State:	(3, 7, 'S')
+Robot LL State:	[-3.47248496e+00  6.46830463e+00  5.41130564e-03]
+Human LL State:	[-1.70588215  2.00721482  1.27247552]
+
+
+Plan: []
+Overcooked Q: 	[502.22526336589954, 501.6235098589867, 501.6235098589867, 501.43959973239265, 502.22526336589954, 519.6213024658678]
+Overcooked A: 	I
+Logging State at Time:	1695870848.1311202
+Robot ML State:	(1, 11, 'N')
+Human ML State:	(3, 6, 'S')
+Robot LL State:	[-3.47248067e+00  6.46830505e+00  5.41285051e-03]
+Human LL State:	[-1.59687033  1.87413241  1.26770676]
+
+Logging State at Time:	1695870849.1790464
+Robot ML State:	(1, 11, 'N')
+Human ML State:	(3, 6, 'S')
+Robot LL State:	[-3.47247846e+00  6.46830657e+00  5.39399273e-03]
+Human LL State:	[-1.56048651  1.89577869  1.26233717]
+
+Logging State at Time:	1695870850.1931787
+Robot ML State:	(1, 11, 'N')
+Human ML State:	(3, 6, 'S')
+Robot LL State:	[-3.47245571e+00  6.46831338e+00  5.35463472e-03]
+Human LL State:	[-1.61762696  1.87450534  1.26055704]
+
+
+Plan: []
+Overcooked Q: 	[594.7920542848309, 594.830152674165, 594.7920542848309, 594.830152674165, 594.7920542848309, 594.7920542848309]
+Overcooked A: 	S
+Logging State at Time:	1695870851.2610579
+Robot ML State:	(1, 11, 'E')
+Human ML State:	(3, 6, 'W')
+Robot LL State:	[-3.47244636e+00  6.46830865e+00  5.32180696e-03]
+Human LL State:	[-1.7835713   1.72456601  1.27983725]
+
+Logging State at Time:	1695870852.3579607
+Robot ML State:	(1, 11, 'E')
+Human ML State:	(3, 6, 'W')
+Robot LL State:	[-3.47244637e+00  6.46828599e+00  5.32753709e-03]
+Human LL State:	[-1.92798907  1.75779988  1.28342578]
+
+Logging State at Time:	1695870853.4257019
+Robot ML State:	(1, 11, 'E')
+Human ML State:	(3, 6, 'S')
+Robot LL State:	[-3.47244557e+00  6.46825494e+00  5.32199050e-03]
+Human LL State:	[-1.85177167  1.86891638  1.28042149]
+
+Logging State at Time:	1695870854.486939
+Robot ML State:	(1, 11, 'S')
+Human ML State:	(3, 6, 'S')
+Robot LL State:	[-3.47249875e+00  6.46824929e+00  5.28428317e-03]
+Human LL State:	[-1.87387162  1.89405627  1.27834614]
+
+
+Plan: []
+Overcooked Q: 	[594.7982041727352, 594.8363029559898, 594.7982041727352, 594.8363029559898, 594.7982041727352, 594.7982041727352]
+Overcooked A: 	S
+Logging State at Time:	1695870855.5400481
+Robot ML State:	(1, 11, 'S')
+Human ML State:	(3, 6, 'S')
+Robot LL State:	[-3.31250110e+00  6.46825065e+00  5.35073316e-03]
+Human LL State:	[-1.82649654  1.85834256  1.27433322]
+
+Logging State at Time:	1695870856.570109
+Robot ML State:	(1, 11, 'S')
+Human ML State:	(3, 6, 'S')
+Robot LL State:	[-3.13246049e+00  6.46825093e+00  5.44495977e-03]
+Human LL State:	[-1.74152228  1.76056887  1.2713095 ]
+
+Logging State at Time:	1695870857.5976486
+Robot ML State:	(2, 11, 'S')
+Human ML State:	(3, 6, 'S')
+Robot LL State:	[-2.95241159e+00  6.46825283e+00  5.48308985e-03]
+Human LL State:	[-1.74392255  1.75837643  1.27317375]
+
+Logging State at Time:	1695870858.6159039
+Robot ML State:	(2, 11, 'S')
+Human ML State:	(3, 6, 'S')
+Robot LL State:	[-2.59235727e+00  6.46825267e+00  5.55138577e-03]
+Human LL State:	[-1.55562879  1.62495933  1.27442401]
+
+Logging State at Time:	1695870859.625311
+Robot ML State:	(2, 11, 'S')
+Human ML State:	(3, 6, 'S')
+Robot LL State:	[-2.52535767e+00  6.46809807e+00  5.56647263e-03]
+Human LL State:	[-1.54171736  1.64469678  1.27239363]
+
+
+Plan: []
+Overcooked Q: 	[594.7982041734745, 594.8363029567291, 594.8363029567291, 594.8813287914849, 594.8363029567291, 594.8363029567291]
+Overcooked A: 	W
+Logging State at Time:	1695870860.627908
+Robot ML State:	(2, 11, 'W')
+Human ML State:	(3, 6, 'S')
+Robot LL State:	[-2.52532432e+00  6.46811116e+00  5.40403343e-03]
+Human LL State:	[-1.52634143  1.65385778  1.26670355]
+
+
+Plan: []
+Overcooked Q: 	[594.7982041734745, 594.8363029567291, 594.8363029567291, 594.8813287914849, 594.8363029567291, 594.8363029567291]
+Overcooked A: 	W
+Logging State at Time:	1695870861.6586952
+Robot ML State:	(2, 11, 'W')
+Human ML State:	(3, 6, 'S')
+Robot LL State:	[-2.52531501e+00  6.26813142e+00  5.35747554e-03]
+Human LL State:	[-1.53664412  1.64855669  1.26825109]
+
+Logging State at Time:	1695870862.6609223
+Robot ML State:	(2, 10, 'W')
+Human ML State:	(3, 6, 'S')
+Robot LL State:	[-2.52530969e+00  5.90816475e+00  5.37565857e-03]
+Human LL State:	[-1.52751821  1.67261601  1.26403667]
+
+Logging State at Time:	1695870863.9067457
+Robot ML State:	(2, 10, 'W')
+Human ML State:	(3, 6, 'S')
+Robot LL State:	[-2.52561865  5.58462891  0.00573853]
+Human LL State:	[-1.52558999  1.6798597   1.26310999]
+
+
+Plan: []
+Overcooked Q: 	[519.6606349389938, 504.4248786145356, 504.37218778277605, 519.765521533996, 505.3614587550309, 505.3614587550309]
+Overcooked A: 	W
+Logging State at Time:	1695870865.347779
+Robot ML State:	(2, 10, 'W')
+Human ML State:	(3, 6, 'S')
+Robot LL State:	[-2.5207743   5.51540135  0.0057235 ]
+Human LL State:	[-1.53472982  1.6639301   1.26542976]
+
+Logging State at Time:	1695870866.3489666
+Robot ML State:	(2, 10, 'W')
+Human ML State:	(2, 6, 'E')
+Robot LL State:	[-2.52078653  5.13543356  0.00538935]
+Human LL State:	[-2.06207673  1.6384653   1.28449392]
+
+Logging State at Time:	1695870867.3528512
+Robot ML State:	(2, 9, 'W')
+Human ML State:	(2, 6, 'E')
+Robot LL State:	[-2.52077975  4.73541108  0.00537253]
+Human LL State:	[-2.52150968  1.66949531  1.28303626]
+
+Logging State at Time:	1695870868.4698386
+Robot ML State:	(2, 9, 'W')
+Human ML State:	(2, 6, 'E')
+Robot LL State:	[-2.52075393  4.52945885  0.00579727]
+Human LL State:	[-2.72426201  1.88014179  1.28790035]
+
+
+Plan: []
+Overcooked Q: 	[510.5008192273494, 510.5757577139304, 510.5008192273494, 510.67738966765137, 510.5757577139304, 510.5757577139304]
+Overcooked A: 	W
+Logging State at Time:	1695870869.5127826
+Robot ML State:	(2, 9, 'W')
+Human ML State:	(2, 7, 'E')
+Robot LL State:	[-2.51528627  4.40390909  0.00551963]
+Human LL State:	[-2.87402075  2.44029131  1.2725461 ]
+
+Logging State at Time:	1695870870.520135
+Robot ML State:	(2, 9, 'W')
+Human ML State:	(2, 7, 'E')
+Robot LL State:	[-2.51545764  4.00469039  0.00555293]
+Human LL State:	[-2.85423086  2.81452547  1.2773039 ]
+
+Logging State at Time:	1695870871.5491505
+Robot ML State:	(2, 8, 'W')
+Human ML State:	(1, 7, 'N')
+Robot LL State:	[-2.51559006  3.58536952  0.00564782]
+Human LL State:	[-3.23383437  2.91063176  1.26634514]
+
+
+Plan: []
+Overcooked Q: 	[457.0994781013204, 457.208156056171, 457.0994781013204, 457.3603051929617, 457.208156056171, 457.208156056171]
+Overcooked A: 	W
+Logging State at Time:	1695870873.3478854
+Robot ML State:	(2, 8, 'W')
+Human ML State:	(1, 8, 'N')
+Robot LL State:	[-2.51536529  3.52493258  0.00570307]
+Human LL State:	[-3.40953075  3.03790581  1.26254043]
+
+Logging State at Time:	1695870874.4388509
+Robot ML State:	(2, 8, 'W')
+Human ML State:	(1, 8, 'N')
+Robot LL State:	[-2.51544281  3.32523944  0.0053729 ]
+Human LL State:	[-3.39004889  3.02510842  1.27925943]
+
+Logging State at Time:	1695870875.4422565
+Robot ML State:	(2, 8, 'W')
+Human ML State:	(1, 8, 'N')
+Robot LL State:	[-2.51543384  3.14510219  0.0053654 ]
+Human LL State:	[-3.46097304  3.08727903  1.26395306]
+
+Logging State at Time:	1695870876.4469237
+Robot ML State:	(2, 7, 'W')
+Human ML State:	(1, 8, 'N')
+Robot LL State:	[-2.51540207  2.96541567  0.00538619]
+Human LL State:	[-3.5047203   3.12540973  1.26259585]
+
+Logging State at Time:	1695870877.449868
+Robot ML State:	(2, 7, 'W')
+Human ML State:	(1, 8, 'N')
+Robot LL State:	[-2.51538876  2.78546715  0.00537729]
+Human LL State:	[-3.50202951  3.12408425  1.26209301]
+
+Logging State at Time:	1695870878.4511168
+Robot ML State:	(2, 7, 'W')
+Human ML State:	(1, 8, 'N')
+Robot LL State:	[-2.51541482  2.60565358  0.00538253]
+Human LL State:	[-3.52229289  3.21167509  1.26231566]
+
+Logging State at Time:	1695870879.675656
+Robot ML State:	(2, 7, 'W')
+Human ML State:	(1, 8, 'N')
+Robot LL State:	[-2.51561187  2.54129733  0.00592589]
+Human LL State:	[-3.53510714  3.31146246  1.26052101]
+
+
+Plan: []
+Overcooked Q: 	[513.6208280572797, 513.6567230444346, 513.5148007026021, 513.9149284515602, 513.6567230444346, 513.6567230444346]
+Overcooked A: 	W
+Logging State at Time:	1695870881.0356238
+Robot ML State:	(2, 7, 'W')
+Human ML State:	(1, 8, 'N')
+Robot LL State:	[-2.51452019  2.51890623  0.00593111]
+Human LL State:	[-3.54987691  3.5176492   1.25793067]
+
+Logging State at Time:	1695870882.0367491
+Robot ML State:	(2, 7, 'W')
+Human ML State:	(1, 8, 'N')
+Robot LL State:	[-2.514479    2.33891826  0.0054846 ]
+Human LL State:	[-3.61479167  3.50994214  1.23839779]
+
+Logging State at Time:	1695870883.0849833
+Robot ML State:	(2, 7, 'W')
+Human ML State:	(1, 8, 'N')
+Robot LL State:	[-2.51436936  2.15799985  0.0055436 ]
+Human LL State:	[-3.58392539  3.50109701  1.24748791]
+
+Logging State at Time:	1695870884.0876663
+Robot ML State:	(2, 6, 'W')
+Human ML State:	(1, 8, 'N')
+Robot LL State:	[-2.51442162  1.9780349   0.00547545]
+Human LL State:	[-3.5001155   3.3572007   1.26081372]
+
+Logging State at Time:	1695870885.0979755
+Robot ML State:	(2, 6, 'W')
+Human ML State:	(1, 8, 'N')
+Robot LL State:	[-2.51449519  1.79821279  0.005409  ]
+Human LL State:	[-3.5499826  3.2332377  1.2586759]
+
+Logging State at Time:	1695870886.1030343
+Robot ML State:	(2, 6, 'W')
+Human ML State:	(1, 8, 'N')
+Robot LL State:	[-2.51454126  1.61851887  0.00534608]
+Human LL State:	[-3.55923878  3.23261273  1.2572459 ]
+
+Logging State at Time:	1695870887.3426807
+Robot ML State:	(2, 6, 'W')
+Human ML State:	(1, 8, 'N')
+Robot LL State:	[-2.51500137  1.53745091  0.00553841]
+Human LL State:	[-3.54852  3.24703  1.25317]
+
+
+Plan: []
+Overcooked Q: 	[513.664620007036, 514.6205385019937, 513.664620007036, 513.664620007036, 513.9228293838137, 513.9228293838137]
+Overcooked A: 	S
+Logging State at Time:	1695870888.4119978
+Robot ML State:	(2, 6, 'W')
+Human ML State:	(1, 8, 'N')
+Robot LL State:	[-2.51493017  1.5172818   0.00552277]
+Human LL State:	[-3.52931529  3.25831772  1.25549214]
+
+Logging State at Time:	1695870889.4139874
+Robot ML State:	(2, 6, 'S')
+Human ML State:	(1, 8, 'N')
+Robot LL State:	[-2.51401654  1.51699445  0.0056224 ]
+Human LL State:	[-3.52954373  3.24621988  1.25978284]
+
+
+Plan: []
+Overcooked Q: 	[513.6646200103173, 514.6205385052812, 513.6646200103173, 513.6646200103173, 513.9228293870967, 513.9228293870967]
+Overcooked A: 	S
+Logging State at Time:	1695870890.4220786
+Robot ML State:	(2, 6, 'S')
+Human ML State:	(1, 8, 'N')
+Robot LL State:	[-2.39368479  1.51693929  0.0055134 ]
+Human LL State:	[-3.53313577  3.2400104   1.25852676]
+
+Logging State at Time:	1695870891.4977462
+Robot ML State:	(2, 6, 'S')
+Human ML State:	(1, 8, 'N')
+Robot LL State:	[-2.213564    1.5169193   0.00535892]
+Human LL State:	[-3.52429169  3.24479261  1.2638223 ]
+
+Logging State at Time:	1695870892.5569353
+Robot ML State:	(2, 6, 'S')
+Human ML State:	(1, 8, 'N')
+Robot LL State:	[-2.01336583  1.51687792  0.00531359]
+Human LL State:	[-3.29997802  3.19901064  1.28477874]
+
+Logging State at Time:	1695870893.576707
+Robot ML State:	(3, 6, 'S')
+Human ML State:	(2, 8, 'W')
+Robot LL State:	[-1.63294677  1.51683472  0.00543494]
+Human LL State:	[-2.85805269  3.16242293  1.27650338]
+
+
+Plan: []
+Overcooked Q: 	[515.1367883672642, 515.6411678240331, 514.922888986319, 514.922888986319, 515.6411678240331, 538.828460547295]
+Overcooked A: 	I
+Logging State at Time:	1695870894.6832526
+Robot ML State:	(3, 6, 'S')
+Human ML State:	(2, 7, 'W')
+Robot LL State:	[-1.53070288  1.5172529   0.00534253]
+Human LL State:	[-2.55426606  2.9371805   1.2826579 ]
+
+Logging State at Time:	1695870895.8338737
+Robot ML State:	(3, 6, 'S')
+Human ML State:	(2, 7, 'W')
+Robot LL State:	[-1.53080421  1.51736641  0.00561817]
+Human LL State:	[-2.61268921  2.65570865  1.27066266]
+
+Logging State at Time:	1695870896.9136393
+Robot ML State:	(3, 6, 'S')
+Human ML State:	(2, 7, 'W')
+Robot LL State:	[-1.53003618  1.51722071  0.00534276]
+Human LL State:	[-2.64193792  2.42036801  1.2658915 ]
+
+Logging State at Time:	1695870897.9959414
+Robot ML State:	(3, 6, 'S')
+Human ML State:	(2, 7, 'W')
+Robot LL State:	[-1.52516353  1.51605013  0.0054923 ]
+Human LL State:	[-2.56923496  2.18300929  1.27062237]
+
+Logging State at Time:	1695870899.0940225
+Robot ML State:	(3, 6, 'S')
+Human ML State:	(2, 6, 'W')
+Robot LL State:	[-1.51887195  1.51471804  0.00541579]
+Human LL State:	[-2.54712549  1.86351118  1.27634544]
+
+
+Plan: []
+Overcooked Q: 	[617.3877153189583, 617.3355430166591, 617.2976072447814, 617.402823849183, 617.3355430166591, 516.1931454639454]
+Overcooked A: 	W
+Logging State at Time:	1695870900.1288269
+Robot ML State:	(3, 6, 'W')
+Human ML State:	(2, 6, 'S')
+Robot LL State:	[-1.51869193  1.51463012  0.00543568]
+Human LL State:	[-2.49437374  1.58129188  1.26870031]
+
+Logging State at Time:	1695870901.1658156
+Robot ML State:	(3, 6, 'W')
+Human ML State:	(2, 6, 'S')
+Robot LL State:	[-1.5186947   1.51464035  0.00542401]
+Human LL State:	[-2.34634414  1.28633148  1.26792529]
+
+Logging State at Time:	1695870902.1786864
+Robot ML State:	(3, 6, 'W')
+Human ML State:	(2, 5, 'S')
+Robot LL State:	[-1.51870739  1.51481124  0.00550883]
+Human LL State:	[-2.18720024  0.96548423  1.26647337]
+
+Logging State at Time:	1695870903.1853642
+Robot ML State:	(3, 6, 'W')
+Human ML State:	(3, 5, 'S')
+Robot LL State:	[-1.51870652  1.51479939  0.00545147]
+Human LL State:	[-1.9835017   0.69017775  1.2682297 ]
+
+Logging State at Time:	1695870904.2408264
+Robot ML State:	(3, 6, 'W')
+Human ML State:	(3, 5, 'S')
+Robot LL State:	[-1.51870659  1.51479199  0.00545184]
+Human LL State:	[-1.66193034  0.56860079  1.26758545]
+
+Logging State at Time:	1695870905.2639163
+Robot ML State:	(3, 6, 'W')
+Human ML State:	(3, 5, 'S')
+Robot LL State:	[-1.51870664  1.51478583  0.00545147]
+Human LL State:	[-1.48037846  0.45844544  1.26129771]
+
+Logging State at Time:	1695870906.3138514
+Robot ML State:	(3, 6, 'W')
+Human ML State:	(3, 5, 'S')
+Robot LL State:	[-1.5187067   1.51477788  0.00545097]
+Human LL State:	[-1.47248737  0.45172163  1.26058012]
+
+Logging State at Time:	1695870907.3457506
+Robot ML State:	(3, 6, 'W')
+Human ML State:	(3, 5, 'S')
+Robot LL State:	[-1.51870675  1.51477212  0.00545062]
+Human LL State:	[-1.48310759  0.44321519  1.26321114]
+
+Logging State at Time:	1695870908.392859
+Robot ML State:	(3, 6, 'W')
+Human ML State:	(3, 5, 'S')
+Robot LL State:	[-1.51870681  1.51476499  0.00545018]
+Human LL State:	[-1.45739362  0.46967353  1.24660091]
+
+Logging State at Time:	1695870909.4448214
+Robot ML State:	(3, 6, 'W')
+Human ML State:	(3, 5, 'S')
+Robot LL State:	[-1.51870687  1.51475874  0.00544979]
+Human LL State:	[-1.34889628  0.46505745  1.23353327]
+
+
+Plan: []
+Overcooked Q: 	[617.440918824857, 617.3802537451529, 617.3352238743286, 617.4189036999535, 617.3802537451529, 617.3802537451529]
+Overcooked A: 	N
+Logging State at Time:	1695870910.4848487
+Robot ML State:	(3, 6, 'W')
+Human ML State:	(3, 5, 'S')
+Robot LL State:	[-1.51870631  1.51475439  0.00544181]
+Human LL State:	[-1.42724062  0.46638316  1.25021013]
+
+Logging State at Time:	1695870911.5141606
+Robot ML State:	(3, 6, 'N')
+Human ML State:	(3, 5, 'S')
+Robot LL State:	[-1.51870791  1.51475384  0.00545182]
+Human LL State:	[-1.47376069  0.40195186  1.2518325 ]
+
+
+Plan: []
+Overcooked Q: 	[583.2540654460597, 583.2263112673566, 583.2020263609913, 583.2263112673566, 583.2263112673566, 583.2263112673566]
+Overcooked A: 	N
+Logging State at Time:	1695870912.5167348
+Robot ML State:	(3, 6, 'N')
+Human ML State:	(3, 5, 'S')
+Robot LL State:	[-1.77871353  1.51475365  0.00545469]
+Human LL State:	[-1.47966969  0.40633421  1.25568212]
+
+Logging State at Time:	1695870913.5308657
+Robot ML State:	(2, 6, 'N')
+Human ML State:	(3, 5, 'S')
+Robot LL State:	[-2.11872     1.51475315  0.00546311]
+Human LL State:	[-1.48214449  0.40864038  1.2507908 ]
+
+Logging State at Time:	1695870914.5720222
+Robot ML State:	(2, 6, 'N')
+Human ML State:	(3, 5, 'S')
+Robot LL State:	[-2.37872502  1.51475333  0.00546437]
+Human LL State:	[-1.50402317  0.40699176  1.25623694]
+
+Logging State at Time:	1695870915.8669026
+Robot ML State:	(2, 6, 'N')
+Human ML State:	(3, 5, 'W')
+Robot LL State:	[-2.46002535  1.51616429  0.00570827]
+Human LL State:	[-1.54353682  0.20250492  1.26878955]
+
+
+Plan: []
+Overcooked Q: 	[759.4883550200318, 759.4466569660613, 759.4466569660613, 759.5370027496641, 759.4883550200318, 759.4883550200318]
+Overcooked A: 	W
+Logging State at Time:	1695870916.8840039
+Robot ML State:	(2, 6, 'W')
+Human ML State:	(3, 4, 'W')
+Robot LL State:	[-2.48002816  1.51616417  0.00547293]
+Human LL State:	[-1.60305912 -0.20140648  1.25740828]
+
+
+Plan: []
+Overcooked Q: 	[759.5448560277842, 759.4962077951559, 759.4962077951559, 759.6023493936178, 759.5448560277842, 759.5448560277842]
+Overcooked A: 	W
+Logging State at Time:	1695870917.886001
+Robot ML State:	(2, 6, 'W')
+Human ML State:	(3, 4, 'W')
+Robot LL State:	[-2.48002842  1.43615912  0.00545795]
+Human LL State:	[-1.65454617 -0.44317845  1.25927014]
+
+Logging State at Time:	1695870918.8886409
+Robot ML State:	(2, 6, 'W')
+Human ML State:	(3, 4, 'W')
+Robot LL State:	[-2.48002812  1.1961564   0.00545244]
+Human LL State:	[-1.66888893 -0.67469641  1.26052605]
+
+Logging State at Time:	1695870919.9071329
+Robot ML State:	(2, 5, 'W')
+Human ML State:	(3, 4, 'W')
+Robot LL State:	[-2.48002754  0.93615291  0.005458  ]
+Human LL State:	[-1.58827193 -0.91045227  1.26276434]
+
+Logging State at Time:	1695870920.9577427
+Robot ML State:	(2, 5, 'W')
+Human ML State:	(3, 3, 'S')
+Robot LL State:	[-2.48002723  0.65614905  0.00546059]
+Human LL State:	[-1.44398609 -1.13850836  1.26463361]
+
+Logging State at Time:	1695870922.162288
+Robot ML State:	(2, 5, 'W')
+Human ML State:	(3, 3, 'S')
+Robot LL State:	[-2.47896204  0.53489552  0.00559823]
+Human LL State:	[-1.18065107 -1.28241611  1.26992945]
+
+
+Plan: []
+Overcooked Q: 	[759.6713414335626, 759.602349394562, 759.602349394562, 759.7556650367853, 759.6713414335626, 759.6713414335626]
+Overcooked A: 	W
+Logging State at Time:	1695870923.1918461
+Robot ML State:	(2, 5, 'W')
+Human ML State:	(4, 3, 'S')
+Robot LL State:	[-2.48352292  0.36985718  0.00539296]
+Human LL State:	[-0.6857429  -1.4244444   1.26573231]
+
+Logging State at Time:	1695870924.2196326
+Robot ML State:	(2, 5, 'W')
+Human ML State:	(4, 3, 'S')
+Robot LL State:	[-2.48352142  0.00987216  0.00535158]
+Human LL State:	[-0.67917547 -1.42396259  1.26264797]
+
+Logging State at Time:	1695870925.2421212
+Robot ML State:	(2, 4, 'W')
+Human ML State:	(4, 3, 'S')
+Robot LL State:	[-2.48351971 -0.29011364  0.00534794]
+Human LL State:	[-0.70682383 -1.40498966  1.26526453]
+
+Logging State at Time:	1695870926.3071072
+Robot ML State:	(2, 4, 'W')
+Human ML State:	(4, 3, 'E')
+Robot LL State:	[-2.48315089 -0.45149779  0.00568438]
+Human LL State:	[-0.72845641 -1.40744397  1.26756878]
+
+
+Plan: []
+Overcooked Q: 	[759.9965896174216, 759.7556650367853, 759.7556650367853, 759.7556650367853, 759.8610695408137, 759.8610695408137]
+Overcooked A: 	N
+Logging State at Time:	1695870927.3557189
+Robot ML State:	(2, 4, 'N')
+Human ML State:	(4, 3, 'S')
+Robot LL State:	[-2.48315016 -0.47150039  0.00545666]
+Human LL State:	[-0.54957399 -1.42239281  1.26700798]
+
+
+Plan: []
+Overcooked Q: 	[759.9999573101686, 759.7590316619487, 759.7590316619487, 759.7590316619487, 759.8644366330449, 759.8644366330449]
+Overcooked A: 	N
+Logging State at Time:	1695870928.392087
+Robot ML State:	(2, 4, 'N')
+Human ML State:	(4, 3, 'S')
+Robot LL State:	[-2.58315287 -0.47150008  0.00544856]
+Human LL State:	[-0.26304558 -1.47442516  1.26257302]
+
+Logging State at Time:	1695870929.3947847
+Robot ML State:	(2, 4, 'N')
+Human ML State:	(5, 3, 'S')
+Robot LL State:	[-2.86315376 -0.47149964  0.00545484]
+Human LL State:	[ 0.01446227 -1.50525719  1.26243625]
+
+Logging State at Time:	1695870930.425188
+Robot ML State:	(1, 4, 'N')
+Human ML State:	(5, 3, 'S')
+Robot LL State:	[-3.14315486 -0.4714991   0.00545099]
+Human LL State:	[ 0.29458738 -1.51473079  1.26103795]
+
+Logging State at Time:	1695870931.5187235
+Robot ML State:	(1, 4, 'N')
+Human ML State:	(5, 3, 'S')
+Robot LL State:	[-3.34353349 -0.47094949  0.0056451 ]
+Human LL State:	[ 0.52810483 -1.51832938  1.2600198 ]
+
+Logging State at Time:	1695870932.6331031
+Robot ML State:	(1, 4, 'N')
+Human ML State:	(5, 3, 'S')
+Robot LL State:	[-3.44863076 -0.470572    0.00564748]
+Human LL State:	[ 0.94556362 -1.50365353  1.2590103 ]
+
+
+Plan: []
+Overcooked Q: 	[760.4319582502197, 760.1789868735564, 759.9982930330825, 759.9982930330825, 760.4319582502197, 755.5413010365281]
+Overcooked A: 	D
+Logging State at Time:	1695870933.6577296
+Robot ML State:	(1, 4, 'N')
+Human ML State:	(6, 3, 'E')
+Robot LL State:	[-3.47189757 -0.47192944  0.00611601]
+Human LL State:	[ 1.37906528 -1.33565789  1.26284125]
+
+Logging State at Time:	1695870934.693779
+Robot ML State:	(1, 4, 'N')
+Human ML State:	(6, 3, 'E')
+Robot LL State:	[-3.47176312 -0.47181821  0.00611697]
+Human LL State:	[ 1.60490399 -1.08471149  1.2677488 ]
+
+Logging State at Time:	1695870935.7218468
+Robot ML State:	(1, 4, 'N')
+Human ML State:	(6, 4, 'E')
+Robot LL State:	[-3.47163792 -0.47171337  0.00611456]
+Human LL State:	[ 1.77969882 -0.79053125  1.26841899]
+
+Logging State at Time:	1695870936.755655
+Robot ML State:	(1, 4, 'N')
+Human ML State:	(6, 4, 'E')
+Robot LL State:	[-3.47150394 -0.47160095  0.00611187]
+Human LL State:	[ 1.92326954 -0.46374678  1.26469764]
+
+Logging State at Time:	1695870937.757025
+Robot ML State:	(1, 4, 'N')
+Human ML State:	(6, 4, 'E')
+Robot LL State:	[-3.47137912 -0.47149601  0.00610941]
+Human LL State:	[ 1.91347828 -0.13690928  1.26393057]
+
+
+Plan: []
+Overcooked Q: 	[761.443843756673, 760.8114153150146, 760.4319582500195, 760.4319582500195, 761.443843756673, 755.7299976649597]
+Overcooked A: 	D
+Logging State at Time:	1695870938.7615602
+Robot ML State:	(1, 4, 'N')
+Human ML State:	(6, 5, 'E')
+Robot LL State:	[-3.47138692 -0.47150317  0.0061094 ]
+Human LL State:	[1.85214448 0.1756403  1.26325307]
+
+Logging State at Time:	1695870939.7779658
+Robot ML State:	(1, 4, 'N')
+Human ML State:	(6, 5, 'N')
+Robot LL State:	[-3.47139713 -0.47151235  0.00611003]
+Human LL State:	[1.71144855 0.45545962 1.26727791]
+
+Logging State at Time:	1695870940.7799213
+Robot ML State:	(1, 4, 'N')
+Human ML State:	(6, 5, 'N')
+Robot LL State:	[-3.47140698 -0.47152117  0.00611043]
+Human LL State:	[1.47653313 0.61614032 1.26866602]
+
+Logging State at Time:	1695870941.829129
+Robot ML State:	(1, 4, 'N')
+Human ML State:	(6, 5, 'N')
+Robot LL State:	[-3.4714177  -0.47153075  0.00611085]
+Human LL State:	[1.33096759 0.92515142 1.25327802]
+
+Logging State at Time:	1695870942.8341398
+Robot ML State:	(1, 4, 'N')
+Human ML State:	(6, 6, 'N')
+Robot LL State:	[-3.47143006 -0.47154177  0.00611134]
+Human LL State:	[1.31951204 1.01246464 1.24843201]
+
+Logging State at Time:	1695870943.8598964
+Robot ML State:	(1, 4, 'N')
+Human ML State:	(6, 6, 'N')
+Robot LL State:	[-3.47144245 -0.47155286  0.00611321]
+Human LL State:	[1.2693208  1.33575224 1.24747996]
+
+
+Plan: []
+Overcooked Q: 	[665.4086141375034, 665.3784523229516, 665.3350185385378, 665.374666239605, 665.4086141375034, 667.1982691801652]
+Overcooked A: 	I
+Logging State at Time:	1695870944.9438965
+Robot ML State:	(1, 4, 'N')
+Human ML State:	(6, 6, 'N')
+Robot LL State:	[-3.47146702 -0.47157289  0.00611594]
+Human LL State:	[1.2669265  1.33771575 1.24643473]
+
+Logging State at Time:	1695870945.9621587
+Robot ML State:	(1, 4, 'N')
+Human ML State:	(6, 6, 'E')
+Robot LL State:	[-3.47150338 -0.47160347  0.00611742]
+Human LL State:	[1.36622133 1.50701992 1.25958681]
+
+
+Plan: []
+Overcooked Q: 	[763.7670866013916, 763.7670866013916, 763.8034322322378, 763.7352841744012, 763.7670866013916, 763.7670866013916]
+Overcooked A: 	E
+Logging State at Time:	1695870946.997922
+Robot ML State:	(1, 4, 'N')
+Human ML State:	(6, 6, 'N')
+Robot LL State:	[-3.47151466 -0.4716003   0.00548603]
+Human LL State:	[1.5137365  1.61156001 1.27477382]
+
+
+Plan: []
+Overcooked Q: 	[763.7783680518554, 763.7783680518554, 763.8147142195556, 763.7465651551178, 763.7783680518554, 763.7783680518554]
+Overcooked A: 	E
+Logging State at Time:	1695870948.0070937
+Robot ML State:	(1, 4, 'E')
+Human ML State:	(6, 6, 'N')
+Robot LL State:	[-3.47151605 -0.33159659  0.00542734]
+Human LL State:	[1.54746799 1.78481008 1.27652143]
+
+Logging State at Time:	1695870949.0338576
+Robot ML State:	(1, 5, 'E')
+Human ML State:	(6, 6, 'N')
+Robot LL State:	[-3.47151637  0.04840067  0.00542391]
+Human LL State:	[1.81372737 1.59516658 1.27494332]
+
+Logging State at Time:	1695870950.2170138
+Robot ML State:	(1, 5, 'E')
+Human ML State:	(6, 6, 'N')
+Robot LL State:	[-3.47105211  0.41006524  0.0055939 ]
+Human LL State:	[1.90487533 1.30872468 1.27220134]
+
+
+Plan: []
+Overcooked Q: 	[763.8147142214927, 763.8147142214927, 763.8566521073008, 763.7783680537925, 763.8147142214927, 763.8147142214927]
+Overcooked A: 	E
+Logging State at Time:	1695870951.2400646
+Robot ML State:	(1, 5, 'E')
+Human ML State:	(6, 5, 'N')
+Robot LL State:	[-3.47271981  0.55658908  0.00551504]
+Human LL State:	[1.95175823 0.63316095 1.27497377]
+
+Logging State at Time:	1695870952.248048
+Robot ML State:	(1, 6, 'E')
+Human ML State:	(7, 5, 'N')
+Robot LL State:	[-3.4727195   1.19659109  0.00545616]
+Human LL State:	[2.28236038 0.03747134 1.27247732]
+
+Logging State at Time:	1695870953.2769773
+Robot ML State:	(1, 6, 'E')
+Human ML State:	(7, 4, 'N')
+Robot LL State:	[-3.47214995  1.47937006  0.0055247 ]
+Human LL State:	[ 2.72093629 -0.38814279  1.2734117 ]
+
+
+Plan: []
+Overcooked Q: 	[763.9041702229962, 763.9041702229962, 763.9619935649251, 763.8552427798255, 763.9041702229962, 763.9041702229962]
+Overcooked A: 	E
+Logging State at Time:	1695870954.2830434
+Robot ML State:	(1, 6, 'E')
+Human ML State:	(7, 4, 'N')
+Robot LL State:	[-3.47374181  1.80068073  0.00544851]
+Human LL State:	[ 2.86347018 -0.97389599  1.27847544]
+
+Logging State at Time:	1695870955.2860253
+Robot ML State:	(1, 7, 'E')
+Human ML State:	(7, 3, 'N')
+Robot LL State:	[-3.47374168  2.40068204  0.00546417]
+Human LL State:	[ 2.62191612 -1.4963034   1.27941931]
+
+
+Plan: []
+Overcooked Q: 	[764.0305912072497, 764.0305912072497, 764.1153986876812, 763.9612032687149, 764.0305912072497, 764.0305912072497]
+Overcooked A: 	E
+Logging State at Time:	1695870956.5955079
+Robot ML State:	(1, 7, 'E')
+Human ML State:	(7, 3, 'N')
+Robot LL State:	[-3.47556359  2.485776    0.00566454]
+Human LL State:	[ 2.26086032 -1.92914927  1.2826297 ]
+
+Logging State at Time:	1695870957.5977416
+Robot ML State:	(1, 8, 'E')
+Human ML State:	(6, 2, 'N')
+Robot LL State:	[-3.47556539  3.12577819  0.00542785]
+Human LL State:	[ 1.61149906 -2.4261076   1.27770655]
+
+Logging State at Time:	1695870958.7390664
+Robot ML State:	(1, 8, 'E')
+Human ML State:	(6, 2, 'N')
+Robot LL State:	[-3.47489306  3.46867452  0.00558338]
+Human LL State:	[ 1.11006269 -2.52426967  1.27768973]
+
+
+Plan: []
+Overcooked Q: 	[764.7949573620399, 764.5405345551998, 764.3588039788851, 764.3588039788851, 764.5405345551998, 764.5405345551998]
+Overcooked A: 	N
+
+Plan: []
+Overcooked Q: 	[764.7960607492115, 764.5416375753097, 764.3599067368083, 764.3599067368083, 764.7960607492115, 758.9523355064917]
+Overcooked A: 	D
+Logging State at Time:	1695870959.7421503
+Robot ML State:	(1, 8, 'N')
+Human ML State:	(5, 2, 'N')
+Robot LL State:	[-3.47489673  3.48866992  0.00539171]
+Human LL State:	[ 0.44576859 -2.56513423  1.2765531 ]
+
+Logging State at Time:	1695870960.7452328
+Robot ML State:	(1, 8, 'N')
+Human ML State:	(4, 2, 'N')
+Robot LL State:	[-3.47490206  3.48866694  0.00539094]
+Human LL State:	[-0.21431784 -2.54797971  1.27685729]
+
+Logging State at Time:	1695870961.7468743
+Robot ML State:	(1, 8, 'N')
+Human ML State:	(4, 2, 'N')
+Robot LL State:	[-3.47490719  3.48866404  0.00538792]
+Human LL State:	[-0.8526916  -2.50465582  1.27631637]
+
+Logging State at Time:	1695870962.748155
+Robot ML State:	(1, 8, 'N')
+Human ML State:	(3, 2, 'N')
+Robot LL State:	[-3.47491236  3.48866107  0.00538481]
+Human LL State:	[-1.49056248 -2.47943692  1.27615899]
+
+Logging State at Time:	1695870963.7518384
+Robot ML State:	(1, 8, 'N')
+Human ML State:	(2, 2, 'N')
+Robot LL State:	[-3.47491756  3.48865805  0.00538158]
+Human LL State:	[-2.12312381 -2.54245509  1.27703666]
+
+
+Plan: []
+Overcooked Q: 	[767.0840572654253, 765.8119444009717, 765.175887968745, 765.175887968745, 767.0840572654253, 759.3717138933795]
+Overcooked A: 	D
+Logging State at Time:	1695870964.7518742
+Robot ML State:	(1, 8, 'N')
+Human ML State:	(2, 2, 'N')
+Robot LL State:	[-3.47492225  3.48865511  0.00538126]
+Human LL State:	[-2.72269256 -2.55082883  1.27667176]
+
+Logging State at Time:	1695870965.7576177
+Robot ML State:	(1, 8, 'N')
+Human ML State:	(1, 2, 'N')
+Robot LL State:	[-3.47492721  3.48865217  0.00537812]
+Human LL State:	[-3.32065902 -2.49317704  1.2761421 ]
+
+Logging State at Time:	1695870966.7766159
+Robot ML State:	(1, 8, 'N')
+Human ML State:	(1, 2, 'N')
+Robot LL State:	[-3.47493036  3.48865029  0.00537604]
+Human LL State:	[-3.49650488 -2.55685748  1.27444785]
+
+Logging State at Time:	1695870967.8317814
+Robot ML State:	(1, 8, 'N')
+Human ML State:	(1, 2, 'N')
+Robot LL State:	[-3.47493203  3.48864929  0.00537493]
+Human LL State:	[-3.5690357  -2.73235859  1.27345217]
+
+Logging State at Time:	1695870968.894923
+Robot ML State:	(1, 8, 'N')
+Human ML State:	(1, 2, 'N')
+Robot LL State:	[-3.4749337   3.48864829  0.00537381]
+Human LL State:	[-3.63926689 -2.78850549  1.27101326]
+
+Logging State at Time:	1695870969.9238994
+Robot ML State:	(1, 8, 'N')
+Human ML State:	(1, 2, 'N')
+Robot LL State:	[-3.47493536  3.48864712  0.00537553]
+Human LL State:	[-3.72439679 -2.77339148  1.2745609 ]
+
+
+Plan: []
+Overcooked Q: 	[762.0949584119006, 761.959064161114, 761.8533686327244, 761.8533686327244, 762.0949584119006, 766.5227689119514]
+Overcooked A: 	I
+Logging State at Time:	1695870971.0491285
+Robot ML State:	(1, 8, 'N')
+Human ML State:	(1, 2, 'N')
+Robot LL State:	[-3.47492901  3.4886578   0.00539999]
+Human LL State:	[-3.77892568 -2.75626739  1.27024889]
+
+Logging State at Time:	1695870972.2442338
+Robot ML State:	(1, 8, 'N')
+Human ML State:	(1, 2, 'N')
+Robot LL State:	[-3.47493714  3.48867107  0.0054805 ]
+Human LL State:	[-3.89663698 -2.72809403  1.24839656]
+
+Logging State at Time:	1695870973.247034
+Robot ML State:	(1, 8, 'N')
+Human ML State:	(1, 2, 'N')
+Robot LL State:	[-3.47494905  3.48868775  0.00561065]
+Human LL State:	[-3.9768313  -2.75937638  1.22256242]
+
+Logging State at Time:	1695870974.249918
+Robot ML State:	(1, 8, 'N')
+Human ML State:	(1, 2, 'N')
+Robot LL State:	[-3.4749529   3.48868836  0.00564332]
+Human LL State:	[-3.85268389 -2.76092741  1.26179811]
+
+Logging State at Time:	1695870975.3059857
+Robot ML State:	(1, 8, 'N')
+Human ML State:	(1, 2, 'N')
+Robot LL State:	[-3.47494177  3.48868687  0.00565121]
+Human LL State:	[-3.73111365 -2.75818979  1.24708135]
+
+
+Plan: []
+Overcooked Q: 	[766.5131254638201, 766.5827451845706, 766.4551090298612, 766.5827451845706, 766.5131254638201, 766.5131254638201]
+Overcooked A: 	S
+Logging State at Time:	1695870976.3708882
+Robot ML State:	(1, 8, 'E')
+Human ML State:	(1, 2, 'N')
+Robot LL State:	[-3.47499922  3.48867132  0.00543217]
+Human LL State:	[-3.79129924 -2.72253661  1.24411685]
+
+Logging State at Time:	1695870977.377951
+Robot ML State:	(1, 8, 'E')
+Human ML State:	(1, 2, 'N')
+Robot LL State:	[-3.47500035  3.48867421  0.00540946]
+Human LL State:	[-3.82472274 -2.75326865  1.2493705 ]
+
+Logging State at Time:	1695870978.7995303
+Robot ML State:	(1, 8, 'E')
+Human ML State:	(1, 2, 'N')
+Robot LL State:	[-3.47499941  3.48867865  0.00538484]
+Human LL State:	[-3.82453698 -2.76429835  1.24860509]
+
+Logging State at Time:	1695870979.8032897
+Robot ML State:	(1, 8, 'S')
+Human ML State:	(1, 2, 'N')
+Robot LL State:	[-3.47499964  3.48867781  0.00537638]
+Human LL State:	[-3.82253748 -2.76037869  1.24883219]
+
+
+Plan: []
+Overcooked Q: 	[766.5210508719771, 766.590671312565, 766.4630338381538, 766.590671312565, 766.5210508719771, 766.5210508719771]
+Overcooked A: 	S
+Logging State at Time:	1695870980.8837626
+Robot ML State:	(1, 8, 'S')
+Human ML State:	(1, 2, 'N')
+Robot LL State:	[-3.35500001  3.48867747  0.00540187]
+Human LL State:	[-3.90853365 -2.64915111  1.24812218]
+
+Logging State at Time:	1695870981.8967035
+Robot ML State:	(1, 8, 'S')
+Human ML State:	(1, 2, 'N')
+Robot LL State:	[-3.25500399  3.48867437  0.00550665]
+Human LL State:	[-3.91095859 -2.64658104  1.24653459]
+
+Logging State at Time:	1695870983.281127
+Robot ML State:	(1, 8, 'S')
+Human ML State:	(1, 2, 'N')
+Robot LL State:	[-3.13500165  3.48867073  0.00561423]
+Human LL State:	[-3.90916569 -2.65023613  1.24753473]
+
+Logging State at Time:	1695870985.0656796
+Robot ML State:	(2, 8, 'S')
+Human ML State:	(1, 2, 'N')
+Robot LL State:	[-2.93500641  3.48866645  0.00574387]
+Human LL State:	[-3.73301737 -2.67886855  1.25019387]
+
+Logging State at Time:	1695870986.7759006
+Robot ML State:	(2, 8, 'S')
+Human ML State:	(1, 2, 'N')
+Robot LL State:	[-2.75500522  3.48866692  0.00572119]
+Human LL State:	[-3.68120152 -2.76725572  1.25015121]
+
+Logging State at Time:	1695870988.6580634
+Robot ML State:	(2, 8, 'S')
+Human ML State:	(1, 2, 'N')
+Robot LL State:	[-2.5350063   3.48866872  0.00572376]
+Human LL State:	[-3.69414944 -2.75504774  1.25225072]
+
+
+Plan: []
+Overcooked Q: 	[766.5210508729298, 766.5906713135178, 766.5210508729298, 766.6757629631253, 766.5906713135178, 766.5906713135178]
+Overcooked A: 	W
+Logging State at Time:	1695870989.7390134
+Robot ML State:	(2, 8, 'S')
+Human ML State:	(1, 2, 'N')
+Robot LL State:	[-2.51266737  3.48810625  0.00555372]
+Human LL State:	[-3.70528644 -2.7437599   1.25590812]
+
+Logging State at Time:	1695870990.7450845
+Robot ML State:	(2, 8, 'S')
+Human ML State:	(1, 2, 'N')
+Robot LL State:	[-2.51266659  3.48810633  0.00546183]
+Human LL State:	[-3.7614033  -2.74456435  1.2418559 ]
+
+Logging State at Time:	1695870991.74568
+Robot ML State:	(2, 8, 'W')
+Human ML State:	(1, 2, 'N')
+Robot LL State:	[-2.51266702  3.48810567  0.00545501]
+Human LL State:	[-3.78680613 -2.75572457  1.223998  ]
+
+
+Plan: []
+Overcooked Q: 	[766.5210508729298, 766.5906713135178, 766.5210508729298, 766.6757629631253, 766.5906713135178, 766.5906713135178]
+Overcooked A: 	W
+Logging State at Time:	1695870992.7477386
+Robot ML State:	(2, 8, 'W')
+Human ML State:	(1, 2, 'N')
+Robot LL State:	[-2.51266696  3.38810452  0.00545278]
+Human LL State:	[-3.74147005 -2.74105     1.24040984]
+
+Logging State at Time:	1695870993.7477715
+Robot ML State:	(2, 8, 'W')
+Human ML State:	(1, 2, 'N')
+Robot LL State:	[-2.51266662  3.20810395  0.0054554 ]
+Human LL State:	[-3.79978862 -2.76157087  1.22565552]
+
+Logging State at Time:	1695870994.7567825
+Robot ML State:	(2, 8, 'W')
+Human ML State:	(1, 2, 'N')
+Robot LL State:	[-2.51266684  3.02810336  0.00545277]
+Human LL State:	[-3.77502572 -2.75777613  1.23517995]
+
+Logging State at Time:	1695870995.763226
+Robot ML State:	(2, 7, 'W')
+Human ML State:	(1, 2, 'N')
+Robot LL State:	[-2.51266683  2.6681018   0.00545565]
+Human LL State:	[-3.76555538 -2.64337291  1.25690416]
+
+Logging State at Time:	1695870996.8095574
+Robot ML State:	(2, 7, 'W')
+Human ML State:	(1, 2, 'E')
+Robot LL State:	[-2.51314085  2.52620623  0.00547306]
+Human LL State:	[-3.72134178 -2.30713267  1.28039733]
+
+
+Plan: []
+Overcooked Q: 	[766.667835954377, 766.7741994166347, 766.667835954377, 766.9109524395377, 766.7741994166347, 766.7741994166347]
+Overcooked A: 	W
+Logging State at Time:	1695870997.8142462
+Robot ML State:	(2, 7, 'W')
+Human ML State:	(1, 2, 'E')
+Robot LL State:	[-2.51314065  2.34620651  0.00544006]
+Human LL State:	[-3.58229054 -2.19072438  1.28651065]
+
+Logging State at Time:	1695870998.8207595
+Robot ML State:	(2, 7, 'W')
+Human ML State:	(1, 2, 'E')
+Robot LL State:	[-2.513141    2.16620599  0.00544493]
+Human LL State:	[-3.49312991 -2.03776039  1.2853238 ]
+
+Logging State at Time:	1695870999.82397
+Robot ML State:	(2, 6, 'W')
+Human ML State:	(1, 3, 'E')
+Robot LL State:	[-2.51314065  1.9862053   0.00544969]
+Human LL State:	[-3.32101389 -1.93613818  1.27752699]
+
+Logging State at Time:	1695871000.8287494
+Robot ML State:	(2, 6, 'W')
+Human ML State:	(1, 3, 'E')
+Robot LL State:	[-2.51314086  1.80620446  0.00544924]
+Human LL State:	[-3.21146693 -1.7974928   1.27866298]
+
+Logging State at Time:	1695871001.8340242
+Robot ML State:	(2, 6, 'W')
+Human ML State:	(1, 3, 'E')
+Robot LL State:	[-2.51314047  1.62620356  0.0054517 ]
+Human LL State:	[-3.12426176 -1.64395242  1.28126101]
+
+
+Plan: []
+Overcooked Q: 	[766.9206008915585, 767.3582160703838, 766.9206008915585, 766.9206008915585, 767.1029405494023, 767.1029405494023]
+Overcooked A: 	S
+Logging State at Time:	1695871002.934035
+Robot ML State:	(2, 6, 'W')
+Human ML State:	(2, 3, 'E')
+Robot LL State:	[-2.51314028  1.5262015   0.0054479 ]
+Human LL State:	[-2.9900154  -1.49822671  1.28033801]
+
+Logging State at Time:	1695871003.948752
+Robot ML State:	(2, 6, 'S')
+Human ML State:	(2, 3, 'E')
+Robot LL State:	[-2.51313961  1.52620153  0.00545098]
+Human LL State:	[-2.72711826 -1.35193201  1.27870689]
+
+
+Plan: []
+Overcooked Q: 	[767.1012212113694, 767.7394085834254, 767.1012212113694, 767.1012212113694, 767.3564961601919, 767.3564961601919]
+Overcooked A: 	S
+Logging State at Time:	1695871004.9548337
+Robot ML State:	(2, 6, 'S')
+Human ML State:	(2, 4, 'E')
+Robot LL State:	[-2.07313692  1.52619997  0.00544089]
+Human LL State:	[-2.45369162 -0.88858558  1.27729202]
+
+Logging State at Time:	1695871005.986921
+Robot ML State:	(3, 6, 'S')
+Human ML State:	(2, 4, 'E')
+Robot LL State:	[-1.55253646  1.5267013   0.00559062]
+Human LL State:	[-2.27048873 -0.27762034  1.27489106]
+
+
+Plan: []
+Overcooked Q: 	[767.7411293528102, 768.3793181552649, 767.3582160713376, 767.3582160713376, 768.3793181552649, 767.574993342071]
+Overcooked A: 	D
+Logging State at Time:	1695871006.989755
+Robot ML State:	(3, 6, 'S')
+Human ML State:	(3, 5, 'E')
+Robot LL State:	[-1.52966481  1.52703356  0.00623208]
+Human LL State:	[-1.93146227  0.19747988  1.27376375]
+
+Logging State at Time:	1695871007.992238
+Robot ML State:	(3, 6, 'S')
+Human ML State:	(3, 5, 'S')
+Robot LL State:	[-1.52919636  1.52671167  0.0062445 ]
+Human LL State:	[-1.43019535  0.35786481  1.26310221]
+
+Logging State at Time:	1695871008.9930537
+Robot ML State:	(3, 6, 'S')
+Human ML State:	(3, 5, 'S')
+Robot LL State:	[-1.52879816  1.52644397  0.00608823]
+Human LL State:	[-1.59817099  0.57408663  1.25953257]
+
+Logging State at Time:	1695871010.0138109
+Robot ML State:	(3, 6, 'S')
+Human ML State:	(3, 5, 'S')
+Robot LL State:	[-1.52873875  1.52640709  0.00587164]
+Human LL State:	[-1.3270299   0.57216509  1.25634526]
+
+Logging State at Time:	1695871011.018139
+Robot ML State:	(3, 6, 'S')
+Human ML State:	(3, 5, 'S')
+Robot LL State:	[-1.52871068  1.52638373  0.00587136]
+Human LL State:	[-1.33420403  0.56366184  1.25593769]
+
+Logging State at Time:	1695871012.0203967
+Robot ML State:	(3, 6, 'S')
+Human ML State:	(3, 5, 'S')
+Robot LL State:	[-1.52868646  1.5263636   0.00587209]
+Human LL State:	[-1.3441653   0.56500456  1.25648323]
+
+
+Plan: []
+Overcooked Q: 	[667.5729030196323, 668.2790291227755, 667.1190285813116, 667.5056954284662, 668.2790291227755, 630.0448167585956]
+Overcooked A: 	D
+Logging State at Time:	1695871013.023226
+Robot ML State:	(3, 6, 'S')
+Human ML State:	(3, 5, 'S')
+Robot LL State:	[-1.52865961  1.52634148  0.00587208]
+Human LL State:	[-1.35072362  0.56479633  1.25314236]
+
+Logging State at Time:	1695871014.0238972
+Robot ML State:	(3, 6, 'S')
+Human ML State:	(3, 5, 'S')
+Robot LL State:	[-1.52863212  1.52631877  0.00587182]
+Human LL State:	[-1.35469414  0.56830792  1.25039797]
+
+Logging State at Time:	1695871015.0281134
+Robot ML State:	(3, 6, 'S')
+Human ML State:	(3, 5, 'S')
+Robot LL State:	[-1.52860376  1.52629539  0.00587156]
+Human LL State:	[-1.34867965  0.57020162  1.24186783]
+
+Logging State at Time:	1695871016.0310788
+Robot ML State:	(3, 6, 'S')
+Human ML State:	(3, 5, 'S')
+Robot LL State:	[-1.5285747   1.52627154  0.00587131]
+Human LL State:	[-1.34805312  0.56565998  1.23996787]
+
+Logging State at Time:	1695871017.055697
+Robot ML State:	(3, 6, 'S')
+Human ML State:	(3, 5, 'S')
+Robot LL State:	[-1.52854294  1.52624549  0.00587105]
+Human LL State:	[-1.3321438   0.5332875   1.25122237]
+
+
+Plan: []
+Overcooked Q: 	[764.2061518211509, 765.4755972560697, 763.5714291036916, 764.2061518211509, 765.4755972560697, 763.438659069409]
+Overcooked A: 	D
+Logging State at Time:	1695871018.0591497
+Robot ML State:	(3, 6, 'S')
+Human ML State:	(3, 5, 'S')
+Robot LL State:	[-1.52851304  1.52622095  0.00587203]
+Human LL State:	[-1.3021544   0.53061346  1.24536924]
+
+Logging State at Time:	1695871019.0610847
+Robot ML State:	(3, 6, 'S')
+Human ML State:	(3, 5, 'S')
+Robot LL State:	[-1.52848123  1.52619499  0.00587178]
+Human LL State:	[-1.26456446  0.50831857  1.23404145]
+
+Logging State at Time:	1695871020.088762
+Robot ML State:	(3, 6, 'S')
+Human ML State:	(3, 5, 'S')
+Robot LL State:	[-1.52844733  1.52616749  0.00587152]
+Human LL State:	[-1.27010655  0.53334294  1.23878872]
+
+Logging State at Time:	1695871021.1181333
+Robot ML State:	(3, 6, 'S')
+Human ML State:	(3, 5, 'S')
+Robot LL State:	[-1.52841317  1.52613995  0.00587127]
+Human LL State:	[-1.24650898  0.54097445  1.23148389]
+
+Logging State at Time:	1695871022.1637774
+Robot ML State:	(3, 6, 'S')
+Human ML State:	(3, 5, 'S')
+Robot LL State:	[-1.5283788   1.52611239  0.00587102]
+Human LL State:	[-1.2574097   0.54477488  1.23227897]
+
+Logging State at Time:	1695871023.1980557
+Robot ML State:	(3, 6, 'S')
+Human ML State:	(3, 5, 'S')
+Robot LL State:	[-1.52834704  1.52608694  0.005872  ]
+Human LL State:	[-1.31973842  0.56350144  1.25043299]
+
+
+Plan: []
+Overcooked Q: 	[877.2181278979592, 878.0340226363637, 876.90818887013, 876.9776019350651, 878.0340226363637, 878.1711077967034]
+Overcooked A: 	I
+Logging State at Time:	1695871024.370739
+Robot ML State:	(3, 6, 'S')
+Human ML State:	(3, 5, 'S')
+Robot LL State:	[-1.53165528  1.52820867  0.01049201]
+Human LL State:	[-1.32472566  0.57823772  1.25081696]
+
+Logging State at Time:	1695871025.5670133
+Robot ML State:	(3, 6, 'S')
+Human ML State:	(3, 5, 'S')
+Robot LL State:	[-1.54067793  1.53518539  0.00733171]
+Human LL State:	[-1.31944488  0.60499536  1.24563927]
+
+Logging State at Time:	1695871026.6378922
+Robot ML State:	(3, 6, 'S')
+Human ML State:	(3, 5, 'S')
+Robot LL State:	[-1.53933998  1.53424741  0.00621027]
+Human LL State:	[-1.31332359  0.59389561  1.24269162]
+
+Logging State at Time:	1695871027.7079194
+Robot ML State:	(3, 6, 'S')
+Human ML State:	(3, 5, 'S')
+Robot LL State:	[-1.53918339  1.53411424  0.00627856]
+Human LL State:	[-1.31394016  0.58947875  1.25297058]
+
+Logging State at Time:	1695871028.7398355
+Robot ML State:	(3, 6, 'S')
+Human ML State:	(3, 5, 'S')
+Robot LL State:	[-1.53885095  1.53383942  0.00628676]
+Human LL State:	[-1.30918021  0.60239747  1.23528887]
+
+
+Plan: []
+Overcooked Q: 	[633.0532693997504, 633.0127228507592, 633.0532693997504, 632.9779686659097, 633.0127228507592, 633.0127228507592]
+Overcooked A: 	N
+Logging State at Time:	1695871029.7807066
+Robot ML State:	(3, 6, 'W')
+Human ML State:	(3, 5, 'S')
+Robot LL State:	[-1.53811088  1.5329091   0.00565611]
+Human LL State:	[-1.34049467  0.68170034  1.25101042]
+
+Logging State at Time:	1695871030.8487477
+Robot ML State:	(3, 6, 'N')
+Human ML State:	(3, 5, 'E')
+Robot LL State:	[-1.53809042  1.53287796  0.00542064]
+Human LL State:	[-1.39959245  0.59205828  1.31048671]
+
+
+Plan: []
+Overcooked Q: 	[763.4339266440421, 763.3850293195918, 763.4339266440421, 763.3431173272057, 763.3850293195918, 763.3850293195918]
+Overcooked A: 	N
+Logging State at Time:	1695871031.8819888
+Robot ML State:	(3, 6, 'N')
+Human ML State:	(3, 5, 'E')
+Robot LL State:	[-1.8780874   1.53288059  0.00534393]
+Human LL State:	[-1.46009553  0.51130006  1.28084533]
+
+Logging State at Time:	1695871032.8857775
+Robot ML State:	(2, 6, 'N')
+Human ML State:	(3, 5, 'E')
+Robot LL State:	[-2.2380752   1.53286793  0.00536155]
+Human LL State:	[-1.57052399  0.31417514  1.27514011]
+
+Logging State at Time:	1695871034.2290418
+Robot ML State:	(2, 6, 'N')
+Human ML State:	(3, 5, 'S')
+Robot LL State:	[-2.41619714  1.53422033  0.0056204 ]
+Human LL State:	[-1.69824839  0.41969996  1.26611992]
+
+
+Plan: []
+Overcooked Q: 	[633.0611628572335, 633.0206158026728, 633.1090821035326, 633.0206158026728, 633.0611628572335, 633.0611628572335]
+Overcooked A: 	E
+Logging State at Time:	1695871035.2756488
+Robot ML State:	(2, 6, 'N')
+Human ML State:	(3, 5, 'S')
+Robot LL State:	[-2.47476759  1.53567652  0.00549471]
+Human LL State:	[-1.83024957  0.29278534  1.27029291]
+
+Logging State at Time:	1695871036.2809446
+Robot ML State:	(2, 6, 'N')
+Human ML State:	(2, 5, 'S')
+Robot LL State:	[-2.47474749  1.53565464  0.00542373]
+Human LL State:	[-2.00202235  0.09591993  1.27930189]
+
+
+Plan: []
+Overcooked Q: 	[627.4198775614461, 627.3796918266379, 627.4673697934923, 627.3796918266379, 627.4198775614461, 627.4198775614461]
+Overcooked A: 	E
+Logging State at Time:	1695871037.3048258
+Robot ML State:	(2, 6, 'E')
+Human ML State:	(2, 4, 'W')
+Robot LL State:	[-2.4747722   1.63563307  0.00541451]
+Human LL State:	[-2.12838914 -0.25620236  1.27165024]
+
+Logging State at Time:	1695871038.315971
+Robot ML State:	(2, 6, 'E')
+Human ML State:	(2, 4, 'W')
+Robot LL State:	[-2.4747787   1.99559515  0.00540699]
+Human LL State:	[-2.36578254 -0.52338889  1.27417423]
+
+Logging State at Time:	1695871039.3429317
+Robot ML State:	(2, 7, 'E')
+Human ML State:	(2, 4, 'W')
+Robot LL State:	[-2.47478767  2.35553559  0.00539559]
+Human LL State:	[-2.53903515 -0.8236054   1.27477526]
+
+Logging State at Time:	1695871040.609099
+Robot ML State:	(2, 7, 'E')
+Human ML State:	(2, 4, 'S')
+Robot LL State:	[-2.47375789  2.45698442  0.00565352]
+Human LL State:	[-2.46764948 -0.91724002  1.2738598 ]
+
+
+Plan: []
+Overcooked Q: 	[763.4917034689543, 763.4339157227033, 763.5610487644556, 763.4339157227033, 763.4917034689543, 763.4917034689543]
+Overcooked A: 	E
+Logging State at Time:	1695871041.6289198
+Robot ML State:	(2, 7, 'E')
+Human ML State:	(2, 4, 'E')
+Robot LL State:	[-2.47644051  2.53765681  0.00540829]
+Human LL State:	[-2.79714489 -0.7643151   1.29251987]
+
+Logging State at Time:	1695871042.6318767
+Robot ML State:	(2, 7, 'E')
+Human ML State:	(2, 4, 'E')
+Robot LL State:	[-2.47643184  2.89761666  0.00528255]
+Human LL State:	[-2.87335525 -0.77443531  1.28082991]
+
+Logging State at Time:	1695871043.63288
+Robot ML State:	(2, 8, 'E')
+Human ML State:	(1, 4, 'E')
+Robot LL State:	[-2.47642843  3.25763196  0.00527625]
+Human LL State:	[-3.14501636 -0.64795973  1.28446384]
+
+Logging State at Time:	1695871044.6387382
+Robot ML State:	(2, 8, 'E')
+Human ML State:	(1, 4, 'S')
+Robot LL State:	[-2.47650234  3.46245892  0.0055512 ]
+Human LL State:	[-3.09284955 -0.82340676  1.2749724 ]
+
+
+Plan: []
+Overcooked Q: 	[763.6460228412856, 763.49192214048, 763.49192214048, 763.49192214048, 763.5612674558425, 763.5612674558425]
+Overcooked A: 	N
+Logging State at Time:	1695871045.6408212
+Robot ML State:	(2, 8, 'E')
+Human ML State:	(1, 3, 'W')
+Robot LL State:	[-2.47779386  3.4875585   0.00545536]
+Human LL State:	[-3.27135769 -1.13641573  1.27916841]
+
+
+Plan: []
+Overcooked Q: 	[631.9127897991161, 631.807576214401, 631.807576214401, 631.807576214401, 631.8554005710897, 631.8554005710897]
+Overcooked A: 	N
+Logging State at Time:	1695871046.6441386
+Robot ML State:	(2, 8, 'N')
+Human ML State:	(1, 3, 'W')
+Robot LL State:	[-2.51778629  3.48752433  0.00541642]
+Human LL State:	[-3.13502125 -1.20742566  1.2758672 ]
+
+Logging State at Time:	1695871047.686618
+Robot ML State:	(2, 8, 'N')
+Human ML State:	(1, 3, 'S')
+Robot LL State:	[-2.87781444  3.48752084  0.00540362]
+Human LL State:	[-3.10024956 -1.14588163  1.2428093 ]
+
+Logging State at Time:	1695871048.6989815
+Robot ML State:	(1, 8, 'N')
+Human ML State:	(1, 3, 'E')
+Robot LL State:	[-3.21778721  3.4875413   0.00538391]
+Human LL State:	[-3.16852119 -1.0931658   1.24485834]
+
+Logging State at Time:	1695871049.825808
+Robot ML State:	(1, 8, 'N')
+Human ML State:	(1, 3, 'E')
+Robot LL State:	[-3.45800648  3.48698042  0.00560248]
+Human LL State:	[-3.19918812 -1.13135646  1.26311912]
+
+
+Plan: []
+Overcooked Q: 	[763.561057288986, 763.4917119927106, 763.4339242458144, 763.4339242458144, 763.561057288986, 767.5148531716434]
+Overcooked A: 	I
+
+Plan: []
+Overcooked Q: 	[670.2671512943482, 670.342882741441, 670.2066989988617, 670.342882741441, 670.2671512943482, 670.2671512943482]
+Overcooked A: 	S
+Logging State at Time:	1695871050.9228756
+Robot ML State:	(1, 8, 'N')
+Human ML State:	(1, 3, 'E')
+Robot LL State:	[-3.4780022   3.48697267  0.00540808]
+Human LL State:	[-3.20584001 -1.21139995  1.27098984]
+
+Logging State at Time:	1695871051.9329574
+Robot ML State:	(1, 8, 'E')
+Human ML State:	(1, 3, 'E')
+Robot LL State:	[-3.47800243  3.48697642  0.00539629]
+Human LL State:	[-3.20919972 -1.25028452  1.26177428]
+
+Logging State at Time:	1695871052.9367056
+Robot ML State:	(1, 8, 'S')
+Human ML State:	(1, 3, 'E')
+Robot LL State:	[-3.47800064  3.48697654  0.00539313]
+Human LL State:	[-3.16691969 -1.24316296  1.27276593]
+
+
+Plan: []
+Overcooked Q: 	[670.2774559869364, 670.3531885983252, 670.2170027620559, 670.3531885983252, 670.2774559869364, 670.2774559869364]
+Overcooked A: 	S
+Logging State at Time:	1695871053.9643483
+Robot ML State:	(1, 8, 'S')
+Human ML State:	(1, 3, 'E')
+Robot LL State:	[-3.17799496  3.48697646  0.00538274]
+Human LL State:	[-3.16062682 -1.24563239  1.27334747]
+
+Logging State at Time:	1695871054.9709668
+Robot ML State:	(2, 8, 'S')
+Human ML State:	(1, 3, 'E')
+Robot LL State:	[-2.81799015  3.48697633  0.00538522]
+Human LL State:	[-3.16070794 -1.24477974  1.27418533]
+
+Logging State at Time:	1695871056.206124
+Robot ML State:	(2, 8, 'S')
+Human ML State:	(1, 3, 'E')
+Robot LL State:	[-2.53849172  3.48613868  0.00568348]
+Human LL State:	[-3.18452944 -1.22385227  1.27570938]
+
+
+Plan: []
+Overcooked Q: 	[670.2774559912185, 670.3531886026077, 670.2774559912185, 670.4513037266748, 670.3531886026077, 670.3531886026077]
+Overcooked A: 	W
+Logging State at Time:	1695871057.2509809
+Robot ML State:	(2, 8, 'W')
+Human ML State:	(1, 3, 'E')
+Robot LL State:	[-2.5184908   3.48613973  0.00545998]
+Human LL State:	[-3.18843425 -1.19067307  1.26307448]
+
+
+Plan: []
+Overcooked Q: 	[670.2774559912185, 670.3531886026077, 670.2774559912185, 670.4513037266748, 670.3531886026077, 670.3531886026077]
+Overcooked A: 	W
+Logging State at Time:	1695871058.2759855
+Robot ML State:	(2, 8, 'W')
+Human ML State:	(1, 3, 'E')
+Robot LL State:	[-2.51849048  3.34614008  0.00546077]
+Human LL State:	[-3.19817353 -1.20871653  1.27611275]
+
+Logging State at Time:	1695871059.2870045
+Robot ML State:	(2, 7, 'W')
+Human ML State:	(1, 3, 'E')
+Robot LL State:	[-2.51849053  2.98614137  0.00546565]
+Human LL State:	[-3.19079058 -1.22391322  1.27947025]
+
+Logging State at Time:	1695871060.2888813
+Robot ML State:	(2, 7, 'W')
+Human ML State:	(1, 3, 'E')
+Robot LL State:	[-2.51849049  2.62614189  0.00547009]
+Human LL State:	[-3.19493717 -1.23314291  1.28009806]
+
+Logging State at Time:	1695871061.326636
+Robot ML State:	(2, 7, 'W')
+Human ML State:	(1, 3, 'E')
+Robot LL State:	[-2.51914841  2.52391928  0.00564778]
+Human LL State:	[-3.19433969 -1.23137645  1.27919558]
+
+
+Plan: []
+Overcooked Q: 	[670.3531886026077, 670.4513037266748, 670.3531886026077, 670.5843723636908, 670.4513037266748, 670.4513037266748]
+Overcooked A: 	W
+Logging State at Time:	1695871062.368048
+Robot ML State:	(2, 7, 'W')
+Human ML State:	(1, 3, 'E')
+Robot LL State:	[-2.51859857  2.38511337  0.00538113]
+Human LL State:	[-3.19292027 -1.23043329  1.27846149]
+
+Logging State at Time:	1695871063.3767035
+Robot ML State:	(2, 7, 'W')
+Human ML State:	(1, 3, 'E')
+Robot LL State:	[-2.51859885  2.02511006  0.00538546]
+Human LL State:	[-3.19352818 -1.23067104  1.27892688]
+
+Logging State at Time:	1695871064.3807302
+Robot ML State:	(2, 6, 'W')
+Human ML State:	(1, 3, 'E')
+Robot LL State:	[-2.51859899  1.66510536  0.00539036]
+Human LL State:	[-3.12537495 -1.48545645  1.27818029]
+
+Logging State at Time:	1695871065.4369352
+Robot ML State:	(2, 6, 'W')
+Human ML State:	(1, 3, 'E')
+Robot LL State:	[-2.51943374  1.52515968  0.00553111]
+Human LL State:	[-3.25356957 -1.76732766  1.27709943]
+
+
+Plan: []
+Overcooked Q: 	[670.4513037266748, 670.5843723636908, 670.4513037266748, 670.7771462835908, 670.5843723636908, 670.5843723636908]
+Overcooked A: 	W
+Logging State at Time:	1695871066.4398272
+Robot ML State:	(2, 6, 'W')
+Human ML State:	(1, 3, 'E')
+Robot LL State:	[-2.51901047  1.36608398  0.00546192]
+Human LL State:	[-3.37661497 -1.95174712  1.27662676]
+
+Logging State at Time:	1695871067.445197
+Robot ML State:	(2, 6, 'W')
+Human ML State:	(1, 3, 'E')
+Robot LL State:	[-2.51901037  1.00607619  0.00540155]
+Human LL State:	[-3.39181989 -1.97958379  1.2767892 ]
+
+Logging State at Time:	1695871068.4456024
+Robot ML State:	(2, 5, 'W')
+Human ML State:	(1, 3, 'E')
+Robot LL State:	[-2.51901046  0.64607092  0.00539352]
+Human LL State:	[-3.4065833  -1.93191785  1.26582463]
+
+Logging State at Time:	1695871069.4499788
+Robot ML State:	(2, 5, 'W')
+Human ML State:	(1, 3, 'E')
+Robot LL State:	[-2.51985798  0.52621892  0.00552191]
+Human LL State:	[-3.43222009 -1.92512654  1.26232711]
+
+
+Plan: []
+Overcooked Q: 	[670.5843723636908, 671.0865991550093, 670.5843723636908, 670.5843723636908, 670.7771462835908, 670.7771462835908]
+Overcooked A: 	S
+Logging State at Time:	1695871070.469234
+Robot ML State:	(2, 5, 'S')
+Human ML State:	(1, 3, 'E')
+Robot LL State:	[-2.51985444  0.52621589  0.00539784]
+Human LL State:	[-3.4011962  -1.9381653   1.27377577]
+
+
+Plan: []
+Overcooked Q: 	[670.5843723636908, 671.0865991550093, 670.5843723636908, 670.5843723636908, 670.7771462835908, 670.7771462835908]
+Overcooked A: 	S
+Logging State at Time:	1695871071.507811
+Robot ML State:	(2, 5, 'S')
+Human ML State:	(1, 3, 'E')
+Robot LL State:	[-2.17984851  0.52621558  0.00538934]
+Human LL State:	[-3.39504849 -1.92827728  1.27280883]
+
+Logging State at Time:	1695871072.5120616
+Robot ML State:	(3, 5, 'S')
+Human ML State:	(1, 3, 'E')
+Robot LL State:	[-1.81984323  0.52621524  0.00538742]
+Human LL State:	[-3.37508    -1.97139137  1.27450876]
+
+Logging State at Time:	1695871073.5800695
+Robot ML State:	(3, 5, 'S')
+Human ML State:	(1, 3, 'E')
+Robot LL State:	[-1.57908216  0.52674269  0.00560179]
+Human LL State:	[-3.36800972 -1.9778914   1.27278916]
+
+
+Plan: []
+Overcooked Q: 	[670.7771462835908, 671.0865991550093, 670.5843723636908, 670.5843723636908, 671.0865991550093, 675.6703092504196]
+Overcooked A: 	I
+Logging State at Time:	1695871074.7008107
+Robot ML State:	(3, 5, 'S')
+Human ML State:	(1, 3, 'E')
+Robot LL State:	[-1.51382033  0.52577842  0.00544958]
+Human LL State:	[-3.35904348 -1.98824995  1.27324183]
+
+
+Plan: []
+Overcooked Q: 	[595.5556264373135, 595.5862808753245, 595.5862808753245, 595.6221397124315, 595.5862808753245, 595.5862808753245]
+Overcooked A: 	W
+
+Plan: []
+Overcooked Q: 	[595.5649664440725, 595.5956213628323, 595.5956213628323, 595.6314807623078, 595.5956213628323, 595.5956213628323]
+Overcooked A: 	W
+Logging State at Time:	1695871075.7039883
+Robot ML State:	(3, 5, 'W')
+Human ML State:	(1, 2, 'E')
+Robot LL State:	[-1.51381814  0.44577141  0.0053679 ]
+Human LL State:	[-3.19204799 -2.04028454  1.27082082]
+
+Logging State at Time:	1695871076.7097611
+Robot ML State:	(3, 4, 'W')
+Human ML State:	(2, 2, 'E')
+Robot LL State:	[-1.51381879 -0.19423791  0.00538046]
+Human LL State:	[-2.89307215 -2.01371412  1.27322263]
+
+
+Plan: []
+Overcooked Q: 	[679.4109764061579, 679.4518821293317, 679.4109764061579, 679.5004240593057, 679.4518821293317, 679.4518821293317]
+Overcooked A: 	W
+Logging State at Time:	1695871077.7141721
+Robot ML State:	(3, 4, 'W')
+Human ML State:	(2, 3, 'E')
+Robot LL State:	[-1.51381858 -0.5742491   0.00536009]
+Human LL State:	[-2.46243931 -1.90322527  1.27114896]
+
+Logging State at Time:	1695871078.740697
+Robot ML State:	(3, 3, 'W')
+Human ML State:	(2, 3, 'E')
+Robot LL State:	[-1.51381931 -1.23425815  0.00538103]
+Human LL State:	[-2.43523784 -1.90499829  1.27263335]
+
+
+Plan: []
+Overcooked Q: 	[595.6310961001902, 595.7250292091098, 595.6310961001902, 595.6310961001902, 595.6736496403565, 595.6736496403565]
+Overcooked A: 	S
+Logging State at Time:	1695871079.7440152
+Robot ML State:	(3, 3, 'S')
+Human ML State:	(2, 2, 'S')
+Robot LL State:	[-1.51381965 -1.47426645  0.00536805]
+Human LL State:	[-2.54742089 -2.08967195  1.27054365]
+
+
+Plan: []
+Overcooked Q: 	[376.4177431594894, 376.5117535848539, 376.4177431594894, 376.4177431594894, 376.45952557076254, 376.45952557076254]
+Overcooked A: 	S
+Logging State at Time:	1695871080.7517552
+Robot ML State:	(3, 3, 'S')
+Human ML State:	(2, 2, 'S')
+Robot LL State:	[-1.07381138 -1.47426569  0.00538131]
+Human LL State:	[-2.7062588  -2.12767644  1.27008752]
+
+Logging State at Time:	1695871081.7518792
+Robot ML State:	(4, 3, 'S')
+Human ML State:	(2, 2, 'S')
+Robot LL State:	[-0.59405123 -1.47372297  0.00566493]
+Human LL State:	[-2.20902338 -2.16085092  1.26876937]
+
+
+Plan: []
+Overcooked Q: 	[464.01097718558736, 464.12686404302633, 464.06248245556026, 464.01097718558736, 464.06248245556026, 464.06248245556026]
+Overcooked A: 	S
+Logging State at Time:	1695871082.8953576
+Robot ML State:	(4, 3, 'S')
+Human ML State:	(3, 2, 'S')
+Robot LL State:	[-0.51119639 -1.47612995  0.00566297]
+Human LL State:	[-1.6206107  -2.17630017  1.2740597 ]
+
+Logging State at Time:	1695871083.8980377
+Robot ML State:	(5, 3, 'S')
+Human ML State:	(4, 2, 'S')
+Robot LL State:	[ 0.10876369 -1.4761315   0.00534334]
+Human LL State:	[-0.79520684 -2.23125946  1.27551819]
+
+Logging State at Time:	1695871084.9232526
+Robot ML State:	(5, 3, 'S')
+Human ML State:	(4, 2, 'S')
+Robot LL State:	[ 0.47231719 -1.47588663  0.00549182]
+Human LL State:	[-0.17396148 -2.23181174  1.27260757]
+
+
+Plan: []
+Overcooked Q: 	[594.7431523044169, 594.8916895552422, 594.8091688603392, 594.7431523044169, 594.8091688603392, 594.8091688603392]
+Overcooked A: 	S
+Logging State at Time:	1695871085.9469948
+Robot ML State:	(5, 3, 'S')
+Human ML State:	(5, 2, 'S')
+Robot LL State:	[ 0.75141766 -1.47629612  0.00543788]
+Human LL State:	[ 0.29796127 -2.41751273  1.27076356]
+
+Logging State at Time:	1695871086.9510639
+Robot ML State:	(6, 3, 'S')
+Human ML State:	(5, 2, 'E')
+Robot LL State:	[ 1.39141375 -1.47630165  0.00542536]
+Human LL State:	[ 0.88823521 -2.60655089  1.26380783]
+
+
+Plan: []
+Overcooked Q: 	[765.491447733934, 765.5609746592505, 765.6459520124151, 765.491447733934, 765.5609746592505, 765.5609746592505]
+Overcooked A: 	E
+Logging State at Time:	1695871087.9570212
+Robot ML State:	(6, 3, 'S')
+Human ML State:	(6, 2, 'E')
+Robot LL State:	[ 1.47600499 -1.47637858  0.00544438]
+Human LL State:	[ 1.17549025 -2.28472293  1.26356219]
+
+Logging State at Time:	1695871088.9607995
+Robot ML State:	(6, 3, 'E')
+Human ML State:	(6, 3, 'E')
+Robot LL State:	[ 1.47600353 -1.47638179  0.00542045]
+Human LL State:	[ 1.70169081 -1.96644459  1.26374135]
+
+Logging State at Time:	1695871089.9630542
+Robot ML State:	(6, 3, 'E')
+Human ML State:	(7, 3, 'E')
+Robot LL State:	[ 1.47600043 -1.47638694  0.0054142 ]
+Human LL State:	[ 2.23423563 -1.65667959  1.26380348]
+
+
+Plan: []
+Overcooked Q: 	[771.012808744589, 771.012808744589, 771.1205598184125, 771.012808744589, 771.012808744589, 771.012808744589]
+Overcooked A: 	E
+Logging State at Time:	1695871090.9879637
+Robot ML State:	(6, 3, 'E')
+Human ML State:	(7, 3, 'E')
+Robot LL State:	[ 1.47599045 -1.11639158  0.00542541]
+Human LL State:	[ 2.77780482 -1.49305328  1.26514871]
+
+Logging State at Time:	1695871092.0778184
+Robot ML State:	(6, 4, 'E')
+Human ML State:	(7, 3, 'E')
+Robot LL State:	[ 1.47555471 -0.59599583  0.00563383]
+Human LL State:	[ 2.87766017 -1.47759646  1.26520983]
+
+
+Plan: []
+Overcooked Q: 	[771.2645883021712, 771.2645883021712, 771.3346395817628, 771.2062122358451, 771.2645883021712, 771.2645883021712]
+Overcooked A: 	E
+Logging State at Time:	1695871093.276643
+Robot ML State:	(6, 4, 'E')
+Human ML State:	(7, 3, 'E')
+Robot LL State:	[ 1.47693548 -0.51479283  0.0055843 ]
+Human LL State:	[ 2.45915912 -1.25388063  1.26514966]
+
+Logging State at Time:	1695871094.2807348
+Robot ML State:	(6, 5, 'E')
+Human ML State:	(7, 4, 'E')
+Robot LL State:	[1.47693527 0.10519287 0.00540975]
+Human LL State:	[ 2.41996921 -0.98758643  1.27351002]
+
+Logging State at Time:	1695871095.3931334
+Robot ML State:	(6, 5, 'E')
+Human ML State:	(7, 4, 'E')
+Robot LL State:	[1.47638579 0.46869701 0.0056374 ]
+Human LL State:	[ 2.36701279 -0.41531088  1.2715297 ]
+
+
+Plan: []
+Overcooked Q: 	[501.6565481887231, 501.6565481887231, 501.7021119079047, 501.61857842273855, 501.6565481887231, 501.6565481887231]
+Overcooked A: 	E
+Logging State at Time:	1695871096.394303
+Robot ML State:	(6, 5, 'E')
+Human ML State:	(7, 5, 'E')
+Robot LL State:	[1.47843211 0.73030207 0.00545632]
+Human LL State:	[2.42346728 0.30426679 1.27412049]
+
+Logging State at Time:	1695871097.4198732
+Robot ML State:	(6, 6, 'E')
+Human ML State:	(7, 5, 'E')
+Robot LL State:	[1.47843227 1.37029497 0.00544437]
+Human LL State:	[2.23071062 0.90402953 1.27369703]
+
+
+Plan: []
+Overcooked Q: 	[667.4813541662861, 667.4414692376995, 667.4813541662861, 667.4414692376995, 667.4414692376995, 667.4414692376995]
+Overcooked A: 	N
+Logging State at Time:	1695871098.4259033
+Robot ML State:	(6, 6, 'E')
+Human ML State:	(7, 6, 'N')
+Robot LL State:	[1.47777334 1.47163864 0.00538045]
+Human LL State:	[2.20615924 1.45141976 1.28775174]
+
+Logging State at Time:	1695871099.4265063
+Robot ML State:	(6, 6, 'E')
+Human ML State:	(7, 7, 'N')
+Robot LL State:	[1.47777575 1.47165102 0.005381  ]
+Human LL State:	[2.00970261 2.02519767 1.26301177]
+
+
+Plan: []
+Overcooked Q: 	[]
+Overcooked A: 	I
+success

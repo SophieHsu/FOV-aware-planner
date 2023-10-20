@@ -153,3 +153,7 @@ agent*.pkl
 .idea/
 
 **.pkl
+
+logs/vr_analysis/
+
+**.mp4

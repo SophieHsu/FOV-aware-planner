@@ -116,7 +116,7 @@ def lvl_str2grid(lvl_str):
     """
     Turns pure string formatted lvl to grid format compatible with overcooked-AI env
     """
-    return [layout_row.strip() for layout_row in lvl_str.split("\n")][:-1]
+    return [layout_row.strip() for layout_row in lvl_str.split("\n")]#[:-1]
 
 
 def read_in_training_data(data_path, sub_dir=None):

@@ -11,7 +11,7 @@ XX           XX
 XX           XX
 XX           XX
 XXXXXXXXXXXXXXX""",
-    "start_order_list": 'steak, steak',
+    "start_order_list": 'steak, steak, steak',
     "cook_time": 15,
     "delivery_reward": 20,
     'num_items_for_steak': 1,
