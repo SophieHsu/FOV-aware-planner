@@ -154,6 +154,6 @@ agent*.pkl
 
 **.pkl
 
-logs/vr_analysis/
+overcooked_ai_py/data/logs/
 
 **.mp4

@@ -712,51 +712,56 @@ if __name__ == "__main__":
     participant = 8
     aware = 'unaware'
     map = 'mid'
+    ignore_participants = [5,11, 12]
+    for participant in range(13,16): # 4,16):
+        if participant in ignore_participants:
+            continue
+        for aware in ['unaware', 'aware']:
+            for map in ['none', 'mid']:
+                log_dir = os.path.join(os.getcwd(), f"overcooked_ai_py/data/logs/vr_study_logs/{participant}/{participant}_{map}_{aware}.json")
+                f = open(log_dir)
+                log = json.load(f)
 
-    log_dir = os.path.join(os.getcwd(), f"overcooked_ai_py/data/logs/vr_study_logs/{participant}/{participant}_{map}_{aware}.json")
-    f = open(log_dir)
-    log = json.load(f)
-
-    log_out_dir = os.path.join(os.getcwd(), f"overcooked_ai_py/data/logs/vr_analysis/{participant}")
+                log_out_dir = os.path.join(os.getcwd(), f"overcooked_ai_py/data/logs/vr_analysis/{participant}")
 
 
-    # log_index = opt.log_index
-    # _, human_log_data = load_human_log_data(log_index)
-    NO_FOG_COPY=False
+                # log_index = opt.log_index
+                # _, human_log_data = load_human_log_data(log_index)
+                NO_FOG_COPY=False
 
-    # play all of the levels
-    # analysis_log_csv = create_analysis_log(opt.log_index)
-    log['i'] = log['i'] + 1
-    if map == 'mid':
-        layout_name = 'steak_mid_2'
-    elif map == 'none':
-        layout_name = 'steak_none_3'
-    lvl_config = {}
-    lvl_config['lvl_str'] = read_layout_dict(layout_name)['grid']
-    lvl_config['lvl_type'] = layout_name
-    lvl_config["kb_search_depth"] = 0
-    lvl_config["vision_bound"] = 150
+                # play all of the levels
+                # analysis_log_csv = create_analysis_log(opt.log_index)
+                log['i'] = log['i'] + 1
+                if map == 'mid':
+                    layout_name = 'steak_mid_2'
+                elif map == 'none':
+                    layout_name = 'steak_none_3'
+                lvl_config = {}
+                lvl_config['lvl_str'] = read_layout_dict(layout_name)['grid']
+                lvl_config['lvl_type'] = layout_name
+                lvl_config["kb_search_depth"] = 0
+                lvl_config["vision_bound"] = 150
 
-    # for log_index in range(1, log['i']):
-        # get level string and logged joint actions from log file
+                # for log_index in range(1, log['i']):
+                    # get level string and logged joint actions from log file
 
-        # overcooked layout string
-    lvl_str = lvl_config["lvl_str"]
+                    # overcooked layout string
+                lvl_str = lvl_config["lvl_str"]
 
-    # joint_actions = ast.literal_eval(lvl_config["joint_actions"])
-    # joint_actions = log
+                # joint_actions = ast.literal_eval(lvl_config["joint_actions"])
+                # joint_actions = log
 
-    # replay the game
-    # if opt.gen_vid:
-        # agent_save_path, _, human_save_path = gen_save_pths(lvl_config)
-    agent_save_path = os.path.join(os.getcwd(), 'overcooked_ai_py/data/logs/vr_analysis/robot_analysis')
-    human_save_path = os.path.join(os.getcwd(), 'overcooked_ai_py/data/logs/vr_analysis/human_analysis')
-    tmp_world_kb_log, tmp_human_kb_log, tmp_subtask_log, robot_holding_log, human_holding_log, robot_in_bound_count = replay_with_joint_actions(lvl_str, log, log_dir=log_out_dir, log_name=f'{participant}_{map}_{aware}', view_angle=lvl_config["vision_bound"], lvl_config=lvl_config)
+                # replay the game
+                # if opt.gen_vid:
+                    # agent_save_path, _, human_save_path = gen_save_pths(lvl_config)
+                agent_save_path = os.path.join(os.getcwd(), 'overcooked_ai_py/data/logs/vr_analysis/robot_analysis')
+                human_save_path = os.path.join(os.getcwd(), 'overcooked_ai_py/data/logs/vr_analysis/human_analysis')
+                tmp_world_kb_log, tmp_human_kb_log, tmp_subtask_log, robot_holding_log, human_holding_log, robot_in_bound_count = replay_with_joint_actions(lvl_str, log, log_dir=log_out_dir, log_name=f'{participant}_{map}_{aware}', view_angle=lvl_config["vision_bound"], lvl_config=lvl_config)
 
-    results = plot_kb_and_subtasks(log, tmp_subtask_log, tmp_human_kb_log, tmp_world_kb_log, robot_holding_log, human_holding_log, robot_in_bound_count, log_dir=log_out_dir, log_name=f'{participant}_{map}_{aware}')
+                results = plot_kb_and_subtasks(log, tmp_subtask_log, tmp_human_kb_log, tmp_world_kb_log, robot_holding_log, human_holding_log, robot_in_bound_count, log_dir=log_out_dir, log_name=f'{participant}_{map}_{aware}')
 
-    # write_to_analysis_log(analysis_log_csv, results, lvl_config["lvl_type"]+'_'+str(lvl_config["kb_search_depth"]), log_index)               
+                # write_to_analysis_log(analysis_log_csv, results, lvl_config["lvl_type"]+'_'+str(lvl_config["kb_search_depth"]), log_index)               
 
-    # if NO_FOG_COPY and lvl_config["vision_bound"] > 0:
-    #     replay_with_joint_actions(lvl_str, joint_actions, log_dir=os.path.join(LSI_STEAK_STUDY_RESULT_DIR, log_index), log_name=lvl_config["lvl_type"]+'_'+str(lvl_config["kb_search_depth"])+'_nofog', view_angle=0)
+                # if NO_FOG_COPY and lvl_config["vision_bound"] > 0:
+                #     replay_with_joint_actions(lvl_str, joint_actions, log_dir=os.path.join(LSI_STEAK_STUDY_RESULT_DIR, log_index), log_name=lvl_config["lvl_type"]+'_'+str(lvl_config["kb_search_depth"])+'_nofog', view_angle=0)
 
