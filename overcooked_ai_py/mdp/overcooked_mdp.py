@@ -858,7 +858,7 @@ class OvercookedGridworld(object):
         # There is a finite horizon, handled by the environment.
         if state.order_list is None:
             return False
-        return len(state.order_list) == 0
+        return len(state.order_list) <= 1
 
     def get_state_transition(self, state, joint_action):
         """Gets information about possible transitions for the action.
@@ -1616,9 +1616,22 @@ class OvercookedGridworld(object):
     # RENDER FUNCTION #
     ###################
 
-    def check_viewpoint(self, player_pos, player_ori, x, y, view_angle=120):
-        item_ang = np.arctan2((y-player_pos[1]), (x-player_pos[0]))*180/np.pi
+    def check_viewpoint(self, player_pos, player_ori, x, y, view_angle=145):
         ori = Direction.DIRECTION_TO_INDEX[player_ori]
+        # center_pt = np.array(player_pos)
+        # if ori == 0: # north
+        #     center_pt[1] += 1
+        # elif ori == 2: # east
+        #     center_pt[0] -= 1
+        # elif ori == 1: # south
+        #     center_pt[1] -= 1
+        # elif ori == 3: # west
+        #     center_pt[0] += 1
+        
+        item_ang = np.arctan2((y-player_pos[1]), (x-player_pos[0]))*180/np.pi
+
+        # if x == center_pt[0] and y == center_pt[1]:
+        #     return False
         if (x,y) == player_pos:
             return True
         if ori == 1: # north
@@ -1776,7 +1789,7 @@ class OvercookedGridworld(object):
                         fog_pgobj = pygame.Surface((50,50))
                         fog_pgobj.fill((0,0,0))
                         # load_image(os.path.join(ASSETS_DIR, TERRAIN_DIR, 'counter.png'))
-                        fog_pgobj.set_alpha(252)
+                        fog_pgobj.set_alpha(100)
                         self.viewer.blit(fog_pgobj, curr_pos)
 
         # update display
@@ -2412,39 +2425,6 @@ class SteakHouseGridworld(OvercookedGridworld):
                             # Log onion potting
                             events_infos['steak_cooking'][player_idx] = True
 
-                elif player.get_object().name in ['onion', 'tomato']:
-                    item_type = player.get_object().name
-
-                    if not new_state.has_object(i_pos):
-                        # Pot was empty, add onion to it
-                        player.remove_object()
-                        new_o_id = obj_count
-                        new_obj = ObjectState(new_o_id, 'soup', i_pos, (item_type, 1, 0))
-                        if not rollout: self.object_id_dict[new_o_id] = new_obj
-                        obj_count += 1
-                        new_state.add_object(new_obj, i_pos)
-                        shaped_reward[
-                            player_idx] += self.reward_shaping_params[
-                                "PLACEMENT_IN_POT_REW"]
-
-                        # Log onion potting
-                        events_infos['onion_potting'][player_idx] = True
-
-                    else:
-                        # Pot has already items in it, add if not full and of same type
-                        obj = new_state.get_object(i_pos)
-                        assert obj.name == 'soup', 'Object in pot was not soup'
-                        soup_type, num_items, cook_time = obj.state
-                        if num_items < self.num_items_for_soup and soup_type == item_type:
-                            player.remove_object()
-                            obj.state = (soup_type, num_items + 1, 0)
-                            shaped_reward[
-                                player_idx] += self.reward_shaping_params[
-                                    "PLACEMENT_IN_POT_REW"]
-
-                            # Log onion potting
-                            events_infos['onion_potting'][player_idx] = True
-
             elif terrain_type == 'S' and player.has_object():
                 obj = player.get_object()
                 if obj.name == 'dish':
@@ -2520,7 +2500,7 @@ class SteakHouseGridworld(OvercookedGridworld):
             return state, self.delivery_reward
 
         # If the delivered soup is the one currently required
-        assert not self.is_terminal(state)
+        # assert not self.is_terminal(state)
         current_order = state.order_list[0]
         if dish_obj.name == 'dish' and 'steak' == current_order:
             state.order_list = state.order_list[1:]
@@ -2972,7 +2952,7 @@ class SteakHouseGridworld(OvercookedGridworld):
                         fog_pgobj = pygame.Surface((50,50))
                         fog_pgobj.fill((0,0,0))
                         # load_image(os.path.join(ASSETS_DIR, TERRAIN_DIR, 'counter.png'))
-                        fog_pgobj.set_alpha(245)
+                        fog_pgobj.set_alpha(100)
                         self.viewer.blit(fog_pgobj, curr_pos)
 
             # render_game_info_panel(

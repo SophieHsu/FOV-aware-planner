@@ -180,7 +180,7 @@ class SearchTree(object):
             # print('length of successors = {}'.format(len(successors)))
             # pq_min_depth = curr_node.depth
 
-            for qmdp_state, child, cost in successors:
+            for qmdp_state, child, cost in successors[::-1]:
                 # print(qmdp_state, child, cost)
                 child_node = SearchNode(child, qmdp_state, parent=curr_node, action_cost=cost, debug=self.debug, gamma=gamma)
                 # est_total_cost = self.estimated_total_cost(child_node)

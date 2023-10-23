@@ -127,15 +127,15 @@ class App:
 
 if __name__ == "__main__" :
 
-    # np.random.seed(0)
+    np.random.seed(1)
     start_time = time.time()
-    layout_name = 'steak_parrallel' #'steak_island2' #'steak_parrallel'  'steak_tshape'
-    scenario_1_mdp = SteakHouseGridworld.from_layout_name(layout_name,  num_items_for_steak=1, chop_time=2, wash_time=2, start_order_list=['steak', 'steak'], cook_time=10)
+    layout_name = 'mid2' #'steak_island2' #'steak_parrallel'  'steak_tshape'
+    scenario_1_mdp = SteakHouseGridworld.from_layout_name(layout_name,  num_items_for_steak=1, chop_time=2, wash_time=2, start_order_list=['steak', 'steak', 'steak'], cook_time=10)
     # start_state = OvercookedState(
     #     [P((2, 1), s, Obj('onion', (2, 1))),
     #      P((3, 2), s)],
     #     {}, order_list=['onion','onion'])
-    env = OvercookedEnv.from_mdp(scenario_1_mdp, horizon = 200)
+    env = OvercookedEnv.from_mdp(scenario_1_mdp, horizon = 400)
 
     COUNTERS_PARAMS = {
         'start_orientations': True,
@@ -150,8 +150,8 @@ if __name__ == "__main__" :
     # hmlp = planners.HumanMediumLevelPlanner(scenario_1_mdp, ml_action_manager, [0.5, (1.0-0.5)], 0.5)
     # human_agent = agent.biasHumanModel(ml_action_manager, [0.5, (1.0-0.5)], 0.5, auto_unstuck=True)
     VISION_LIMIT = True
-    VISION_BOUND = 60
-    VISION_LIMIT_AWARE = False
+    VISION_BOUND = 120
+    VISION_LIMIT_AWARE = True
     EXPLORE = False
     SEARCH_DEPTH = 5
     KB_SEARCH_DEPTH = 6
@@ -194,17 +194,17 @@ if __name__ == "__main__" :
         # print("It took {} seconds for qmdp to compute".format(game_start_time - qmdp_start_time))
         # print("It took {} seconds for playing the entire level".format(time.time() - game_start_time))
         # print("It took {} seconds to plan".format(time.time() - start_time))
-        env = OvercookedEnv.from_mdp(scenario_1_mdp, horizon = 100)
+        env = OvercookedEnv.from_mdp(scenario_1_mdp, horizon = 400)
         done = False
         total_t += len(s_t)
     print('Total timesteps =', total_t)
     t = 0
     scenario_1_mdp = SteakHouseGridworld.from_layout_name(layout_name,  num_items_for_steak=1, chop_time=2, wash_time=2, start_order_list=['steak', 'steak'], cook_time=10)
-    env = OvercookedEnv.from_mdp(scenario_1_mdp, horizon = 200)
+    env = OvercookedEnv.from_mdp(scenario_1_mdp, horizon = 400)
     while not done:
         if t >= 0 and t <= len(s_t):
             if VISION_LIMIT: 
-                env.render("full", view_angle=VISION_BOUND)
+                env.render("fog", view_angle=VISION_BOUND)
             else:
                 env.render()
             time.sleep(0.1)

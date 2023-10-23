@@ -5076,10 +5076,11 @@ class  SteakHumanSubtaskQMDPPlanner(SteakMediumLevelMDPPlanner):
                 return True
             elif obj == 'hot_plate' and subtask == 'pickup_steak':# and num_item_in_pot >= self.mdp.num_items_for_steak:
                 return True
-            elif obj == 'steak' and (subtask == 'pickup_garnish' or subtask == 'drop_steak'):# and chop_time >= self.mdp.chopping_time:
+            elif obj == 'steak' and (subtask == 'pickup_garnish'):# # comment out due to low probability => or subtask == 'drop_steak'):
                 return True
-            elif obj == 'hot_plate' and subtask == 'drop_hot_plate':# and chop_time < self.mdp.chopping_time:
-                return True
+            # comment out due to low probability
+            # elif obj == 'hot_plate' and subtask == 'drop_hot_plate':# and chop_time < self.mdp.chopping_time:
+            #     return True
             elif obj == 'dish' and subtask == 'deliver_dish':
                 return True
             else:
@@ -5422,7 +5423,7 @@ class  SteakHumanSubtaskQMDPPlanner(SteakMediumLevelMDPPlanner):
                 next_subtasks += ['pickup_onion']
             if next_wash_time < 0 and other_agent_obj != 'plate':
                 next_subtasks += ['pickup_plate']
-            if (next_chop_time >= self.mdp.chopping_time or other_agent_obj == 'onion') and next_wash_time >= self.mdp.wash_time and next_num_item_in_pot > 0:# and not (other_agent_obj == 'hot_plate' or other_agent_obj == 'steak'):
+            if (next_chop_time >= 0 or other_agent_obj == 'onion') and next_wash_time >= self.mdp.wash_time and next_num_item_in_pot > 0:# and not (other_agent_obj == 'hot_plate' or other_agent_obj == 'steak'):
                 next_subtasks += ['pickup_hot_plate']
             # elif (next_chop_time >= self.mdp.chopping_time or other_agent_obj == 'onion') and next_wash_time < self.mdp.wash_time and other_agent_obj == 'plate' and not (other_agent_obj == 'hot_plate' or other_agent_obj == 'steak'):
             #     next_subtasks += ['pickup_hot_plate']
@@ -5445,6 +5446,7 @@ class  SteakHumanSubtaskQMDPPlanner(SteakMediumLevelMDPPlanner):
         if len(next_subtasks) == 0:
             next_subtasks = [subtask]
 
+        nxt_world_info = nxt_world_info*len(next_subtasks)
 
         return next_subtasks, nxt_world_info
     
@@ -6754,7 +6756,7 @@ class  SteakHumanSubtaskQMDPPlanner(SteakMediumLevelMDPPlanner):
                     delta_cost += 1
                 
                 if len(remaining_orders) == 0:
-                    delta_cost = 100 # set to 100 such that would not optimize after termination and focus only on decreasing cost
+                    delta_cost += 100 # set to 100 such that would not optimize after termination and focus only on decreasing cost
 
                 if self.debug: 
                     print('world info:', player_obj, pot_state, chop_state, sink_state, remaining_orders, human_obj)
@@ -6779,6 +6781,8 @@ class  SteakHumanSubtaskQMDPPlanner(SteakMediumLevelMDPPlanner):
         return b@((v*gamma)+c)
 
     def get_best_action(self, q):
+        # b = q[::-1]
+        # i = len(b) - np.argmax(b) - 1
         return np.argmax(q)
 
     def init_mdp(self):
@@ -7024,8 +7028,8 @@ class SteakKnowledgeBasePlanner(SteakHumanSubtaskQMDPPlanner):
         ori_state_idx = self.state_idx_dict[start_state_key]
         successor_states = []
 
-        # next_state_idx_arr = np.where(self.s_kb_trans_matrix[ori_state_idx] > 0.000001)[0]
-        next_state_idx_arr = np.where(self.optimal_s_kb_trans_matrix[ori_state_idx] > 0.000001)[0]
+        next_state_idx_arr = np.where(self.s_kb_trans_matrix[ori_state_idx] > 0.000001)[0]
+        # next_state_idx_arr = np.where(self.optimal_s_kb_trans_matrix[ori_state_idx] > 0.000001)[0]
         
         start_time = time.time()
         for next_state_idx in next_state_idx_arr:
@@ -7882,8 +7886,11 @@ class SteakKnowledgeBasePlanner(SteakHumanSubtaskQMDPPlanner):
         SEARCH_DEPTH = self.search_depth
         KB_SEARCH_DEPTH = self.kb_search_depth
 
+        self.update_world_kb_log(world_state)
+
         # update sim human
-        curr_human_kb, curr_human_kb_track = self.sim_human_model.get_knowledge_base(world_state)
+        curr_human_kb = self.sim_human_model.knowledge_base
+        curr_human_kb_track = self.sim_human_model.kb_update_delay_track
         curr_kb_key = self.get_kb_key(curr_human_kb)
         
         ## Reason over all belief over human's subtask
@@ -8252,7 +8259,7 @@ class SteakKnowledgeBasePlanner(SteakHumanSubtaskQMDPPlanner):
     def init_mdp(self):
         self.init_actions()
         self.init_human_aware_states(order_list=self.mdp.start_order_list)
-        # self.init_s_kb_trans_matrix()
+        self.init_s_kb_trans_matrix()
         # self.init_sprim_s_kb_trans_matrix()
         self.init_optimal_s_kb_trans_matrix()
         self.init_optimal_non_subtask_s_kb_trans_matrix()
