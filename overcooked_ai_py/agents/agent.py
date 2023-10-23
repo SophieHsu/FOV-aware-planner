@@ -870,7 +870,7 @@ class limitVisionHumanModel(GreedyHumanModel):
         
     #     return (left_in_bound and right_in_bound)
 
-    def in_bound(self, state, loc, vision_bound=120/2, move_back=True):
+    def in_bound(self, state, loc, vision_bound=120/2, move_back=False):
         if vision_bound == 0:
             return True
         
@@ -880,15 +880,19 @@ class limitVisionHumanModel(GreedyHumanModel):
         ori = Direction.DIRECTION_TO_INDEX[player.orientation]
         if ori == 0: # north
             if move_back: center_pt[1] += 1
+            if loc[1] == player.position[1] and (loc[0] == player.position[0]-1 or loc[0] == player.position[0]+1): return True
             rot_angel = np.radians(180)
         elif ori == 2: # east
             if move_back: center_pt[0] -= 1
+            if loc[0] == player.position[0] and (loc[1] == player.position[1]-1 or loc[1] == player.position[1]+1): return True
             rot_angel = np.radians(270)
         elif ori == 1: # south
             if move_back: center_pt[1] -= 1
+            if loc[1] == player.position[1] and (loc[0] == player.position[0]-1 or loc[0] == player.position[0]+1): return True
             rot_angel = np.radians(0)
         elif ori == 3: # west
             if move_back: center_pt[0] += 1
+            if loc[0] == player.position[0] and (loc[1] == player.position[1]-1 or loc[1] == player.position[1]+1): return True
             rot_angel = np.radians(90)
 
         c, s = np.cos(rot_angel), np.sin(rot_angel)
@@ -1144,12 +1148,13 @@ class SteakLimitVisionHumanModel(limitVisionHumanModel):
                         tmp_kb['pot_states'][obj.name]['ready'].append(obj.id)
             else:
                 if obj.id in prev_kb.keys():
-                    empty_pot_loc = prev_kb[obj.id].position
-                    if obj.id in tmp_kb['pot_states'][obj.name]['ready'] or obj.id in tmp_kb['pot_states'][obj.name]['cooking']:
-                        if empty_pot_loc not in tmp_kb['pot_states'][obj.name]['empty']:
-                            tmp_kb['pot_states'][obj.name]['empty'].append(empty_pot_loc)
-                        if empty_pot_loc not in tmp_kb['pot_states']['empty']:
-                            tmp_kb['pot_states']['empty'].append(empty_pot_loc)
+                    # NOTE: this only works if we have one pot
+                    empty_pot_loc = self.mlp.mdp.get_pot_locations()[0] # prev_kb[obj.id].position
+                    #if obj.id in tmp_kb['pot_states'][obj.name]['ready'] or obj.id in tmp_kb['pot_states'][obj.name]['cooking']:
+                    if empty_pot_loc not in tmp_kb['pot_states'][obj.name]['empty']:
+                        tmp_kb['pot_states'][obj.name]['empty'].append(empty_pot_loc)
+                    if empty_pot_loc not in tmp_kb['pot_states']['empty']:
+                        tmp_kb['pot_states']['empty'].append(empty_pot_loc)
 
                     if obj.id in tmp_kb['pot_states'][obj.name]['ready']:
                         tmp_kb['pot_states'][obj.name]['ready'].remove(obj.id)
@@ -1179,10 +1184,11 @@ class SteakLimitVisionHumanModel(limitVisionHumanModel):
                     raise ValueError()
             else:
                 if obj.id in prev_kb.keys():
-                    empty_board_loc = prev_kb[obj.id].position
-                    if obj.id in tmp_kb['chop_states']['ready'] or obj.id in tmp_kb['chop_states']['full']:
-                        if empty_board_loc not in tmp_kb['chop_states']['empty']:
-                            tmp_kb['chop_states']['empty'].append(empty_board_loc)
+                    # NOTE: this only works if we have one chopping board
+                    empty_board_loc = self.mlp.mdp.get_chopping_board_locations()[0] #prev_kb[obj.id].position
+                    # if obj.id in tmp_kb['chop_states']['ready'] or obj.id in tmp_kb['chop_states']['full']:
+                    if empty_board_loc not in tmp_kb['chop_states']['empty']:
+                        tmp_kb['chop_states']['empty'].append(empty_board_loc)
                     if obj.id in tmp_kb['chop_states']['ready']:
                         tmp_kb['chop_states']['ready'].remove(obj.id)
                     if obj.id in tmp_kb['chop_states']['full']:
@@ -1211,10 +1217,11 @@ class SteakLimitVisionHumanModel(limitVisionHumanModel):
                     raise ValueError()
             else:
                 if obj.id in prev_kb.keys():
-                    empty_sink_loc = prev_kb[obj.id].position
-                    if obj.id in tmp_kb['sink_states']['ready'] or obj.id in tmp_kb['sink_states']['full']:
-                        if empty_sink_loc not in tmp_kb['sink_states']['empty']:
-                            tmp_kb['sink_states']['empty'].append(empty_sink_loc)
+                    ## NOTE: this only works when we have one sink
+                    empty_sink_loc = self.mlp.mdp.get_sink_locations()[0] # prev_kb[obj.id].position
+                    # if obj.id in tmp_kb['sink_states']['ready'] or obj.id in tmp_kb['sink_states']['full']:
+                    if empty_sink_loc not in tmp_kb['sink_states']['empty']:
+                        tmp_kb['sink_states']['empty'].append(empty_sink_loc)
                     if obj.id in tmp_kb['sink_states']['ready']:
                         tmp_kb['sink_states']['ready'].remove(obj.id)
                     if obj.id in tmp_kb['sink_states']['full']:
@@ -1247,6 +1254,9 @@ class SteakLimitVisionHumanModel(limitVisionHumanModel):
 
         ### Update the tracking
         new_track, new_untrack = {}, {}
+        other_player_dropped_obj_id = -1
+        human_pickup_obj_id = -1
+        other_player_dropped_obj_count = -1
         all_object_lists_id = {o.id:o for o in state.all_objects_list}
         # prev_track is a dictionary with object id as key and a list of [obj, consecutive seen count]
 
@@ -1258,23 +1268,60 @@ class SteakLimitVisionHumanModel(limitVisionHumanModel):
                 obj = state.players[self.agent_index].held_object
 
             if obj is not None:
-                obj_in_bound = (self.in_bound(state, obj.position, vision_bound=self.vision_bound/2))
+                pos = other_player.position if obj_key == 'other_player' else obj.position
+                obj_in_bound = (self.in_bound(state, pos, vision_bound=self.vision_bound/2))
                 if obj_in_bound:
                     if 'other_player' == obj_key: #in prev_track.keys() and obj == prev_track['other_player'][0]:
                         obj_count = min(self.kb_update_delay, prev_track['other_player'][1] + 1)
                         tmp_track['other_player'] = [other_player.deepcopy(), obj_count]
-                    
+
+                        # if the agent picked up an item, and that item was in untrack, we move it to tmp_remove_obj_id_list
+                        if prev_track['other_player'][0].held_object == None and state.players[1-self.agent_index].held_object != None and state.players[1-self.agent_index].held_object.id in prev_untrack.keys():
+                            tmp_remove_obj_id_list[state.players[1-self.agent_index].held_object.id] = [prev_untrack[state.players[1-self.agent_index].held_object.id].deepcopy(), obj_count]                  
+                        
+                        # if the agent drops item, remove the item from player's hand
+                        if prev_track['other_player'][0].held_object != None and state.players[1-self.agent_index].held_object == None:
+                            # if obj.id not in tmp_remove_obj_id_list.keys():
+                            
+                            new_obj = None
+                            # set the newly dropped inbound object to have the same count as the threshold
+                            if prev_track['other_player'][0].held_object.name == 'meat' and state.all_objects_by_type['steak']:
+                                new_obj = state.all_objects_by_type['steak'][-1]
+                            elif prev_track['other_player'][0].held_object.name == 'onion' and state.all_objects_by_type['garnish']:
+                                new_obj = state.all_objects_by_type['garnish'][-1]
+                            elif prev_track['other_player'][0].held_object.name == 'plate' and state.all_objects_by_type['hot_plate']:
+                                new_obj = state.all_objects_by_type['hot_plate'][-1]
+                            elif prev_track['other_player'][0].held_object.name == 'hot_plate' and state.all_objects_by_type['steak']:
+                                new_obj = state.all_objects_by_type['steak'][-1]
+                            elif prev_track['other_player'][0].held_object.name == 'steak' and state.all_objects_by_type['dish']:
+                                new_obj = state.all_objects_by_type['dish'][-1]
+                                for tmp_o_untrack_key, tmp_o_untrack in prev_track.items():
+                                    if tmp_o_untrack_key not in ['human_holding', 'other_player'] and tmp_o_untrack[0].name == 'garnish' and tmp_o_untrack[0].id not in tmp_remove_obj_id_list.keys():
+                                        tmp_remove_obj_id_list[tmp_o_untrack[0].id] = [tmp_o_untrack[0].deepcopy(), obj_count]
+                            if new_obj != None:
+                                tmp_remove_obj_id_list[prev_track['other_player'][0].held_object.id] = [prev_track['other_player'][0].held_object.deepcopy(), obj_count]
+                                # flag the new_object and make sure the obj_count is not reset when dropped
+                                other_player_dropped_obj_id = new_obj.id
+                                other_player_dropped_obj_count = obj_count
+                                tmp_track[new_obj.id] = [new_obj, obj_count]
+
+                    elif human_pickup_obj_id == obj.id:
+                        tmp_remove_obj_id_list[obj.id] = [obj.deepcopy(), self.kb_update_delay]
+
                     # is player object
                     elif (obj_key in all_object_lists_id) or (obj_key == 'human_holding' and obj.id in all_object_lists_id):
                         obj_count = 1
                         if obj.id in prev_track.keys(): obj_count = min(self.kb_update_delay, prev_track[obj.id][1] + 1)
                         elif obj.id in tmp_track.keys():
                             obj_count = tmp_track[obj.id][1]
+                        elif other_player_dropped_obj_id == obj.id:
+                            obj_count = other_player_dropped_obj_count
+                            
                         if obj.position == state.players[self.agent_index].position:
                             obj_count = self.kb_update_delay
                             tmp_track['human_holding'] = [state.players[self.agent_index].held_object.deepcopy(), self.kb_update_delay]
                         tmp_track[obj.id] = [all_object_lists_id[obj.id].deepcopy(), obj_count]
-                    
+
                     # previous human held now dropped and changed object name
                     elif prev_track['human_holding'][0] != None and obj.id == prev_track['human_holding'][0].id and obj != None:
                         # if obj.id not in tmp_remove_obj_id_list.keys():
@@ -1299,7 +1346,11 @@ class SteakLimitVisionHumanModel(limitVisionHumanModel):
                             elif obj.name == 'steak':
                                 new_obj = state.all_objects_by_type['dish'][-1]
                                 tmp_track['human_holding'] = [new_obj.deepcopy(), self.kb_update_delay]
-                        
+                                for tmp_o_untrack_key, tmp_o_untrack in prev_track.items():
+                                    if tmp_o_untrack_key not in ['human_holding', 'other_player'] and tmp_o_untrack[0].name == 'garnish':
+                                        human_pickup_obj_id = tmp_o_untrack[0].id
+                                        tmp_remove_obj_id_list[tmp_o_untrack[0].id] = [tmp_o_untrack[0].deepcopy(), self.kb_update_delay]
+                                        
                             tmp_track[new_obj.id] = [new_obj.deepcopy(), self.kb_update_delay]
 
                     else:
@@ -1316,8 +1367,17 @@ class SteakLimitVisionHumanModel(limitVisionHumanModel):
                         del tmp_track[obj_key]
 
         if 'other_player' not in tmp_track.keys() and self.in_bound(state, other_player.position, vision_bound=self.vision_bound/2):
-            tmp_track['other_player'] = [other_player, 1]
-        
+            tmp_track['other_player'] = [other_player.deepcopy(), 1]
+
+            # if the agent picked up an item
+            if 'other_player' in prev_untrack.keys() and state.players[1-self.agent_index].held_object != None and state.players[1-self.agent_index].held_object.id in prev_untrack.keys() and prev_untrack['other_player'].held_object == None and state.players[1-self.agent_index].held_object != None:
+                tmp_remove_obj_id_list[state.players[1-self.agent_index].held_object.id] = [prev_untrack[state.players[1-self.agent_index].held_object.id].deepcopy(), 0]
+
+            ## if the agent dropped an item
+            # if 'other_player' in prev_track.keys() and prev_track['other_player'][0].held_object != None and prev_track['other_player'][0].held_object == None:
+            #     # if obj.id not in tmp_remove_obj_id_list.keys():
+            #     tmp_remove_obj_id_list[prev_track['other_player'][0].held_object.id] = [prev_track['other_player'][0].held_object.deepcopy(), 0]
+
         for obj_id, obj in prev_untrack.items():
             obj_in_bound = self.in_bound(state, obj.position, vision_bound=self.vision_bound/2)
             if obj_in_bound:
@@ -1418,8 +1478,8 @@ class SteakLimitVisionHumanModel(limitVisionHumanModel):
         Effectively, will return a list of all possible locations Y in which the selected
         medium level action X can be performed.
         """
-
         self.update(state)
+        self.update_kb_log()
         
         player = state.players[self.agent_index]
         other_player = self.knowledge_base['other_player']
@@ -1470,21 +1530,24 @@ class SteakLimitVisionHumanModel(limitVisionHumanModel):
                     if other_has_plate:
                         motion_goals += self.mlp.mdp.get_sink_status(state)['full']
                         if len(motion_goals) == 0:
-                            motion_goals += self.mlp.mdp.get_sink_status(state)['empty']
+                            tmp_goal = self.mlp.mdp.get_sink_status(state)['empty']
+                            motion_goals += self.go_to_closest_feature_or_counter_to_goal(self.mlp.motion_planner.motion_goals_for_pos[tmp_goal], tmp_goal)
             elif chosen_subtask == 'pickup_steak':
                 motion_goals = am.pickup_steak_with_hot_plate_actions(self.mlp.mdp.get_pot_states(state))#, only_nearly_ready=True, knowledge_base=self.knowledge_base)
                 if len(motion_goals) == 0:
                     if other_has_meat:
                         motion_goals = self.mlp.mdp.get_pot_states(state)['steak']['cooking'] + self.mlp.mdp.get_pot_states(state)['steak']['partially_full']
                         if len(motion_goals) == 0:
-                            motion_goals = self.mlp.mdp.get_pot_states(state)['empty']
+                            tmp_goal = self.mlp.mdp.get_pot_states(state)['empty']
+                            motion_goals += self.go_to_closest_feature_or_counter_to_goal(self.mlp.motion_planner.motion_goals_for_pos[tmp_goal], tmp_goal)
             elif chosen_subtask == 'pickup_garnish':
                 motion_goals = am.add_garnish_to_steak_actions(state)#, knowledge_base=self.knowledge_base)
                 if len(motion_goals) == 0:
                     if other_has_onion:
                         motion_goals = self.mlp.mdp.get_chopping_board_status(state)['full']
                         if len(motion_goals) == 0:
-                            self.mlp.mdp.get_chopping_board_status(state)['empty']
+                            tmp_goal = self.mlp.mdp.get_chopping_board_status(state)['empty']
+                            motion_goals += self.go_to_closest_feature_or_counter_to_goal(self.mlp.motion_planner.motion_goals_for_pos[tmp_goal], tmp_goal)
             elif chosen_subtask == 'drop_meat':
                 motion_goals = am.put_meat_in_pot_actions(self.mlp.mdp.get_pot_states(state))#, knowledge_base=self.knowledge_base)
             elif chosen_subtask == 'drop_onion':
@@ -1525,7 +1588,7 @@ class SteakLimitVisionHumanModel(limitVisionHumanModel):
                 elif not rinsing and not hot_plate_ready and not other_has_plate:
                     motion_goals += am.pickup_plate_actions(counter_objects, state, knowledge_base=self.knowledge_base)
                     chosen_subtask = 'pickup_plate'
-                elif (garnish_ready or other_has_onion) and hot_plate_ready and steak_nearly_ready:# and not (other_has_hot_plate):# or other_has_steak)
+                elif (garnish_ready or chopping or other_has_onion) and hot_plate_ready and steak_nearly_ready:# and not (other_has_hot_plate):# or other_has_steak)
                     motion_goals += am.pickup_hot_plate_from_sink_actions(counter_objects, state, knowledge_base=self.knowledge_base)
                     chosen_subtask = 'pickup_hot_plate'
                 # elif (garnish_ready or other_has_onion) and steak_nearly_ready and other_has_plate and not (other_has_hot_plate or other_has_steak) and not hot_plate_ready:
@@ -1560,7 +1623,9 @@ class SteakLimitVisionHumanModel(limitVisionHumanModel):
                         if other_has_meat:
                             motion_goals = pot_states_dict['steak']['cooking'] + pot_states_dict['steak']['partially_full']
                             if len(motion_goals) == 0:
-                                motion_goals = pot_states_dict['empty']
+                                tmp_goal = pot_states_dict['empty']
+                                motion_goals += self.go_to_closest_feature_or_counter_to_goal(self.mlp.motion_planner.motion_goals_for_pos[tmp_goal], tmp_goal)
+                                
 
                 elif player_obj.name == 'steak':
                     # would go towards chopping board if it does know the human picked up the onion
@@ -1570,7 +1635,8 @@ class SteakLimitVisionHumanModel(limitVisionHumanModel):
                         if other_has_onion:
                             motion_goals = self.knowledge_base['chop_states']['full']
                             if len(motion_goals) == 0:
-                                self.knowledge_base['chop_states']['empty']
+                                tmp_goal = self.knowledge_base['chop_states']['empty']
+                                motion_goals += self.go_to_closest_feature_or_counter_to_goal(self.mlp.motion_planner.motion_goals_for_pos[tmp_goal], tmp_goal)
 
                 elif player_obj.name == 'dish':
                     motion_goals = am.deliver_dish_actions()
@@ -1608,6 +1674,7 @@ class SteakLimitVisionHumanModel(limitVisionHumanModel):
 
         self.prev_chosen_subtask = chosen_subtask
         # print('SteakLimitVisionHumanModel\'s motion_goals:', motion_goals)
+        state.players[self.agent_index].subtask_log += [chosen_subtask]
         return motion_goals
 
 class oneGoalHumanModel(Agent):

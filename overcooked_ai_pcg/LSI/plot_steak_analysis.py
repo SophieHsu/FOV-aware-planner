@@ -40,9 +40,9 @@ def plot_kb_2(data, log_dir, log_name):
             for k, (d, color, label) in enumerate(zip(hist_data, ['red', 'green'], ['Not Aware', 'Aware'])):
                 axes[j].bar(bin_centers - bar_width * k, d, width=bar_width, color=color, label=label)
                 # axes[i].hist(d, bins=num_bins, range=bin_range, alpha=0.5, color=color, label=label, edgecolor='k', stacked=False)
-                axes[j].set_xlabel('_'.join(['Knowledge base differences', name]))
-                axes[j].set_ylabel('Occurances')
-                axes[j].set_title(f'Knowledge base differences {name} in {map_name}')
+                axes[j].set_xlabel(' '.join(['Knowledge base differences', name+'.']))
+                axes[j].set_ylabel('Number of participants')
+                axes[j].set_title(f'Knowledge base differences {name}. in {map_name}')
                 axes[j].legend()
 
         # Adjust layout
@@ -90,7 +90,7 @@ def plot_kb(data, log_dir, log_name):
                 axes[j].bar(bin_centers - bar_width * k, d, width=bar_width, color=color, label=label)
                 # axes[i].hist(d, bins=num_bins, range=bin_range, alpha=0.5, color=color, label=label, edgecolor='k', stacked=False)
                 axes[j].set_xlabel('_'.join(['Knowledge base differences', name]))
-                axes[j].set_ylabel('Occurances')
+                axes[j].set_ylabel('Number of participants')
                 axes[j].set_title(f'Knowledge base differences {name} in {map_name}')
                 axes[j].legend()
 
@@ -135,7 +135,7 @@ def plot_workload_2(data, log_dir, log_name):
             for k, (d, color, label) in enumerate(zip(hist_data, ['red', 'green'], ['Not Aware', 'Aware'])):
                 axes[j].bar(bin_centers - bar_width * k, d, width=bar_width, color=color, label=label)
                 axes[j].set_xlabel('_'.join(['Workload', name]))
-                axes[j].set_ylabel('Occurances')
+                axes[j].set_ylabel('Number of participants')
                 axes[j].set_title(f'Workload {name} in {map_name}')
                 axes[j].legend()
 
@@ -183,7 +183,7 @@ def plot_workload(data, log_dir, log_name):
             for k, (d, color, label) in enumerate(zip(hist_data, ['red', 'green', 'blue'], ['Not Aware', 'Aware', 'Aware Not Act'])):
                 axes[j].bar(bin_centers - bar_width * k, d, width=bar_width, color=color, label=label)
                 axes[j].set_xlabel('_'.join(['Workload', name]))
-                axes[j].set_ylabel('Occurances')
+                axes[j].set_ylabel('Number of participants')
                 axes[j].set_title(f'Workload {name} in {map_name}')
                 axes[j].legend()
 
@@ -230,7 +230,7 @@ def plot_fluency(data, log_dir, log_name):
         for k, (d, color, label) in enumerate(zip(hist_data, ['red', 'green', 'blue'], ['Not Aware', 'Aware', 'Aware Not Act'])):
             axes[i].bar(bin_centers - bar_width * k, d, width=bar_width, color=color, label=label)
             axes[i].set_xlabel('Interrupted Frequency (%)')
-            axes[i].set_ylabel('Occurances')
+            axes[i].set_ylabel('Number of participants')
             # axes[i].set_xlim([0,20])
             axes[i].set_title(f'Fluency measurement in {map_name}')
             axes[i].legend()
@@ -275,7 +275,7 @@ def plot_fluency_2(data, log_dir, log_name):
         for k, (d, color, label) in enumerate(zip(hist_data, ['red', 'green'], ['Not Aware', 'Aware'])):
             axes[i].bar(bin_centers - bar_width * k, d, width=bar_width, color=color, label=label)
             axes[i].set_xlabel('Interrupted Frequency (%)')
-            axes[i].set_ylabel('Occurances')
+            axes[i].set_ylabel('Number of participants')
             axes[i].set_title(f'Fluency measurement in {map_name}')
             axes[i].legend()
 
@@ -335,9 +335,9 @@ if __name__ == "__main__":
     opt = parser.parse_args()
 
     workload, fluency, kb_gap = read_in_data()
-    plot_fluency(fluency, LSI_STEAK_STUDY_RESULT_DIR, log_name='fluency')
-    plot_workload(workload, LSI_STEAK_STUDY_RESULT_DIR, log_name='workload')
-    plot_kb(kb_gap, LSI_STEAK_STUDY_RESULT_DIR, log_name='kb')
+    # plot_fluency(fluency, LSI_STEAK_STUDY_RESULT_DIR, log_name='fluency')
+    # plot_workload(workload, LSI_STEAK_STUDY_RESULT_DIR, log_name='workload')
+    # plot_kb(kb_gap, LSI_STEAK_STUDY_RESULT_DIR, log_name='kb')
 
     plot_fluency_2(fluency, LSI_STEAK_STUDY_RESULT_DIR, log_name='fluency_2')
     plot_workload_2(workload, LSI_STEAK_STUDY_RESULT_DIR, log_name='workload_2')
