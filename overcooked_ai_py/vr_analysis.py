@@ -27,6 +27,7 @@ from overcooked_ai_py.mdp.overcooked_env import MAX_HORIZON, OvercookedEnv
 import matplotlib.pyplot as plt
 import matplotlib.gridspec as gridspec
 import numpy as np
+from itertools import chain
 
 HUMAN_STUDY_ENV_HORIZON = 400
 
@@ -114,8 +115,9 @@ def kb_diff_measure(human_kb, world_kb):
 
         for j, (ho, wo) in enumerate(zip(h_obj, w_obj)):
             if j < 3:
-                diff = abs(int(ho) - int(wo))
+                diff = int(ho) - int(wo)
                 if diff == 3: diff = 1
+                else: diff = abs(diff)
                 diff_measure[i][j] = diff
             else:
                 if ho != wo:
@@ -184,13 +186,57 @@ def action_to_string(action):
         return 'Stay'
     else:
         return None
+    
+def from_overcooked_action(res_dict):
+        action = tuple(res_dict['action'])
+        print('overcooked action: ', action)
+        q = res_dict['q']
+        current_q = q
+        print('overcooked q: ', q)
 
-def plot_kb_and_subtasks(vr_log, subtask_log, human_kb_log, world_kb_log, robot_holding_log, human_holding_log, robot_in_bound_count, log_dir=None, log_name=None):
+        if action[0] == 'i':
+            a = 'Interact'
+            current_ovc_action = a
+            return a
+        
+        max_q_idx = np.argmax(q[0:4])
+        
+        if round(q[max_q_idx], 5) == round(q[4], 5):
+            # return stay if stay value is equal to the max value
+            action = (0,0)
+        if action == (0,-1):
+            a = 'Up'
+        elif action == (1,0):
+            a = 'Right'
+        elif action == (0,1):
+            a = 'Down'
+        elif action == (-1,0):
+            a = 'Left'
+        elif action == (0,0):
+            a = 'Stay'
+        elif action[0] == 'i':
+            a = 'Interact'
+
+        print('action: ', a)
+        current_ovc_action = a
+        return a
+
+def orientation_smoothing(oris, d_oris):
+    offset = 0
+    new_oris = []
+    for i, ori in enumerate(oris):
+        if abs(d_oris[i]) > 2:
+            offset = -2*ori
+
+        new_ori = ori+offset
+        new_oris.append(new_ori)
+
+    return new_oris
+    
+def plot_human_kb_and_subtasks(vr_log, subtask_log, human_kb_log, world_kb_log, robot_holding_log, human_holding_log, robot_in_bound_count, log_dir=None, log_name=None, log_index=None, human_play=False):
     # if len(subtask_log) == 0:
     #     return
-
     os.environ["KMP_DUPLICATE_LIB_OK"]="TRUE"
-
     img_dir = os.path.join(log_dir, log_name)
 
     # Generate some example data
@@ -205,57 +251,120 @@ def plot_kb_and_subtasks(vr_log, subtask_log, human_kb_log, world_kb_log, robot_
         else:
             subtask_values.append(1)
 
-    subtask_values = []
+    continuous_values = []
     task_labels = ['stay', 'left', 'right', 'down', 'up', 'interact']
+    idx_to_time = {}
+    counter = 0
     for i in range(1, vr_log['i']):
         # action_str = action_to_string(vr_log[str(i)]['overcooked_recieved']['action'])
-        subtask_values.append('no_human_subtask')
+        continuous_values.append([])
+        idx_to_time[i-1] = counter
+        for j in range(0, len(vr_log[str(i)]['low_level_logs'])):
+            human_ori = vr_log[str(i)]['low_level_logs'][j]['human_ll_ori'][2]
+            continuous_values[i-1].append(human_ori)
+            counter+=1
+
+    # pads to create equal length arrays
+    # max_row_length = max(len(row) for row in continuous_values)
+    # padded_continuous_values = np.array([row + [np.nan] * (max_row_length - len(row)) for row in continuous_values])
+
+    x_ticks = np.arange(len(continuous_values))
+    # Create a figure with subplots
+    # fig, axs = plt.subplots(2, 1, figsize=(8, 6), sharex=True)  # 2 rows, 1 column of subplots, sharing the x-axis
+
+    # Plot the first subplot
+    # ax1 = axs[0]
+    orientation_list = list(chain.from_iterable(continuous_values))
+    time = np.arange(len(orientation_list))
+    
+    d_ori = np.gradient(orientation_list, time)
+    orientation_list = orientation_smoothing(orientation_list, d_ori)
+    # ax0.plot(time, continuous_values, linestyle='-', color='blue')
+    # ax1.yticks(np.arange(len(continuous_values)), range(len(continuous_values)))
+    # ax1.xticks(x_ticks, x_ticks)
+    # ax1.set_ylabel('Y-axis')
+    # ax1.set_title('Subplot 1')
+
+    # # Create and plot the second subplot
+    # ax2 = axs[1]
+    # Add your code to plot the second subplot here
+    # Use the same x_ticks for this subplot
+
+    plt.tight_layout()  # Adjust subplot spacing
+
+
+
     # action_log = subtask_values
 
     # Create a grid of subplots with shared x-axis and no space in between rows
     fig = plt.figure(figsize=(16, 5))
-    gs = gridspec.GridSpec(3, 1, height_ratios=[3.5, 1.25, 1])  # 3 rows, 1 column
+    gs = gridspec.GridSpec(4, 1, height_ratios=[3.25, 10, 1.5, 1.0])  # 3 rows, 1 column
     # Adjust the height ratios to make the top graph 1/3 of the height of the bottom graphs
 
     # Plot the top row (dot graph)
     ax0 = plt.subplot(gs[0])
-    ax0.scatter(time, subtask_values, marker='.', color='brown')
-    ax0.set_yticks(range(len(task_labels)))
-    ax0.set_yticklabels(task_labels)
-    ax0.set_ylabel('Human selected tasks')
-    ax0.set_title('Actions and Knowledge Difference Log')
-    ax0.set_ylim(-1, len(task_labels))
+    ax0.plot(time, orientation_list, marker='.', color='blue')
+    # ax0.set_yticks(range(len(task_labels)))
+    # ax0.set_yticklabels(task_labels)
+    # ax0.set_ylabel('Human selected tasks')
+    # ax0.set_title('Actions and Knowledge Difference Log')
+    # ax0.set_ylim(-1, len(task_labels))
     ax0.grid(True, linestyle=':', alpha=0.3)
+
+    ax0 = plt.subplot(gs[1], sharex=ax0)
+    ax0.plot(time, d_ori, marker='.', color='orange')
+    
+    plt.show()
 
     actions = [(0,-1), (0,1), (-1, 0), (1,0), (0,0), 'interact']
     action_labels = ['Up', 'Down', 'Left', 'Right', 'Stay', 'Interact', 'Disconnect']
-    action_log = []
-    # robot_actions = vr_log['overcooked_action_recieved']
+    non_seen_action_log, seen_action_log = [], []
+    non_seen_time, seen_time = [], []
+    # j = np.array(joint_action, dtype=object)
+    # for t, a in enumerate(j[:,0]):
+    #     if robot_in_bound_count[t] == False:
+    #         non_seen_time.append(t)
+    #         non_seen_action_log.append(actions.index(a))
+    #     else:
+    #         seen_time.append(t)
+    #         seen_action_log.append(actions.index(a))
+
     for i in range(1, vr_log['i']):
         if 'overcooked_recieved' in vr_log[str(i)]:
-            action_str = action_to_string(vr_log[str(i)]['overcooked_recieved']['action'])
-            action_log.append(action_labels.index(action_str))
+
+            # action_str = action_to_string(vr_log[str(i)]['overcooked_recieved']['action'])
+            action_str = from_overcooked_action(vr_log[str(i)]['overcooked_recieved'])
+            if robot_in_bound_count[i] == False:
+                non_seen_time.append(i-1)
+                non_seen_action_log.append(action_labels.index(action_str))
+            else:
+                seen_time.append(i-1)
+                seen_action_log.append(action_labels.index(action_str))
         else:
-            action_log.append(action_labels.index('Disconnect'))
-    # j = np.array(joint_action, dtype=object)
-    # for a in j[:,0]:
-    #     action_log.append(actions.index(a))
-        
-    ax2 = plt.subplot(gs[1], sharex=ax0)
-    ax2.scatter(time, action_log, marker='s', s=9, color='purple')
+            non_seen_action_log.append(action_labels.index('Disconnect'))
+            non_seen_time.append(i-1)
+            
+    ax2 = plt.subplot(gs[2], sharex=ax0)
+    # ax2.scatter(non_seen_time, non_seen_action_log, marker='.', s=9, color='green')
+    # ax2.scatter(seen_time, seen_action_log, marker='^', s=9, color='green')
+    ax2.scatter([idx_to_time[t] for t in non_seen_time], non_seen_action_log, marker='.', s=9, color='green')
+    ax2.scatter([idx_to_time[t] for t in seen_time], seen_action_log, marker='^', s=9, color='green')
+    
     ax2.set_yticks(range(len(action_labels)))
     ax2.set_yticklabels(action_labels)
     ax2.set_ylabel('Robot actions')
-    ax2.yaxis.tick_right()
-    ax2.yaxis.set_label_position('right')
+    # ax2.yaxis.tick_right()
+    # ax2.yaxis.set_label_position('right')
     ax2.set_ylim(-1, len(action_labels))
     ax2.grid(True, linestyle=':', alpha=0.3)
 
     kb_diff, kb_diff_list, kb_diff_freq, kb_diff_avg = kb_diff_measure(human_kb_log, world_kb_log)
 
     # Plot the bottom row (bar graph)
-    ax1 = plt.subplot(gs[2], sharex=ax0)  # Share x-axis with the top row
+    ax1 = plt.subplot(gs[3], sharex=ax0)  # Share x-axis with the top row
+    time = np.arange(0, kb_diff.shape[0])
     if len(kb_diff) > 0:
+        time = [idx_to_time[t] for t in time]
         b1 = ax1.bar(time, kb_diff[:,0], label='num_item_in_grill', align='center')
         b2 = ax1.bar(time, kb_diff[:,1], bottom=kb_diff[:,0], label='garnish status', align='center')
         b3 = ax1.bar(time, kb_diff[:,2], bottom=kb_diff[:,0]+kb_diff[:,1], label='plate status', align='center')
@@ -263,7 +372,7 @@ def plot_kb_and_subtasks(vr_log, subtask_log, human_kb_log, world_kb_log, robot_
 
         handles = [b1, b2, b3, b4]
         labels = ['num_item_in_grill', 'garnish status', 'plate status', 'robot held object']
-        fig.legend(handles, labels,loc='upper left', bbox_to_anchor=(0.141, 0.88))
+        fig.legend(handles, labels,loc='upper left', bbox_to_anchor=(0.47, 0.25), ncol=4, fancybox=True)
 
     # ax1.bar(time, kb_diff, color='red', width=1.0)
     ax1.set_xlabel('Timesteps')
@@ -282,13 +391,299 @@ def plot_kb_and_subtasks(vr_log, subtask_log, human_kb_log, world_kb_log, robot_
     # Display the plot
     # plt.show()
 
-    stop_count, turn_count, stay_count, interact_count, undo_count, check_count, interrupt_freq, interrupt_occurance, undo_freq, check_freq = subtask_analysis(subtask_values)
+    #stop_count, turn_count, stay_count, interact_count, undo_count, check_count, interrupt_freq, interrupt_occurance, undo_freq, check_freq = subtask_analysis(subtask_values)
     obj_held_freq_dict, obj_diff_dict, prep_count, prep_count_diff, plating_count, plating_count_diff = obj_held_freq(robot_holding_log, human_holding_log)
     robot_inbound_freq = round(sum(robot_in_bound_count)/len(robot_in_bound_count)*100, 2)
 
-    results = [len(subtask_values), interrupt_freq, interrupt_occurance, undo_freq, check_freq, kb_diff_freq, kb_diff_avg, robot_inbound_freq, prep_count, prep_count_diff, plating_count, plating_count_diff, kb_diff_list, robot_in_bound_count, stop_count, turn_count, stay_count, interact_count, undo_count, check_count, obj_held_freq_dict, obj_diff_dict]
+    # results = [len(subtask_values), interrupt_freq, interrupt_occurance, undo_freq, check_freq, kb_diff_freq, kb_diff_avg, robot_inbound_freq, prep_count, prep_count_diff, plating_count, plating_count_diff, kb_diff_list, robot_in_bound_count, stop_count, turn_count, stay_count, interact_count, undo_count, check_count, obj_held_freq_dict, obj_diff_dict]
+    results = [len(subtask_values), kb_diff_freq, kb_diff_avg, robot_inbound_freq, prep_count, prep_count_diff, plating_count, plating_count_diff, kb_diff_list, robot_in_bound_count, obj_held_freq_dict, obj_diff_dict]
 
     return results
+
+def plot_robot_kb_and_subtasks(vr_log, subtask_log, human_kb_log, world_kb_log, robot_holding_log, human_holding_log, robot_in_bound_count, log_dir=None, log_name=None, log_index=None, human_play=False):
+    # if len(subtask_log) == 0:
+    #     return
+    os.environ["KMP_DUPLICATE_LIB_OK"]="TRUE"
+    img_dir = os.path.join(log_dir, log_name)
+
+    # Generate some example data
+    # time = np.arange(0, len(joint_action))  # Time values from 0 to 200
+    # bar_values = np.random.rand(201) * 5  # Random values for the bottom row (0-5)
+
+    # subtask_values = []
+    # task_labels = []
+    # # if human_play:
+    # #     task_labels = ['stop', 'up/down/left/right', 'stay', 'interact', 'pickup meat', 'drop meat', 'pickup onion', 'drop onion', 'chop onion', 'pickup plate', 'drop plate', 'heat hot plate', 'pickup hot plate', 'pickup steak', 'pickup garnish', 'deliver dish']
+    # # else:
+    # #     task_labels = ['pickup meat', 'drop meat', 'pickup onion', 'drop onion', 'chop onion', 'pickup plate', 'drop plate', 'heat hot plate', 'pickup hot plate', 'pickup steak', 'pickup garnish', 'deliver dish']
+
+    # for s in subtask_log:
+    #     if s not in ['up', 'down', 'right', 'left']:
+    #         subtask_values.append(task_labels.index(s.replace('_',' ')))
+    #     else:
+    #         subtask_values.append(1)
+
+    #     # Generate some example data
+    time = np.arange(1, len(human_kb_log)+1)
+    task_labels = ['stop', 'up/down/left/right', 'stay', 'interact', 'pickup meat', 'drop meat', 'pickup onion', 'drop onion', 'chop onion', 'pickup plate', 'drop plate', 'heat hot plate', 'pickup hot plate', 'pickup steak', 'pickup garnish', 'deliver dish']
+    bar_values = np.random.rand(201) * 5  # Random values for the bottom row (0-5)
+
+    subtask_values = []
+    for s in subtask_log:
+        if s not in ['up', 'down', 'right', 'left']:
+            subtask_values.append(task_labels.index(s.replace('_',' ')))
+        else:
+            subtask_values.append(1)
+
+    # continuous_values = []
+    # task_labels = ['stay', 'left', 'right', 'down', 'up', 'interact']
+    # idx_to_time = {}
+    # counter = 0
+    # for i in range(1, vr_log['i']):
+    #     # action_str = action_to_string(vr_log[str(i)]['overcooked_recieved']['action'])
+    #     continuous_values.append([])
+    #     idx_to_time[i-1] = counter
+    #     for j in range(0, len(vr_log[str(i)]['low_level_logs'])):
+    #         human_ori = vr_log[str(i)]['low_level_logs'][j]['human_ll_ori'][2]
+    #         continuous_values[i-1].append(human_ori)
+    #         counter+=1
+
+    # pads to create equal length arrays
+    # max_row_length = max(len(row) for row in continuous_values)
+    # padded_continuous_values = np.array([row + [np.nan] * (max_row_length - len(row)) for row in continuous_values])
+
+    # x_ticks = np.arange(len(continuous_values))
+    # Create a figure with subplots
+    # fig, axs = plt.subplots(2, 1, figsize=(8, 6), sharex=True)  # 2 rows, 1 column of subplots, sharing the x-axis
+
+    # Plot the first subplot
+    # ax1 = axs[0]
+    # orientation_list = list(chain.from_iterable(continuous_values))
+    time = np.arange(len(human_kb_log))
+    
+    # d_ori = np.gradient(orientation_list, time)
+    # orientation_list = orientation_smoothing(orientation_list, d_ori)
+    # ax0.plot(time, continuous_values, linestyle='-', color='blue')
+    # ax1.yticks(np.arange(len(continuous_values)), range(len(continuous_values)))
+    # ax1.xticks(x_ticks, x_ticks)
+    # ax1.set_ylabel('Y-axis')
+    # ax1.set_title('Subplot 1')
+
+    # # Create and plot the second subplot
+    # ax2 = axs[1]
+    # Add your code to plot the second subplot here
+    # Use the same x_ticks for this subplot
+
+    plt.tight_layout()  # Adjust subplot spacing
+
+
+
+    # action_log = subtask_values
+
+    # Create a grid of subplots with shared x-axis and no space in between rows
+    fig = plt.figure(figsize=(16, 5))
+    gs = gridspec.GridSpec(2, 1, height_ratios=[1.5, 1.0])  # 3 rows, 1 column
+    # Adjust the height ratios to make the top graph 1/3 of the height of the bottom graphs
+
+    # Plot the top row (dot graph)
+    # ax0 = plt.subplot(gs[0])
+    # ax0.scatter(time, subtask_values, marker='.', color='blue')
+    # ax0.set_yticks(range(len(task_labels)))
+    # ax0.set_yticklabels(task_labels)
+    # ax0.set_ylabel('Human selected tasks')
+    # ax0.set_title('Actions and Knowledge Difference Log')
+    # ax0.set_ylim(-1, len(task_labels))
+    # ax0.grid(True, linestyle=':', alpha=0.3)
+    
+    # plt.show()
+
+    actions = [(0,-1), (0,1), (-1, 0), (1,0), (0,0), 'interact']
+    action_labels = ['Up', 'Down', 'Left', 'Right', 'Stay', 'Interact', 'Disconnect']
+    non_seen_action_log, seen_action_log = [], []
+    non_seen_time, seen_time = [], []
+    # j = np.array(joint_action, dtype=object)
+    # for t, a in enumerate(j[:,0]):
+    #     if robot_in_bound_count[t] == False:
+    #         non_seen_time.append(t)
+    #         non_seen_action_log.append(actions.index(a))
+    #     else:
+    #         seen_time.append(t)
+    #         seen_action_log.append(actions.index(a))
+
+    for i in range(1, vr_log['i']):
+        if 'overcooked_recieved' in vr_log[str(i)]:
+
+            # action_str = action_to_string(vr_log[str(i)]['overcooked_recieved']['action'])
+            action_str = from_overcooked_action(vr_log[str(i)]['overcooked_recieved'])
+            if robot_in_bound_count[i] == False:
+                non_seen_time.append(i)
+                non_seen_action_log.append(action_labels.index(action_str))
+            else:
+                seen_time.append(i-1)
+                seen_action_log.append(action_labels.index(action_str))
+        else:
+            non_seen_action_log.append(action_labels.index('Disconnect'))
+            non_seen_time.append(i)
+            
+    ax2 = plt.subplot(gs[0])
+    # ax2.scatter(non_seen_time, non_seen_action_log, marker='.', s=9, color='green')
+    # ax2.scatter(seen_time, seen_action_log, marker='^', s=9, color='green')
+    ax2.scatter(non_seen_time, non_seen_action_log, marker='.', s=9, color='green')
+    ax2.scatter(seen_time, seen_action_log, marker='^', s=9, color='green')
+    
+    ax2.set_yticks(range(len(action_labels)))
+    ax2.set_yticklabels(action_labels)
+    ax2.set_ylabel('Robot actions')
+    # ax2.yaxis.tick_right()
+    # ax2.yaxis.set_label_position('right')
+    ax2.set_ylim(-1, len(action_labels))
+    ax2.grid(True, linestyle=':', alpha=0.3)
+
+    kb_diff, kb_diff_list, kb_diff_freq, kb_diff_avg = kb_diff_measure(human_kb_log, world_kb_log)
+
+    # Plot the bottom row (bar graph)
+    ax1 = plt.subplot(gs[1], sharex=ax2)  # Share x-axis with the top row
+    time = np.arange(0, kb_diff.shape[0])
+    if len(kb_diff) > 0:
+        b1 = ax1.bar(time, kb_diff[:,0], label='num_item_in_grill', align='center')
+        b2 = ax1.bar(time, kb_diff[:,1], bottom=kb_diff[:,0], label='garnish status', align='center')
+        b3 = ax1.bar(time, kb_diff[:,2], bottom=kb_diff[:,0]+kb_diff[:,1], label='plate status', align='center')
+        b4 = ax1.bar(time, kb_diff[:,3], bottom=kb_diff[:,0]+kb_diff[:,1]+kb_diff[:,2], label='robot held object', align='center')
+
+        handles = [b1, b2, b3, b4]
+        labels = ['num_item_in_grill', 'garnish status', 'plate status', 'robot held object']
+        fig.legend(handles, labels,loc='upper left', bbox_to_anchor=(0.47, 0.25), ncol=4, fancybox=True)
+
+    # ax1.bar(time, kb_diff, color='red', width=1.0)
+    ax1.set_xlabel('Timesteps')
+    ax1.set_ylabel('KB. diff.')
+    ax1.set_ylim(0, 5)
+    # ax1.set_title('Bottom Row: Bar Graph')
+    # ax1.legend()
+    ax1.grid(True, linestyle=':', alpha=0.3)
+
+
+    # Remove space between subplots
+    plt.subplots_adjust(hspace=0)
+    # plt.tight_layout()
+    plt.savefig(img_dir+'.png')
+
+    # Display the plot
+    # plt.show()
+
+    #stop_count, turn_count, stay_count, interact_count, undo_count, check_count, interrupt_freq, interrupt_occurance, undo_freq, check_freq = subtask_analysis(subtask_values)
+    obj_held_freq_dict, obj_diff_dict, prep_count, prep_count_diff, plating_count, plating_count_diff = obj_held_freq(robot_holding_log, human_holding_log)
+    robot_inbound_freq = round(sum(robot_in_bound_count)/len(robot_in_bound_count)*100, 2)
+
+    # results = [len(subtask_values), interrupt_freq, interrupt_occurance, undo_freq, check_freq, kb_diff_freq, kb_diff_avg, robot_inbound_freq, prep_count, prep_count_diff, plating_count, plating_count_diff, kb_diff_list, robot_in_bound_count, stop_count, turn_count, stay_count, interact_count, undo_count, check_count, obj_held_freq_dict, obj_diff_dict]
+    results = [len(subtask_values), kb_diff_freq, kb_diff_avg, robot_inbound_freq, prep_count, prep_count_diff, plating_count, plating_count_diff, kb_diff_list, robot_in_bound_count, obj_held_freq_dict, obj_diff_dict]
+
+    return results
+
+# def plot_kb_and_subtasks(vr_log, subtask_log, human_kb_log, world_kb_log, robot_holding_log, human_holding_log, robot_in_bound_count, log_dir=None, log_name=None):
+#     # if len(subtask_log) == 0:
+#     #     return
+
+#     os.environ["KMP_DUPLICATE_LIB_OK"]="TRUE"
+
+#     img_dir = os.path.join(log_dir, log_name)
+
+#     # Generate some example data
+#     time = np.arange(1, len(human_kb_log)+1)
+#     task_labels = ['stop', 'up/down/left/right', 'stay', 'interact', 'pickup meat', 'drop meat', 'pickup onion', 'drop onion', 'chop onion', 'pickup plate', 'drop plate', 'heat hot plate', 'pickup hot plate', 'pickup steak', 'pickup garnish', 'deliver dish']
+#     bar_values = np.random.rand(201) * 5  # Random values for the bottom row (0-5)
+
+#     subtask_values = []
+#     for s in subtask_log:
+#         if s not in ['up', 'down', 'right', 'left']:
+#             subtask_values.append(task_labels.index(s.replace('_',' ')))
+#         else:
+#             subtask_values.append(1)
+
+#     subtask_values = []
+#     task_labels = ['stay', 'left', 'right', 'down', 'up', 'interact']
+#     for i in range(1, vr_log['i']):
+#         # action_str = action_to_string(vr_log[str(i)]['overcooked_recieved']['action'])
+#         subtask_values.append('no_human_subtask')
+#     # action_log = subtask_values
+
+#     # Create a grid of subplots with shared x-axis and no space in between rows
+#     fig = plt.figure(figsize=(16, 5))
+#     gs = gridspec.GridSpec(3, 1, height_ratios=[3.5, 1.25, 1])  # 3 rows, 1 column
+#     # Adjust the height ratios to make the top graph 1/3 of the height of the bottom graphs
+
+#     # Plot the top row (dot graph)
+#     ax0 = plt.subplot(gs[0])
+#     ax0.scatter(time, subtask_values, marker='.', color='brown')
+#     ax0.set_yticks(range(len(task_labels)))
+#     ax0.set_yticklabels(task_labels)
+#     ax0.set_ylabel('Human selected tasks')
+#     ax0.set_title('Actions and Knowledge Difference Log')
+#     ax0.set_ylim(-1, len(task_labels))
+#     ax0.grid(True, linestyle=':', alpha=0.3)
+
+#     actions = [(0,-1), (0,1), (-1, 0), (1,0), (0,0), 'interact']
+#     action_labels = ['Up', 'Down', 'Left', 'Right', 'Stay', 'Interact', 'Disconnect']
+#     action_log = []
+#     # robot_actions = vr_log['overcooked_action_recieved']
+#     for i in range(1, vr_log['i']):
+#         if 'overcooked_recieved' in vr_log[str(i)]:
+#             action_str = action_to_string(vr_log[str(i)]['overcooked_recieved']['action'])
+#             action_log.append(action_labels.index(action_str))
+#         else:
+#             action_log.append(action_labels.index('Disconnect'))
+#     # j = np.array(joint_action, dtype=object)
+#     # for a in j[:,0]:
+#     #     action_log.append(actions.index(a))
+        
+#     ax2 = plt.subplot(gs[1], sharex=ax0)
+#     ax2.scatter(time, action_log, marker='s', s=9, color='purple')
+#     ax2.set_yticks(range(len(action_labels)))
+#     ax2.set_yticklabels(action_labels)
+#     ax2.set_ylabel('Robot actions')
+#     ax2.yaxis.tick_right()
+#     ax2.yaxis.set_label_position('right')
+#     ax2.set_ylim(-1, len(action_labels))
+#     ax2.grid(True, linestyle=':', alpha=0.3)
+
+#     kb_diff, kb_diff_list, kb_diff_freq, kb_diff_avg = kb_diff_measure(human_kb_log, world_kb_log)
+
+#     # Plot the bottom row (bar graph)
+#     ax1 = plt.subplot(gs[2], sharex=ax0)  # Share x-axis with the top row
+#     if len(kb_diff) > 0:
+#         b1 = ax1.bar(time, kb_diff[:,0], label='num_item_in_grill', align='center')
+#         b2 = ax1.bar(time, kb_diff[:,1], bottom=kb_diff[:,0], label='garnish status', align='center')
+#         b3 = ax1.bar(time, kb_diff[:,2], bottom=kb_diff[:,0]+kb_diff[:,1], label='plate status', align='center')
+#         b4 = ax1.bar(time, kb_diff[:,3], bottom=kb_diff[:,0]+kb_diff[:,1]+kb_diff[:,2], label='robot held object', align='center')
+
+#         handles = [b1, b2, b3, b4]
+#         labels = ['num_item_in_grill', 'garnish status', 'plate status', 'robot held object']
+#         fig.legend(handles, labels,loc='upper left', bbox_to_anchor=(0.141, 0.88))
+
+#     # ax1.bar(time, kb_diff, color='red', width=1.0)
+#     ax1.set_xlabel('Timesteps')
+#     ax1.set_ylabel('KB. diff.')
+#     ax1.set_ylim(0, 5)
+#     # ax1.set_title('Bottom Row: Bar Graph')
+#     # ax1.legend()
+#     ax1.grid(True, linestyle=':', alpha=0.3)
+
+
+#     # Remove space between subplots
+#     plt.subplots_adjust(hspace=0)
+#     # plt.tight_layout()
+#     plt.savefig(img_dir+'.png')
+
+#     # Display the plot
+#     # plt.show()
+
+#     stop_count, turn_count, stay_count, interact_count, undo_count, check_count, interrupt_freq, interrupt_occurance, undo_freq, check_freq = subtask_analysis(subtask_values)
+#     obj_held_freq_dict, obj_diff_dict, prep_count, prep_count_diff, plating_count, plating_count_diff = obj_held_freq(robot_holding_log, human_holding_log)
+#     robot_inbound_freq = round(sum(robot_in_bound_count)/len(robot_in_bound_count)*100, 2)
+
+#     results = [len(subtask_values), interrupt_freq, interrupt_occurance, undo_freq, check_freq, kb_diff_freq, kb_diff_avg, robot_inbound_freq, prep_count, prep_count_diff, plating_count, plating_count_diff, kb_diff_list, robot_in_bound_count, stop_count, turn_count, stay_count, interact_count, undo_count, check_count, obj_held_freq_dict, obj_diff_dict]
+
+#     return results
 
 def replay_with_joint_actions(lvl_str, vr_log, plot=True, log_dir=None, log_name=None, view_angle=0, agent_save_path = None, human_save_path=None, lvl_config=None):
     """Replay a game play with given level and joint actions.
@@ -386,7 +781,7 @@ def replay_with_joint_actions(lvl_str, vr_log, plot=True, log_dir=None, log_name
         if tmp_ai_agent is not None: world_kb_log += tmp_ai_agent.mdp_planner.update_world_kb_log(env.state)
 
         if tmp_human_agent is not None: 
-            robot_in_bound_count.append(tmp_human_agent.in_bound(env.state, env.state.players[0].position, vision_bound=120/2))
+            robot_in_bound_count.append(tmp_human_agent.in_bound(env.state, env.state.players[0].position, vision_bound=150/2))
             tmp_human_agent.update(env.state)
             tmp_human_agent.update_kb_log()
 
@@ -541,14 +936,14 @@ def write_to_analysis_log(path, results, lvl_name, id):
 
     write_row(path, to_write)
 
-def create_analysis_log(log_id):
+def create_analysis_log(log_dir):
     """ Create human_study/result/<exp_id>. <exp_id> would be determined by the
         first digit that does not exist under the human_exp directory.
 
         Returns:
             Path to the csv file to which the result is be written.
     """
-    human_log_csv = os.path.join(LSI_STEAK_STUDY_RESULT_DIR, str(log_id)+'/analysis_log.csv')
+    human_log_csv = log_dir+'/analysis_log.csv'
 
     if os.path.exists(human_log_csv):
         os.remove(human_log_csv)
@@ -712,8 +1107,10 @@ if __name__ == "__main__":
     participant = 8
     aware = 'unaware'
     map = 'mid'
-    ignore_participants = [5,11, 12]
-    for participant in range(13,16): # 4,16):
+    ignore_participants = [5, 11, 12]
+    for participant in range(5,16): # 4,16):
+        log_out_dir = os.path.join(os.getcwd(), f"overcooked_ai_py/data/logs/vr_analysis/{participant}")
+        analysis_log_csv = create_analysis_log(log_out_dir)
         if participant in ignore_participants:
             continue
         for aware in ['unaware', 'aware']:
@@ -722,15 +1119,11 @@ if __name__ == "__main__":
                 f = open(log_dir)
                 log = json.load(f)
 
-                log_out_dir = os.path.join(os.getcwd(), f"overcooked_ai_py/data/logs/vr_analysis/{participant}")
-
-
                 # log_index = opt.log_index
                 # _, human_log_data = load_human_log_data(log_index)
                 NO_FOG_COPY=False
 
                 # play all of the levels
-                # analysis_log_csv = create_analysis_log(opt.log_index)
                 log['i'] = log['i'] + 1
                 if map == 'mid':
                     layout_name = 'steak_mid_2'
@@ -758,9 +1151,10 @@ if __name__ == "__main__":
                 human_save_path = os.path.join(os.getcwd(), 'overcooked_ai_py/data/logs/vr_analysis/human_analysis')
                 tmp_world_kb_log, tmp_human_kb_log, tmp_subtask_log, robot_holding_log, human_holding_log, robot_in_bound_count = replay_with_joint_actions(lvl_str, log, log_dir=log_out_dir, log_name=f'{participant}_{map}_{aware}', view_angle=lvl_config["vision_bound"], lvl_config=lvl_config)
 
-                results = plot_kb_and_subtasks(log, tmp_subtask_log, tmp_human_kb_log, tmp_world_kb_log, robot_holding_log, human_holding_log, robot_in_bound_count, log_dir=log_out_dir, log_name=f'{participant}_{map}_{aware}')
+                human_results = plot_human_kb_and_subtasks(log, tmp_subtask_log, tmp_human_kb_log, tmp_world_kb_log, robot_holding_log, human_holding_log, robot_in_bound_count, log_dir=log_out_dir, log_name=f'{participant}_{map}_{aware}_human')
+                robot_results = plot_robot_kb_and_subtasks(log, tmp_subtask_log, tmp_human_kb_log, tmp_world_kb_log, robot_holding_log, human_holding_log, robot_in_bound_count, log_dir=log_out_dir, log_name=f'{participant}_{map}_{aware}_robot')
 
-                # write_to_analysis_log(analysis_log_csv, results, lvl_config["lvl_type"]+'_'+str(lvl_config["kb_search_depth"]), log_index)               
+                write_to_analysis_log(analysis_log_csv, robot_results, f'{map}_{aware}', participant)               
 
                 # if NO_FOG_COPY and lvl_config["vision_bound"] > 0:
                 #     replay_with_joint_actions(lvl_str, joint_actions, log_dir=os.path.join(LSI_STEAK_STUDY_RESULT_DIR, log_index), log_name=lvl_config["lvl_type"]+'_'+str(lvl_config["kb_search_depth"])+'_nofog', view_angle=0)
