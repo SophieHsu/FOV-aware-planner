@@ -232,6 +232,73 @@ def orientation_smoothing(oris, d_oris):
         new_oris.append(new_ori)
 
     return new_oris
+
+def deriv_ori_smoothing(d_oris):
+    new_d_oris = []
+    for i, dori in enumerate(d_oris):
+        if abs(dori) > 2:
+            new_d_oris.append(new_d_oris[i-1])
+        else:
+            new_d_oris.append(d_oris[i])
+
+    return new_d_oris
+
+def get_key_by_value(dictionary, value):
+    for key, val in dictionary.items():
+        if val == value:
+            return key
+    # If the value is not found in the dictionary, return None or a custom default value
+    return None
+
+def create_continous_in_bound(idx_to_time, time, seen_time, non_seen_time):
+    continuous_in_bound = []
+    curr_in_bound = False
+
+    for t in time:
+        discrete_step = get_key_by_value(idx_to_time, t)
+        if discrete_step is not None:
+            if discrete_step in seen_time:
+                continuous_in_bound.append(True)
+            elif discrete_step in non_seen_time:
+                continuous_in_bound.append(False)
+        else:
+            continuous_in_bound.append(continuous_in_bound[-1])
+
+    return continuous_in_bound
+
+def create_continuous_kb_diff(idx_to_time, time, kb_diff):
+    cont_kb_diff = []
+    for t in time:
+        discrete_step = get_key_by_value(idx_to_time, t)
+        if discrete_step is not None:
+            cont_kb_diff.append(kb_diff[discrete_step])
+        else:
+            cont_kb_diff.append(cont_kb_diff[-1])
+
+    return np.array(cont_kb_diff)
+
+def create_in_bound_color_segments(time, oris, in_bound_bools):
+    # Initialize variables
+    x_segments = []
+    y_segments = []
+    current_color = None
+    in_bound = False
+    colors = []
+
+    # Iterate through the data and split it into segments by color
+    for i, value in enumerate(oris):
+        if i == 0:
+            current_color = 'blue' if in_bound_bools[i] else 'red'
+            x_segments.append([time[i]])
+            y_segments.append([oris[i]])
+        else:
+            current_color = 'blue' if in_bound_bools[i] else 'red'
+            x_segments.append([time[i - 1], time[i]])
+            y_segments.append([oris[i - 1], oris[i]])
+        colors.append(current_color)
+
+    return x_segments, y_segments, colors
+
     
 def plot_human_kb_and_subtasks(vr_log, subtask_log, human_kb_log, world_kb_log, robot_holding_log, human_holding_log, robot_in_bound_count, log_dir=None, log_name=None, log_index=None, human_play=False):
     # if len(subtask_log) == 0:
@@ -278,43 +345,8 @@ def plot_human_kb_and_subtasks(vr_log, subtask_log, human_kb_log, world_kb_log, 
     time = np.arange(len(orientation_list))
     
     d_ori = np.gradient(orientation_list, time)
-    orientation_list = orientation_smoothing(orientation_list, d_ori)
-    # ax0.plot(time, continuous_values, linestyle='-', color='blue')
-    # ax1.yticks(np.arange(len(continuous_values)), range(len(continuous_values)))
-    # ax1.xticks(x_ticks, x_ticks)
-    # ax1.set_ylabel('Y-axis')
-    # ax1.set_title('Subplot 1')
+    d_ori = deriv_ori_smoothing(d_ori)
 
-    # # Create and plot the second subplot
-    # ax2 = axs[1]
-    # Add your code to plot the second subplot here
-    # Use the same x_ticks for this subplot
-
-    plt.tight_layout()  # Adjust subplot spacing
-
-
-
-    # action_log = subtask_values
-
-    # Create a grid of subplots with shared x-axis and no space in between rows
-    fig = plt.figure(figsize=(16, 5))
-    gs = gridspec.GridSpec(4, 1, height_ratios=[3.25, 10, 1.5, 1.0])  # 3 rows, 1 column
-    # Adjust the height ratios to make the top graph 1/3 of the height of the bottom graphs
-
-    # Plot the top row (dot graph)
-    ax0 = plt.subplot(gs[0])
-    ax0.plot(time, orientation_list, marker='.', color='blue')
-    # ax0.set_yticks(range(len(task_labels)))
-    # ax0.set_yticklabels(task_labels)
-    # ax0.set_ylabel('Human selected tasks')
-    # ax0.set_title('Actions and Knowledge Difference Log')
-    # ax0.set_ylim(-1, len(task_labels))
-    ax0.grid(True, linestyle=':', alpha=0.3)
-
-    ax0 = plt.subplot(gs[1], sharex=ax0)
-    ax0.plot(time, d_ori, marker='.', color='orange')
-    
-    plt.show()
 
     actions = [(0,-1), (0,1), (-1, 0), (1,0), (0,0), 'interact']
     action_labels = ['Up', 'Down', 'Left', 'Right', 'Stay', 'Interact', 'Disconnect']
@@ -343,32 +375,77 @@ def plot_human_kb_and_subtasks(vr_log, subtask_log, human_kb_log, world_kb_log, 
         else:
             non_seen_action_log.append(action_labels.index('Disconnect'))
             non_seen_time.append(i-1)
-            
-    ax2 = plt.subplot(gs[2], sharex=ax0)
-    # ax2.scatter(non_seen_time, non_seen_action_log, marker='.', s=9, color='green')
-    # ax2.scatter(seen_time, seen_action_log, marker='^', s=9, color='green')
-    ax2.scatter([idx_to_time[t] for t in non_seen_time], non_seen_action_log, marker='.', s=9, color='green')
-    ax2.scatter([idx_to_time[t] for t in seen_time], seen_action_log, marker='^', s=9, color='green')
+
+    in_bound_continuous = create_continous_in_bound(idx_to_time, time, seen_time, non_seen_time)
+    # color_in_bound_arr = np.where(in_bound_continuous, 'blue', 'red')
+    x_segments, y_segments, colors = create_in_bound_color_segments(time, orientation_list, in_bound_continuous)
+
+        # orientation_list = orientation_smoothing(orientation_list, d_ori)
+    # ax0.plot(time, continuous_values, linestyle='-', color='blue')
+    # ax1.yticks(np.arange(len(continuous_values)), range(len(continuous_values)))
+    # ax1.xticks(x_ticks, x_ticks)
+    # ax1.set_ylabel('Y-axis')
+    # ax1.set_title('Subplot 1')
+
+    # # Create and plot the second subplot
+    # ax2 = axs[1]
+    # Add your code to plot the second subplot here
+    # Use the same x_ticks for this subplot
+
+    plt.tight_layout()  # Adjust subplot spacing
+
+
+
+    # action_log = subtask_values
+
+    # Create a grid of subplots with shared x-axis and no space in between rows
+    fig = plt.figure(figsize=(16, 5))
+    gs = gridspec.GridSpec(3, 1, height_ratios=[3.25, 3.25, 1.0])  # 3 rows, 1 column
+    # Adjust the height ratios to make the top graph 1/3 of the height of the bottom graphs
+
+    # Plot the top row (dot graph)
+    ax0 = plt.subplot(gs[0])
+    # ax0.plot(time, orientation_list, color=color_in_bound_arr)
+    for x, y, color in zip(x_segments, y_segments, colors):
+        ax0.plot(x, y, color=color, linestyle='-')
+    # ax0.set_yticks(range(len(task_labels)))
+    # ax0.set_yticklabels(task_labels)
+    # ax0.set_ylabel('Human selected tasks')
+    # ax0.set_title('Actions and Knowledge Difference Log')
+    # ax0.set_ylim(-1, len(task_labels))
+    ax0.grid(True, linestyle=':', alpha=0.3)
+
+    ax0 = plt.subplot(gs[1], sharex=ax0)
+    ax0.plot(time, d_ori, color='orange', linestyle='-')
     
-    ax2.set_yticks(range(len(action_labels)))
-    ax2.set_yticklabels(action_labels)
-    ax2.set_ylabel('Robot actions')
-    # ax2.yaxis.tick_right()
-    # ax2.yaxis.set_label_position('right')
-    ax2.set_ylim(-1, len(action_labels))
-    ax2.grid(True, linestyle=':', alpha=0.3)
+    plt.show()
+            
+    # ax2 = plt.subplot(gs[2], sharex=ax0)
+    # # ax2.scatter(non_seen_time, non_seen_action_log, marker='.', s=9, color='green')
+    # # ax2.scatter(seen_time, seen_action_log, marker='^', s=9, color='green')
+    # ax2.scatter([idx_to_time[t] for t in non_seen_time], non_seen_action_log, marker='.', s=9, color='green')
+    # ax2.scatter([idx_to_time[t] for t in seen_time], seen_action_log, marker='^', s=9, color='green')
+    
+    # ax2.set_yticks(range(len(action_labels)))
+    # ax2.set_yticklabels(action_labels)
+    # ax2.set_ylabel('Robot actions')
+    # # ax2.yaxis.tick_right()
+    # # ax2.yaxis.set_label_position('right')
+    # ax2.set_ylim(-1, len(action_labels))
+    # ax2.grid(True, linestyle=':', alpha=0.3)
 
     kb_diff, kb_diff_list, kb_diff_freq, kb_diff_avg = kb_diff_measure(human_kb_log, world_kb_log)
 
     # Plot the bottom row (bar graph)
-    ax1 = plt.subplot(gs[3], sharex=ax0)  # Share x-axis with the top row
-    time = np.arange(0, kb_diff.shape[0])
+    ax1 = plt.subplot(gs[2], sharex=ax0)  # Share x-axis with the top row
+    # time = np.arange(0, kb_diff.shape[0])
+    kb_diff = create_continuous_kb_diff(idx_to_time, time, kb_diff)
     if len(kb_diff) > 0:
-        time = [idx_to_time[t] for t in time]
-        b1 = ax1.bar(time, kb_diff[:,0], label='num_item_in_grill', align='center')
-        b2 = ax1.bar(time, kb_diff[:,1], bottom=kb_diff[:,0], label='garnish status', align='center')
-        b3 = ax1.bar(time, kb_diff[:,2], bottom=kb_diff[:,0]+kb_diff[:,1], label='plate status', align='center')
-        b4 = ax1.bar(time, kb_diff[:,3], bottom=kb_diff[:,0]+kb_diff[:,1]+kb_diff[:,2], label='robot held object', align='center')
+        # time = [idx_to_time[t] for t in time]
+        b1 = ax1.bar(time, kb_diff[:,0], label='num_item_in_grill', align='center', width=1.0)
+        b2 = ax1.bar(time, kb_diff[:,1], bottom=kb_diff[:,0], label='garnish status', align='center', width=1.0)
+        b3 = ax1.bar(time, kb_diff[:,2], bottom=kb_diff[:,0]+kb_diff[:,1], label='plate status', align='center', width=1.0)
+        b4 = ax1.bar(time, kb_diff[:,3], bottom=kb_diff[:,0]+kb_diff[:,1]+kb_diff[:,2], label='robot held object', align='center', width=1.0)
 
         handles = [b1, b2, b3, b4]
         labels = ['num_item_in_grill', 'garnish status', 'plate status', 'robot held object']
