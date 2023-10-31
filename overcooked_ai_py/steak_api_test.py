@@ -239,8 +239,8 @@ if __name__ == "__main__" :
     if args.layout is not None:
         layout_name = args.layout
     else:
-        layout_name = 'steak_mid_2'# 'steak_mid_2' # 'steak_side_3' # 'steak_api' #'steak_island2' #'steak_parrallel'  'steak_tshape'
-    scenario_1_mdp = SteakHouseGridworld.from_layout_name(layout_name,  num_items_for_steak=1, chop_time=2, wash_time=2, start_order_list=['steak', 'steak'], cook_time=10)
+        layout_name = 'steak_None_3'# 'steak_mid_2' # 'steak_side_3' # 'steak_api' #'steak_island2' #'steak_parrallel'  'steak_tshape'
+    scenario_1_mdp = SteakHouseGridworld.from_layout_name(layout_name,  num_items_for_steak=1, chop_time=2, wash_time=2, start_order_list=['steak', 'steak', 'steak', 'steak'], cook_time=10)
     # start_state = OvercookedState(
     #     [P((2, 1), s, Obj('onion', (2, 1))),
     #      P((3, 2), s)],
@@ -261,7 +261,9 @@ if __name__ == "__main__" :
     # human_agent = agent.biasHumanModel(ml_action_manager, [0.5, (1.0-0.5)], 0.5, auto_unstuck=True)
 
     VISION_LIMIT = True
-    VISION_BOUND = 150
+    # VISION_BOUND = 150
+    VISION_BOUND = 120
+
     
     EXPLORE = False
 
@@ -275,18 +277,24 @@ if __name__ == "__main__" :
         
     print('kb search depth = ', KB_SEARCH_DEPTH)
 
-    KB_UPDATE_DELAY = 1
+    # KB_UPDATE_DELAY = 1
+    KB_UPDATE_DELAY = 3
 
     print(args.vision)
     # if True:# 
     if args.vision == "1":
         VISION_LIMIT_AWARE = True
         print("aware")
-        ai_agent = load_steak_qmdp_agent(env, f'overcooked_ai_py/data/planners/{layout_name}_steak_knowledge_aware_qmdp.pkl', f'overcooked_ai_py/data/planners/{layout_name}_kb.pkl')
+        ai_agent = load_steak_qmdp_agent(env, f'overcooked_ai_py/data/planners/{layout_name}_steak_knowledge_aware_qmdp.pkl', f'overcooked_ai_py/data/planners/{layout_name}_aware_kb.pkl')
+    elif args.vision == "0":
+        VISION_LIMIT_AWARE = False
+        print('unaware')
+        ai_agent = load_steak_qmdp_agent(env, f'overcooked_ai_py/data/planners/{layout_name}_steak_knowledge_unaware_qmdp.pkl', f'overcooked_ai_py/data/planners/{layout_name}_unaware_kb.pkl')
     else:
         VISION_LIMIT_AWARE = False
         print('unaware')
         ai_agent = load_steak_qmdp_agent(env, f'overcooked_ai_py/data/planners/{layout_name}_steak_knowledge_unaware_qmdp.pkl', f'overcooked_ai_py/data/planners/{layout_name}_kb.pkl')
+
     ai_agent.set_agent_index(0)
 
 

@@ -284,27 +284,48 @@ def create_in_bound_color_segments(time, oris, in_bound_bools):
     current_color = None
     in_bound = False
     colors = []
+    linestyles = []
 
     # Iterate through the data and split it into segments by color
     for i, value in enumerate(oris):
         if i == 0:
             current_color = 'blue' if in_bound_bools[i] else 'red'
+            current_linestyle = '-' if in_bound_bools[i] else '-'
             x_segments.append([time[i]])
             y_segments.append([oris[i]])
         else:
             current_color = 'blue' if in_bound_bools[i] else 'red'
+            current_linestyle = '-' if in_bound_bools[i] else '-'
             x_segments.append([time[i - 1], time[i]])
             y_segments.append([oris[i - 1], oris[i]])
         colors.append(current_color)
+        linestyles.append(current_linestyle)
 
-    return x_segments, y_segments, colors
+    return x_segments, y_segments, colors, linestyles
 
+def get_turns(d_ori, threshold=0.2):
+    turn_count = 0
+    in_turn = False
+    for d_o in d_ori:
+
+        if abs(d_o) > threshold and in_turn == False:
+            in_turn = True
+        elif abs(d_o) < threshold and in_turn == True:
+            in_turn = False
+            turn_count += 1
+        else:
+            continue
+    
+    # divide by 2 since each turn has a positive peak and a negative peak
+    return turn_count / 2
     
 def plot_human_kb_and_subtasks(vr_log, subtask_log, human_kb_log, world_kb_log, robot_holding_log, human_holding_log, robot_in_bound_count, log_dir=None, log_name=None, log_index=None, human_play=False):
     # if len(subtask_log) == 0:
     #     return
     os.environ["KMP_DUPLICATE_LIB_OK"]="TRUE"
     img_dir = os.path.join(log_dir, log_name)
+
+    analysis_log = {}
 
     # Generate some example data
     time = np.arange(1, len(human_kb_log)+1)
@@ -345,8 +366,11 @@ def plot_human_kb_and_subtasks(vr_log, subtask_log, human_kb_log, world_kb_log, 
     time = np.arange(len(orientation_list))
     
     d_ori = np.gradient(orientation_list, time)
+
+    # removes wraparound gradient jumps
     d_ori = deriv_ori_smoothing(d_ori)
 
+    turn_count = get_turns(d_ori)
 
     actions = [(0,-1), (0,1), (-1, 0), (1,0), (0,0), 'interact']
     action_labels = ['Up', 'Down', 'Left', 'Right', 'Stay', 'Interact', 'Disconnect']
@@ -378,7 +402,7 @@ def plot_human_kb_and_subtasks(vr_log, subtask_log, human_kb_log, world_kb_log, 
 
     in_bound_continuous = create_continous_in_bound(idx_to_time, time, seen_time, non_seen_time)
     # color_in_bound_arr = np.where(in_bound_continuous, 'blue', 'red')
-    x_segments, y_segments, colors = create_in_bound_color_segments(time, orientation_list, in_bound_continuous)
+    x_segments, y_segments, colors, linestyles = create_in_bound_color_segments(time, orientation_list, in_bound_continuous)
 
         # orientation_list = orientation_smoothing(orientation_list, d_ori)
     # ax0.plot(time, continuous_values, linestyle='-', color='blue')
@@ -394,20 +418,18 @@ def plot_human_kb_and_subtasks(vr_log, subtask_log, human_kb_log, world_kb_log, 
 
     plt.tight_layout()  # Adjust subplot spacing
 
-
-
     # action_log = subtask_values
 
     # Create a grid of subplots with shared x-axis and no space in between rows
-    fig = plt.figure(figsize=(16, 5))
+    fig = plt.figure(figsize=(16, 7))
     gs = gridspec.GridSpec(3, 1, height_ratios=[3.25, 3.25, 1.0])  # 3 rows, 1 column
     # Adjust the height ratios to make the top graph 1/3 of the height of the bottom graphs
 
     # Plot the top row (dot graph)
     ax0 = plt.subplot(gs[0])
     # ax0.plot(time, orientation_list, color=color_in_bound_arr)
-    for x, y, color in zip(x_segments, y_segments, colors):
-        ax0.plot(x, y, color=color, linestyle='-')
+    for x, y, color, linestyle in zip(x_segments, y_segments, colors, linestyles):
+        ax0.plot(x, y, color=color, linestyle=linestyle)
     # ax0.set_yticks(range(len(task_labels)))
     # ax0.set_yticklabels(task_labels)
     # ax0.set_ylabel('Human selected tasks')
@@ -418,7 +440,7 @@ def plot_human_kb_and_subtasks(vr_log, subtask_log, human_kb_log, world_kb_log, 
     ax0 = plt.subplot(gs[1], sharex=ax0)
     ax0.plot(time, d_ori, color='orange', linestyle='-')
     
-    plt.show()
+    # plt.show()
             
     # ax2 = plt.subplot(gs[2], sharex=ax0)
     # # ax2.scatter(non_seen_time, non_seen_action_log, marker='.', s=9, color='green')
@@ -473,7 +495,7 @@ def plot_human_kb_and_subtasks(vr_log, subtask_log, human_kb_log, world_kb_log, 
     robot_inbound_freq = round(sum(robot_in_bound_count)/len(robot_in_bound_count)*100, 2)
 
     # results = [len(subtask_values), interrupt_freq, interrupt_occurance, undo_freq, check_freq, kb_diff_freq, kb_diff_avg, robot_inbound_freq, prep_count, prep_count_diff, plating_count, plating_count_diff, kb_diff_list, robot_in_bound_count, stop_count, turn_count, stay_count, interact_count, undo_count, check_count, obj_held_freq_dict, obj_diff_dict]
-    results = [len(subtask_values), kb_diff_freq, kb_diff_avg, robot_inbound_freq, prep_count, prep_count_diff, plating_count, plating_count_diff, kb_diff_list, robot_in_bound_count, obj_held_freq_dict, obj_diff_dict]
+    results = [turn_count]
 
     return results
 
@@ -596,7 +618,7 @@ def plot_robot_kb_and_subtasks(vr_log, subtask_log, human_kb_log, world_kb_log, 
                 non_seen_time.append(i)
                 non_seen_action_log.append(action_labels.index(action_str))
             else:
-                seen_time.append(i-1)
+                seen_time.append(i)
                 seen_action_log.append(action_labels.index(action_str))
         else:
             non_seen_action_log.append(action_labels.index('Disconnect'))
@@ -888,7 +910,7 @@ def replay_with_joint_actions(lvl_str, vr_log, plot=True, log_dir=None, log_name
         i += 1
         t += 1
 
-    # if plot: os.system("ffmpeg -y -r 5 -i \"{}%*.png\"  {}{}.mp4".format(img_dir+'/', log_dir+'/', log_name))
+    # if plot: os.system("ffmpeg -y -r 5 -i \"{}%*.png\"  {}{}.mp4".format(img_dir+'\\', log_dir+'\\', log_name))
     # os.system("ffmpeg -r 5 -i \"{}%*.png\"  {}{}.mp4".format(img_dir+'/', log_dir+'/', log_name))
     # shutil.rmtree(img_dir) 
 
@@ -1026,14 +1048,15 @@ def create_analysis_log(log_dir):
         os.remove(human_log_csv)
 
     # construct labels
+    # [len(subtask_values), kb_diff_freq, kb_diff_avg, robot_inbound_freq, prep_count, prep_count_diff, plating_count, plating_count_diff, kb_diff_list, robot_in_bound_count, obj_held_freq_dict, obj_diff_dict]
     data_labels = [
         "lvl_type",
         "ID",
         "total_steps",
-        "interrupt_freq",
-        "interrupt_occurance",
-        "undo_freq",
-        "check_freq",
+        # "interrupt_freq",
+        # "interrupt_occurance",
+        # "undo_freq",
+        # "check_freq",
         "kb_diff_freq",
         "kb_diff_avg",
         'robot_inbound_freq',
@@ -1043,14 +1066,15 @@ def create_analysis_log(log_dir):
         "plating_count_diff",
         "kb_diff_list",
         'robot_in_bound_count',
-        "stop_count",
-        "turn_count",
-        "stay_count",
-        "interact_count",
-        "undo_count",
-        "check_count",
+        # "stop_count",
+        # "human_turn_count",
+        # "stay_count",
+        # "interact_count",
+        # "undo_count",
+        # "check_count",
         "obj_held_freq_dict",
         "obj_diff_dict",
+        "human_turn_count"
     ]
 
     write_row(human_log_csv, data_labels)
@@ -1096,17 +1120,19 @@ class VRtoOvercookedMapper():
         for obj in state_dict['objects']:
             # if obj['position'][0] > 30 or self.steak_on_stove:
             pot_location = mdp.get_pot_locations()[0]
-            if obj['name'] == 'steak' and tuple(obj['position']) != pot_location:
-                # should be on stove
-                pot_location = mdp.get_pot_locations()[0]
-                obj['position'] = pot_location
+            # comment back for bad json
+            # if obj['name'] == 'steak' and tuple(obj['position']) != pot_location:
+            #     # should be on stove
+            #     pot_location = mdp.get_pot_locations()[0]
+            #     obj['position'] = pot_location
 
             
             chop_location = mdp.get_chopping_board_locations()[0]
-            if obj['name'] == 'garnish' and tuple(obj['position']) != chop_location:
-                # should be on chopping board
-                chop_location = mdp.get_chopping_board_locations()[0]
-                obj['position'] = chop_location
+            # comment back for bad json
+            # if obj['name'] == 'garnish' and tuple(obj['position']) != chop_location:
+            #     # should be on chopping board
+            #     chop_location = mdp.get_chopping_board_locations()[0]
+            #     obj['position'] = chop_location
 
             if obj['name'] == 'hot_plate':
                     # need to be careful hot plate does not end up in stash location, so if not held place in sink maybe?
@@ -1151,12 +1177,13 @@ class VRtoOvercookedMapper():
                 # if 'steak' in player['held_object']['name']:
                 #     self.steak_on_stove = False
 
-                elif self.prev_human_holding is not None and 'steak' in player['held_object']['name'] and self.prev_human_holding['name'] == 'meat':
-                    # got set to steak prematurely
-                    pot_location = mdp.get_pot_locations()[0]
-                    player['held_object']['position'] = pot_location
-                    state_dict['objects'].append(player['held_object'].copy())
-                    player['held_object'] = None
+                # comment back for bad json
+                # elif self.prev_human_holding is not None and 'steak' in player['held_object']['name'] and self.prev_human_holding['name'] == 'meat':
+                #     # got set to steak prematurely
+                #     pot_location = mdp.get_pot_locations()[0]
+                #     player['held_object']['position'] = pot_location
+                #     state_dict['objects'].append(player['held_object'].copy())
+                #     player['held_object'] = None
 
         
         self.prev_human_holding = state_dict['players'][1]['held_object']
@@ -1185,13 +1212,13 @@ if __name__ == "__main__":
     aware = 'unaware'
     map = 'mid'
     ignore_participants = [5, 11, 12]
-    for participant in range(5,16): # 4,16):
+    for participant in range(16,17): # 4,16):
         log_out_dir = os.path.join(os.getcwd(), f"overcooked_ai_py/data/logs/vr_analysis/{participant}")
         analysis_log_csv = create_analysis_log(log_out_dir)
         if participant in ignore_participants:
             continue
-        for aware in ['unaware', 'aware']:
-            for map in ['none', 'mid']:
+        for aware in ['aware']:
+            for map in ['none']:
                 log_dir = os.path.join(os.getcwd(), f"overcooked_ai_py/data/logs/vr_study_logs/{participant}/{participant}_{map}_{aware}.json")
                 f = open(log_dir)
                 log = json.load(f)
@@ -1206,6 +1233,8 @@ if __name__ == "__main__":
                     layout_name = 'steak_mid_2'
                 elif map == 'none':
                     layout_name = 'steak_none_3'
+                elif map == 'side':
+                    layout_name = 'steak_side_2'
                 lvl_config = {}
                 lvl_config['lvl_str'] = read_layout_dict(layout_name)['grid']
                 lvl_config['lvl_type'] = layout_name
@@ -1230,7 +1259,9 @@ if __name__ == "__main__":
 
                 human_results = plot_human_kb_and_subtasks(log, tmp_subtask_log, tmp_human_kb_log, tmp_world_kb_log, robot_holding_log, human_holding_log, robot_in_bound_count, log_dir=log_out_dir, log_name=f'{participant}_{map}_{aware}_human')
                 robot_results = plot_robot_kb_and_subtasks(log, tmp_subtask_log, tmp_human_kb_log, tmp_world_kb_log, robot_holding_log, human_holding_log, robot_in_bound_count, log_dir=log_out_dir, log_name=f'{participant}_{map}_{aware}_robot')
-
+                
+                # add turn count
+                robot_results.append(human_results[0])
                 write_to_analysis_log(analysis_log_csv, robot_results, f'{map}_{aware}', participant)               
 
                 # if NO_FOG_COPY and lvl_config["vision_bound"] > 0:

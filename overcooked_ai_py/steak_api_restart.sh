@@ -6,8 +6,11 @@
 # program_command="python overcooked_ai_py/steak_api_test.py -l steak_mid_2 -v 1"
 
 # program_command="python overcooked_ai_py/steak_api_test.py -l steak_None_3 -v 0"
-# program_command="python overcooked_ai_py/steak_api_test.py -l steak_none_3 -v 1 -k 1"
-program_command="python overcooked_ai_py/steak_api_test.py -l steak_None_3 -v 1"
+program_command="python overcooked_ai_py/steak_api_test.py -l steak_none_3 -v 1 -k 1"
+# program_command="python overcooked_ai_py/steak_api_test.py -l steak_None_3 -v 1"
+
+# program_command="python overcooked_ai_py/steak_api_test.py -l steak_side_2 -v 0"
+# program_command="python overcooked_ai_py/steak_api_test.py -l steak_side_2 -v 1"
 
 # Define the number of restart attempts before giving up
 max_attempts=5

@@ -6824,7 +6824,11 @@ class SteakKnowledgeBasePlanner(SteakHumanSubtaskQMDPPlanner):
 
         assert isinstance(mdp, OvercookedGridworld)
 
-        filename = custom_filename if custom_filename is not None else mdp.layout_name + '_' + 'steak_knowledge_aware_qmdp' + '.pkl'
+        if vision_limited_human.vision_limit == True:
+            filename = custom_filename if custom_filename is not None else mdp.layout_name + '_' + 'steak_knowledge_aware_qmdp_planner' + '.pkl'
+        else:
+            filename = custom_filename if custom_filename is not None else mdp.layout_name + '_' + 'steak_knowledge_unaware_qmdp_planner' + '.pkl'
+
 
         if force_compute_all:
             mdp_planner = SteakKnowledgeBasePlanner(mdp, mlp_params, vision_limited_human=vision_limited_human, debug=debug, search_depth=search_depth, kb_search_depth=kb_search_depth)
