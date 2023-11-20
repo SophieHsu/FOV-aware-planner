@@ -239,7 +239,7 @@ if __name__ == "__main__" :
     if args.layout is not None:
         layout_name = args.layout
     else:
-        layout_name = 'steak_None_3'# 'steak_mid_2' # 'steak_side_3' # 'steak_api' #'steak_island2' #'steak_parrallel'  'steak_tshape'
+        layout_name = 'steak_side_4'# 'steak_mid_2' # 'steak_side_3' # 'steak_api' #'steak_island2' #'steak_parrallel'  'steak_tshape'
     scenario_1_mdp = SteakHouseGridworld.from_layout_name(layout_name,  num_items_for_steak=1, chop_time=2, wash_time=2, start_order_list=['steak', 'steak', 'steak', 'steak'], cook_time=10)
     # start_state = OvercookedState(
     #     [P((2, 1), s, Obj('onion', (2, 1))),
@@ -291,7 +291,7 @@ if __name__ == "__main__" :
         print('unaware')
         ai_agent = load_steak_qmdp_agent(env, f'overcooked_ai_py/data/planners/{layout_name}_steak_knowledge_unaware_qmdp.pkl', f'overcooked_ai_py/data/planners/{layout_name}_unaware_kb.pkl')
     else:
-        VISION_LIMIT_AWARE = False
+        VISION_LIMIT_AWARE = True
         print('unaware')
         ai_agent = load_steak_qmdp_agent(env, f'overcooked_ai_py/data/planners/{layout_name}_steak_knowledge_unaware_qmdp.pkl', f'overcooked_ai_py/data/planners/{layout_name}_kb.pkl')
 

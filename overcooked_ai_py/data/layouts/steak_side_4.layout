@@ -4,13 +4,13 @@
 XXXBXPXDXMXXXXX
 XX        XXXXX
 XW 2      XXXXX
-XX       1XXXXX
-XXXXXX    OXXXX
+XX     1  OXXXX
+XXXXXX    XXXXX
 XXSSXX    XXXXX
 XX        XXXXX
 XXXXXXXXXXXXXXX
 XXXXXXXXXXXXXXX""",
-    "start_order_list": 'steak, steak',
+    "start_order_list": 'steak, steak,steak',
     "cook_time": 15,
     "delivery_reward": 20,
     'num_items_for_steak': 1,

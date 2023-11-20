@@ -651,7 +651,7 @@ def plot_robot_kb_and_subtasks(vr_log, subtask_log, human_kb_log, world_kb_log, 
 
         handles = [b1, b2, b3, b4]
         labels = ['num_item_in_grill', 'garnish status', 'plate status', 'robot held object']
-        fig.legend(handles, labels,loc='upper left', bbox_to_anchor=(0.47, 0.25), ncol=4, fancybox=True)
+        fig.legend(handles, labels,loc='upper left', bbox_to_anchor=(0.47, 0.42), ncol=4, fancybox=True)
 
     # ax1.bar(time, kb_diff, color='red', width=1.0)
     ax1.set_xlabel('Timesteps')
@@ -784,7 +784,7 @@ def plot_robot_kb_and_subtasks(vr_log, subtask_log, human_kb_log, world_kb_log, 
 
 #     return results
 
-def replay_with_joint_actions(lvl_str, vr_log, plot=True, log_dir=None, log_name=None, view_angle=0, agent_save_path = None, human_save_path=None, lvl_config=None):
+def replay_with_joint_actions(lvl_str, vr_log, plot=True, log_dir=None, log_name=None, view_angle=0, agent_save_path = None, human_save_path=None, lvl_config=None, kb_update_delay=None):
     """Replay a game play with given level and joint actions.
 
     Args:
@@ -824,7 +824,6 @@ def replay_with_joint_actions(lvl_str, vr_log, plot=True, log_dir=None, log_name
         EXPLORE = False
         VISION_LIMIT = True
         VISION_BOUND = 150
-        KB_UPDATE_DELAY = 1
         mlp = planners.MediumLevelPlanner.from_pickle_or_compute(mdp, COUNTERS_PARAMS, force_compute=False)  
         tmp_human_agent = agent.SteakLimitVisionHumanModel(mlp, env.state, auto_unstuck=True, explore=EXPLORE, vision_limit=VISION_LIMIT, vision_bound=VISION_BOUND, kb_update_delay=KB_UPDATE_DELAY, debug=True)
         tmp_human_agent.set_agent_index(1)
@@ -1035,14 +1034,14 @@ def write_to_analysis_log(path, results, lvl_name, id):
 
     write_row(path, to_write)
 
-def create_analysis_log(log_dir):
+def create_analysis_log(log_dir, log_name):
     """ Create human_study/result/<exp_id>. <exp_id> would be determined by the
         first digit that does not exist under the human_exp directory.
 
         Returns:
             Path to the csv file to which the result is be written.
     """
-    human_log_csv = log_dir+'/analysis_log.csv'
+    human_log_csv = log_dir+f'/analysis_log_{log_name}.csv'
 
     if os.path.exists(human_log_csv):
         os.remove(human_log_csv)
@@ -1150,12 +1149,12 @@ class VRtoOvercookedMapper():
                     break
 
         # cant go backward from holding steak to none either
-        if human_holding is None and self.prev_human_holding is not None and self.prev_human_holding['name'] == 'steak':
-            state_dict['players'][1]['held_object'] = self.prev_human_holding
-            for d in state_dict['objects']:
-                if d['id'] == self.prev_human_holding['id']:
-                    state_dict['objects'].remove(d)
-                    break
+        # if human_holding is None and self.prev_human_holding is not None and self.prev_human_holding['name'] == 'steak':
+        #     state_dict['players'][1]['held_object'] = self.prev_human_holding
+        #     for d in state_dict['objects']:
+        #         if d['id'] == self.prev_human_holding['id']:
+        #             state_dict['objects'].remove(d)
+        #             break
 
         for player in state_dict['players']:
             if player['held_object'] is not None:
@@ -1211,14 +1210,18 @@ if __name__ == "__main__":
     participant = 8
     aware = 'unaware'
     map = 'mid'
+    
+    KB_UPDATE_DELAY = 3
     ignore_participants = [5, 11, 12]
-    for participant in range(16,17): # 4,16):
+    for participant in range(18,19): # 4,16):
         log_out_dir = os.path.join(os.getcwd(), f"overcooked_ai_py/data/logs/vr_analysis/{participant}")
-        analysis_log_csv = create_analysis_log(log_out_dir)
+        analysis_log_csv = create_analysis_log(log_out_dir, f'{participant}_kb{KB_UPDATE_DELAY}')
         if participant in ignore_participants:
             continue
-        for aware in ['aware']:
-            for map in ['none']:
+        for aware in ['unaware', 'aware']:
+            for map in ['mid_1','side_4']:
+                # if map == 'side' and aware == 'aware':
+                #     continue
                 log_dir = os.path.join(os.getcwd(), f"overcooked_ai_py/data/logs/vr_study_logs/{participant}/{participant}_{map}_{aware}.json")
                 f = open(log_dir)
                 log = json.load(f)
@@ -1229,17 +1232,21 @@ if __name__ == "__main__":
 
                 # play all of the levels
                 log['i'] = log['i'] + 1
-                if map == 'mid':
+                if map == 'mid_2':
                     layout_name = 'steak_mid_2'
-                elif map == 'none':
+                elif map == 'none_3':
                     layout_name = 'steak_none_3'
-                elif map == 'side':
+                elif map == 'side_2':
                     layout_name = 'steak_side_2'
+                else:
+                    layout_name = 'steak_' + map
                 lvl_config = {}
                 lvl_config['lvl_str'] = read_layout_dict(layout_name)['grid']
                 lvl_config['lvl_type'] = layout_name
                 lvl_config["kb_search_depth"] = 0
-                lvl_config["vision_bound"] = 150
+                lvl_config["vision_bound"] = 120
+
+                
 
                 # for log_index in range(1, log['i']):
                     # get level string and logged joint actions from log file
@@ -1255,14 +1262,14 @@ if __name__ == "__main__":
                     # agent_save_path, _, human_save_path = gen_save_pths(lvl_config)
                 agent_save_path = os.path.join(os.getcwd(), 'overcooked_ai_py/data/logs/vr_analysis/robot_analysis')
                 human_save_path = os.path.join(os.getcwd(), 'overcooked_ai_py/data/logs/vr_analysis/human_analysis')
-                tmp_world_kb_log, tmp_human_kb_log, tmp_subtask_log, robot_holding_log, human_holding_log, robot_in_bound_count = replay_with_joint_actions(lvl_str, log, log_dir=log_out_dir, log_name=f'{participant}_{map}_{aware}', view_angle=lvl_config["vision_bound"], lvl_config=lvl_config)
+                tmp_world_kb_log, tmp_human_kb_log, tmp_subtask_log, robot_holding_log, human_holding_log, robot_in_bound_count = replay_with_joint_actions(lvl_str, log, log_dir=log_out_dir, log_name=f'{participant}_{map}_{aware}_kb{KB_UPDATE_DELAY}', view_angle=lvl_config["vision_bound"], lvl_config=lvl_config, kb_update_delay=KB_UPDATE_DELAY)
 
-                human_results = plot_human_kb_and_subtasks(log, tmp_subtask_log, tmp_human_kb_log, tmp_world_kb_log, robot_holding_log, human_holding_log, robot_in_bound_count, log_dir=log_out_dir, log_name=f'{participant}_{map}_{aware}_human')
-                robot_results = plot_robot_kb_and_subtasks(log, tmp_subtask_log, tmp_human_kb_log, tmp_world_kb_log, robot_holding_log, human_holding_log, robot_in_bound_count, log_dir=log_out_dir, log_name=f'{participant}_{map}_{aware}_robot')
+                human_results = plot_human_kb_and_subtasks(log, tmp_subtask_log, tmp_human_kb_log, tmp_world_kb_log, robot_holding_log, human_holding_log, robot_in_bound_count, log_dir=log_out_dir, log_name=f'{participant}_{map}_{aware}_kb{KB_UPDATE_DELAY}_human')
+                robot_results = plot_robot_kb_and_subtasks(log, tmp_subtask_log, tmp_human_kb_log, tmp_world_kb_log, robot_holding_log, human_holding_log, robot_in_bound_count, log_dir=log_out_dir, log_name=f'{participant}_{map}_{aware}_kb{KB_UPDATE_DELAY}_robot')
                 
                 # add turn count
                 robot_results.append(human_results[0])
-                write_to_analysis_log(analysis_log_csv, robot_results, f'{map}_{aware}', participant)               
+                write_to_analysis_log(analysis_log_csv, robot_results, f'{map}_{aware}_kb{KB_UPDATE_DELAY}', participant)               
 
                 # if NO_FOG_COPY and lvl_config["vision_bound"] > 0:
                 #     replay_with_joint_actions(lvl_str, joint_actions, log_dir=os.path.join(LSI_STEAK_STUDY_RESULT_DIR, log_index), log_name=lvl_config["lvl_type"]+'_'+str(lvl_config["kb_search_depth"])+'_nofog', view_angle=0)

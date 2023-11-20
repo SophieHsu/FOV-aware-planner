@@ -155,5 +155,6 @@ agent*.pkl
 **.pkl
 
 overcooked_ai_py/data/logs/
+overcooked_ai_pcg/LSI/data/steak_test/result/
 
 **.mp4
