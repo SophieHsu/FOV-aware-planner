@@ -4,7 +4,7 @@ The 2D Grid World is a simulation environment designed to explore the dynamics o
 
 <p align="center">
   <img src="assets/game_interface.png" width="25%" />
-  <img src="assets/game_play.png" width="75%" />
+  <img src="assets/game_play.png" width="72%" />
   <br> Example of a 2D Grid World layout with agents performing tasks while considering the human's field of view (tiles that are dimmed).
 </p>
 
