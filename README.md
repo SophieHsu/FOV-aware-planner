@@ -19,7 +19,7 @@ The key feature of this environment is the integration of a **limited Field of V
 - **Field of View Awareness**: The AI adapts its strategy by understanding and acting within the limited FOV of the human agent.
 - **Procedural Task Layouts**: The environment supports customizable layouts to simulate various task settings, such as kitchens or workspaces.
 
-### Install Overcooked-AI
+### Installation
 
 It is useful to setup a conda environment with Python 3.7 using
 [Anaconda](https://www.anaconda.com/products/individual):
