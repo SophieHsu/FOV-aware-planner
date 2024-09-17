@@ -19,6 +19,46 @@ The key feature of this environment is the integration of a **limited Field of V
 - **Field of View Awareness**: The AI adapts its strategy by understanding and acting within the limited FOV of the human agent.
 - **Procedural Task Layouts**: The environment supports customizable layouts to simulate various task settings, such as kitchens or workspaces.
 
+### Install Overcooked-AI
+
+It is useful to setup a conda environment with Python 3.7 using
+[Anaconda](https://www.anaconda.com/products/individual):
+
+```
+conda create -n overcooked_ai python=3.7
+conda activate overcooked_ai
+```
+
+To complete the installation after cloning the repo, run the following commands:
+
+```
+cd overcooked_ai
+pip install -e .
+```
+
+### Overcooked-AI Code Structure Overview
+
+`overcooked_ai_py` contains:
+
+`mdp/`:
+
+- `overcooked_mdp.py`: main Overcooked game logic
+- `overcooked_env.py`: environment classes built on top of the Overcooked mdp
+- `layout_generator.py`: functions to generate random layouts programmatically
+- `actions`: actions that agents can take
+- `graphics`: render related functions
+
+`agents/`:
+
+- `agent.py`: location of agent classes
+- `benchmarking.py`: sample trajectories of agents (both trained and planners)
+  and load various models
+
+`planning`:
+
+- `planners.py`: near-optimal agent planning logic
+- `search.py`: A\* search and shortest path logic
+
 ## Steak Task Instructions
 
 ### Objective:
