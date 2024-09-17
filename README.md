@@ -1,4 +1,4 @@
-# 2D Grid World - Collaborative Task Simulator
+# Integrating Field of View in Human-Aware Collaborative Planning
 
 The 2D Grid World is a simulation environment designed to explore the dynamics of human-AI collaboration. It focuses on how AI can assist humans in completing tasks by considering the human's field of view (FOV), cognitive limitations, and task planning in a grid-based environment.
 
