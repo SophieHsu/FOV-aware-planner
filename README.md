@@ -25,11 +25,11 @@ The key feature of this environment is the integration of a **limited Field of V
 Prepare and deliver a steak dish with garnish (onion) using the least number of steps. The task requires completing the following subtasks: grilling the steak, chopping the onion, washing a plate, plating and serving the dish.
 
 ### Steps to Complete the Steak Task:
-<p align="center">
-  <img src="assets/game_interface.png" width="30%" />
-  <img src="assets/game_instructions.png" width="50%" />
-</p>
 
+<p align="center">
+  <img src="assets/game_interface.png" width="50%" />
+  <img src="assets/game_instructions.png" width="45%" />
+</p>
 
 ## Citation ##
 Please cite this work using the following Bibtex:
