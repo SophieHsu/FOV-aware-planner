@@ -23,42 +23,9 @@ The key feature of this environment is the integration of a **limited Field of V
 ## Steak Task Instructions
 
 ### Objective:
-Prepare and deliver a steak dish with garnish (onion) using the least number of steps. The task requires completing the following subtasks: grilling the steak, chopping the onion, washing a plate, and serving the final dish.
+Prepare and deliver a steak dish with garnish (onion) using the least number of steps. The task requires completing the following subtasks: grilling the steak, chopping the onion, washing a plate, plating and serving the dish.
 
 ### Steps to Complete the Steak Task:
-
-1. **Pick up the raw steak:**
-   - Navigate to the **meat dispenser** on the grid.
-   - Use the interaction action to **pick up the raw steak**.
-
-2. **Grill the steak:**
-   - Move to the **grill station** with the raw steak.
-   - Place the steak on the grill using the interaction action.
-   - **Wait for 10 timesteps** for the steak to cook.
-
-3. **Pick up the onion:**
-   - While the steak is grilling, navigate to the **onion dispenser**.
-   - Use the interaction action to **pick up an onion**.
-
-4. **Chop the onion:**
-   - Move to the **chopping board**.
-   - Use the interaction action to place the onion on the chopping board and chop it. This will take a few timesteps.
-
-5. **Wash a plate:**
-   - Navigate to the **plate dispenser** to pick up a dirty plate.
-   - Move to the **sink** to wash the plate. Use the interaction action to clean the plate.
-
-6. **Pick up the cooked steak:**
-   - Return to the grill station where the steak has finished cooking.
-   - **Pick up the steak** using the interaction action.
-
-7. **Assemble the dish:**
-   - Move to the **chopping board** to pick up the chopped onion garnish.
-   - **Combine** the steak and onion on the plate.
-
-8. **Serve the steak dish:**
-   - Finally, take the **completed steak dish** to the **serving counter** and deliver it using the interaction action.
-
 <p align="center">
   <img src="assets/game_instructions.png" width="50%" />
 </p>
