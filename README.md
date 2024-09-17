@@ -31,6 +31,14 @@ Prepare and deliver a steak dish with garnish (onion) using the least number of 
   <img src="assets/game_instructions.png" width="45%" />
 </p>
 
+### FOV-Aware Collaboration Planning 
+
+<p align="center">
+  <img src="assets/method.png" width="75%" />
+  <br> Human's FOV-aware collaboration planner.
+</p>
+
+
 ## Citation ##
 Please cite this work using the following Bibtex:
 ```
