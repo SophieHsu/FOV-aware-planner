@@ -3,8 +3,7 @@
 The 2D Grid World is a simulation environment designed to explore the dynamics of human-AI collaboration. It focuses on how AI can assist humans in completing tasks by considering the human's field of view (FOV), cognitive limitations, and task planning in a grid-based environment.
 
 <p align="center">
-  <img src="assets/game_interface.png" width="25%" />
-  <img src="assets/game_play.png" width="72%" />
+  <img src="assets/game_play.png" width="80%" />
   <br> Example of a 2D Grid World layout with agents performing tasks while considering the human's field of view (tiles that are dimmed).
 </p>
 
@@ -27,6 +26,7 @@ Prepare and deliver a steak dish with garnish (onion) using the least number of 
 
 ### Steps to Complete the Steak Task:
 <p align="center">
+  <img src="assets/game_interface.png" width="30%" />
   <img src="assets/game_instructions.png" width="50%" />
 </p>
 
