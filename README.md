@@ -2,9 +2,8 @@
 
 The 2D Grid World is a simulation environment designed to explore the dynamics of human-AI collaboration. It focuses on how AI can assist humans in completing tasks by considering the human's field of view (FOV), cognitive limitations, and task planning in a grid-based environment.
 
-![2D Grid World Layout](assets/game_play.png)
 <p align="center">
-  <img src="assets/game_interface.png" width="15%" />
+  <img src="assets/game_interface.png" width="25%" />
   <img src="assets/game_play.png" width="75%" />
   <br> Example of a 2D Grid World layout with agents performing tasks while considering the human's field of view (tiles that are dimmed).
 </p>
