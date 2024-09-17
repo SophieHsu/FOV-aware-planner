@@ -4,9 +4,8 @@ The 2D Grid World is a simulation environment designed to explore the dynamics o
 
 ![2D Grid World Layout](assets/game_play.png)
 <p align="center">
-  <img src="assets/game_interface.gif" width="15%" />
-  <img src="assets/game_play.gif" width="85%" />
-  <br> TExample of a 2D Grid World layout with agents performing tasks while considering the human's field of view (tiles that are dimmed).
+  <img src="assets/game_play.gif" width="75%" />
+  <br> Example of a 2D Grid World layout with agents performing tasks while considering the human's field of view (tiles that are dimmed).
 </p>
 
 
@@ -61,6 +60,7 @@ Prepare and deliver a steak dish with garnish (onion) using the least number of 
    - Finally, take the **completed steak dish** to the **serving counter** and deliver it using the interaction action.
 
 <p align="center">
+  <img src="assets/game_interface.gif" width="15%" />
   <img src="assets/game_instructions.png" width="50%" />
 </p>
 
