@@ -21,18 +21,18 @@ The key feature of this environment is the integration of a **limited Field of V
 
 ### Installation
 
-It is useful to setup a conda environment with Python 3.7 using
+It is useful to setup a conda environment with Python 3.8 using
 [Anaconda](https://www.anaconda.com/products/individual):
 
 ```
-conda create -n overcooked_ai python=3.7
+conda create -n overcooked_ai python=3.8
 conda activate overcooked_ai
 ```
 
 To complete the installation after cloning the repo, run the following commands:
 
 ```
-cd overcooked_ai
+cd FOV-aware-planner
 pip install -e .
 ```
 
