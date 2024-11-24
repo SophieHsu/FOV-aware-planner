@@ -1,6 +1,0 @@
-visualize=false
-num_cores=8
-num_simulations=8
-algorithm_config="cma_me.tml"
-elite_map_config="small_workloads_diff_finer.tml"
-agent_config=["qmdp_agent_w_greedy_agent.tml"]

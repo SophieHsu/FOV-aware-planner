@@ -12,8 +12,8 @@ from argparse import ArgumentParser
 import numpy as np
 import gc
 import time
-from overcooked_ai_pcg.LSI.steak_study import create_human_exp_log, write_to_human_exp_log
-from overcooked_ai_pcg.helper import init_steak_qmdp_agent
+from overcooked_ai_py.LSI.steak_study import create_human_exp_log, write_to_human_exp_log
+from overcooked_ai_py.helper import init_steak_qmdp_agent
 
 from overcooked_ai_py.mdp.overcooked_mdp import OvercookedGridworld, SteakHouseGridworld, OvercookedState, Direction, Action, PlayerState, ObjectState
 from overcooked_ai_py.mdp.overcooked_env import OvercookedEnv
