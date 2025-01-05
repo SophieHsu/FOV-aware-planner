@@ -1207,19 +1207,19 @@ if __name__ == "__main__":
                         default=False)
     opt = parser.parse_args()
 
-    participant = 8
-    aware = 'unaware'
+    participant = 0
+    aware = 'aware'
     map = 'mid'
     
     KB_UPDATE_DELAY = 3
     ignore_participants = [5, 11, 12]
-    for participant in range(18,19): # 4,16):
+    for participant in range(1): # 4,16):
         log_out_dir = os.path.join(os.getcwd(), f"overcooked_ai_py/data/logs/vr_analysis/{participant}")
         analysis_log_csv = create_analysis_log(log_out_dir, f'{participant}_kb{KB_UPDATE_DELAY}')
         if participant in ignore_participants:
             continue
-        for aware in ['unaware', 'aware']:
-            for map in ['mid_1','side_4']:
+        for aware in ['aware']:
+            for map in ['mid_2']:
                 # if map == 'side' and aware == 'aware':
                 #     continue
                 log_dir = os.path.join(os.getcwd(), f"overcooked_ai_py/data/logs/vr_study_logs/{participant}/{participant}_{map}_{aware}.json")

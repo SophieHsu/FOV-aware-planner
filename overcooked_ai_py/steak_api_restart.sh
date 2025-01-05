@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # Define the command to start your program
-# program_command="python overcooked_ai_py/steak_api_test.py -l steak_mid_2 -v 0"
+program_command="python overcooked_ai_py/steak_api_test.py -l steak_mid_2 -v 0"
 # program_command="python overcooked_ai_py/steak_api_test.py -l steak_mid_2 -v 1 -k 1"
 # program_command="python overcooked_ai_py/steak_api_test.py -l steak_mid_2 -v 1"
 
