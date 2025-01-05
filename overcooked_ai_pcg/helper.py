@@ -29,8 +29,6 @@ from overcooked_ai_py.planning.planners import (Heuristic,
 
 from overcooked_ai_pcg import (ERR_LOG_PIC, G_PARAM_FILE, LSI_CONFIG_AGENT_DIR,
                                LSI_CONFIG_ALGO_DIR, LSI_CONFIG_MAP_DIR)
-from overcooked_ai_rl.dqn import Qnet
-
 obj_types = "12XSPOD "
 num_obj_type = len(obj_types)
 
@@ -406,75 +404,6 @@ def setup_env_from_grid(layout_grid,
             qmdp_planner,
             greedy=agent1_config["known"],
             auto_unstuck=agent1_config["auto_unstuck"])
-
-        print("worker(%d): Preprocess take %d seconds" %
-              (worker_id, time.time() - start_time))
-
-        agent1.set_mdp(mdp)
-        agent2.set_mdp(mdp)
-
-        del mlp_planner, qmdp_planner
-
-
-    # Set up 6: rl random agent + greedy agent
-    elif (agent1_config["name"] == "rl_rand_agent" or agent1_config["name"]
-          == "rl_greedy_agent" or agent1_config["name"] == "rl_mix_agent") and agent2_config["name"] == "greedy_agent":
-        print("worker(%d): Pre-constructing graph..." % (worker_id))
-        # print(human_preference, human_adaptiveness)
-        mlp_planner = MediumLevelPlanner(mdp, BASE_PARAMS)
-        print("worker(%d): Planning..." % (worker_id))
-
-        agent2 = GreedyHumanModel(mlp_planner,
-                                  auto_unstuck=agent2_config["auto_unstuck"])
-
-        print("worker(%d): Pre-constructing qmdp plan..." % (worker_id))
-
-        qmdp_planner = HumanSubtaskQMDPPlanner.from_pickle_or_compute(
-            mdp, BASE_PARAMS, force_compute_all=True)
-
-        print("worker(%d): QMDP agent planning..." % (worker_id))
-
-        q = Qnet()
-        q.load_state_dict(torch.load(os.path.join(agent1_config["q_dir"], agent1_config["pth_file"])))
-        q.eval()
-
-        agent1 = HRLTrainingAgent(mdp, 
-            qmdp_planner, 
-            auto_unstuck=agent1_config["auto_unstuck"],
-            qnet=q)
-
-        print("worker(%d): Preprocess take %d seconds" %
-              (worker_id, time.time() - start_time))
-
-        agent1.set_mdp(mdp)
-        agent2.set_mdp(mdp)
-
-        del mlp_planner, qmdp_planner
-
-    elif (agent1_config["name"] == "rl_rand_agent" or agent1_config["name"]
-          == "rl_greedy_agent" or agent1_config["name"] == "rl_mix_agent") and agent2_config["name"] == "random_agent":
-        print("worker(%d): Pre-constructing graph..." % (worker_id))
-        # print(human_preference, human_adaptiveness)
-        mlp_planner = MediumLevelPlanner(mdp, BASE_PARAMS)
-        print("worker(%d): Planning..." % (worker_id))
-
-        agent2 = RandomAgent()
-
-        print("worker(%d): Pre-constructing qmdp plan..." % (worker_id))
-
-        qmdp_planner = HumanSubtaskQMDPPlanner.from_pickle_or_compute(
-            mdp, BASE_PARAMS, force_compute_all=True)
-
-        print("worker(%d): QMDP agent planning..." % (worker_id))
-
-        q = Qnet()
-        q.load_state_dict(torch.load(os.path.join(agent1_config["q_dir"], agent1_config["pth_file"])))
-        q.eval()
-
-        agent1 = HRLTrainingAgent(mdp, 
-            qmdp_planner, 
-            auto_unstuck=agent1_config["auto_unstuck"],
-            qnet=q)
 
         print("worker(%d): Preprocess take %d seconds" %
               (worker_id, time.time() - start_time))
