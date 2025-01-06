@@ -893,7 +893,7 @@ def write_row(csv_file, to_add):
         writer.writerow(to_add)
 
 
-def write_to_human_exp_log(lvl_type_full, results, lvl_config):
+def write_to_human_exp_log(human_log_csv, results, lvl_config):
     """Write to human exp log.
 
     Args:
