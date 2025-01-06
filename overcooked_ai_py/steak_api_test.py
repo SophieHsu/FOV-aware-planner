@@ -8,19 +8,13 @@ import pygame
 # import matplotlib
 # matplotlib.use('TkAgg')
 # import matplotlib.pyplot as plt
-from argparse import ArgumentParser
-import numpy as np
-import gc
 import time
-from overcooked_ai_pcg.LSI.steak_study import create_human_exp_log, write_to_human_exp_log
-from overcooked_ai_pcg.helper import init_steak_qmdp_agent
 
-from overcooked_ai_py.mdp.overcooked_mdp import OvercookedGridworld, SteakHouseGridworld, OvercookedState, Direction, Action, PlayerState, ObjectState
+from overcooked_ai_py.mdp.overcooked_mdp import SteakHouseGridworld, OvercookedState, Direction, Action, PlayerState, ObjectState
 from overcooked_ai_py.mdp.overcooked_env import OvercookedEnv
 import overcooked_ai_py.agents.agent as agent
 import overcooked_ai_py.planning.planners as planners
-from overcooked_ai_py.mdp.layout_generator import LayoutGenerator
-from overcooked_ai_py.utils import load_dict_from_file
+from overcooked_ai_py.helpers import init_steak_qmdp_agent, create_human_exp_log
 
 NO_COUNTERS_PARAMS = {
     'start_orientations': False,

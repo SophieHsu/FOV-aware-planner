@@ -18,12 +18,12 @@ import time
 import pandas as pd
 import toml
 
-from overcooked_ai_pcg import (LSI_CONFIG_AGENT_DIR, LSI_CONFIG_ALGO_DIR,
+from scripts import (LSI_CONFIG_AGENT_DIR, LSI_CONFIG_ALGO_DIR,
                                LSI_CONFIG_EXP_DIR, LSI_CONFIG_MAP_DIR,
                                LSI_LOG_DIR)
-from overcooked_ai_pcg.helper import (read_in_lsi_config, run_overcooked_game,
+from scripts.helper import (read_in_lsi_config, run_overcooked_game,
                                       visualize_lvl)
-from overcooked_ai_pcg.LSI.qd_algorithms import Individual
+from scripts.LSI.qd_algorithms import Individual
 
 
 def log_actions(ind, agent_config, log_dir, f1, f2, row_idx, col_idx, ind_id, mat_idx=0):

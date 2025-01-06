@@ -9,10 +9,10 @@ import pickle
 import numpy as np
 import pandas as pd
 from pprint import pprint
-from overcooked_ai_pcg import (LSI_HUMAN_STUDY_RESULT_DIR,
+from scripts import (LSI_HUMAN_STUDY_RESULT_DIR,
                                LSI_HUMAN_STUDY_CONFIG_DIR,
                                LSI_HUMAN_STUDY_AGENT_DIR)
-from overcooked_ai_pcg.helper import init_env, init_qmdp_agent
+from scripts.helper import init_env, init_qmdp_agent
 from overcooked_ai_py.agents.agent import HumanPlayer, StayAgent
 from overcooked_ai_py.mdp.overcooked_mdp import Direction, Action
 from overcooked_ai_py.mdp.overcooked_env import MAX_HORIZON

@@ -13,10 +13,10 @@ import pickle
 import numpy as np
 import pandas as pd
 from pprint import pprint
-from overcooked_ai_pcg import (LSI_STEAK_STUDY_RESULT_DIR,
+from scripts import (LSI_STEAK_STUDY_RESULT_DIR,
                                LSI_STEAK_STUDY_CONFIG_DIR,
                                LSI_STEAK_STUDY_AGENT_DIR)
-from overcooked_ai_pcg.helper import init_steak_env, init_steak_qmdp_agent, lvl_str2grid, BASE_PARAMS
+from scripts.helper import init_steak_env, init_steak_qmdp_agent, lvl_str2grid, BASE_PARAMS
 from overcooked_ai_py import read_layout_dict
 import overcooked_ai_py.agents.agent as agent
 import overcooked_ai_py.planning.planners as planners

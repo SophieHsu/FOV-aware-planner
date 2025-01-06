@@ -5,9 +5,9 @@ import pandas
 import warnings
 warnings.simplefilter('always', UserWarning)
 from pprint import pprint
-from overcooked_ai_pcg import LSI_HUMAN_STUDY_RESULT_DIR
+from scripts import LSI_HUMAN_STUDY_RESULT_DIR
 
-from overcooked_ai_pcg.LSI.human_study import (DETAILED_STUDY_TYPES,
+from scripts.LSI.human_study import (DETAILED_STUDY_TYPES,
                                                load_human_log_data,
                                                replay_with_joint_actions)
 

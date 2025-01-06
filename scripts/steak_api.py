@@ -8,9 +8,9 @@ import numpy as np
 import pandas as pd
 from fastapi import FastAPI
 import numpy as np
-from overcooked_ai_pcg import LSI_STEAK_STUDY_AGENT_DIR, LSI_STEAK_STUDY_CONFIG_DIR, LSI_STEAK_STUDY_RESULT_DIR
+from scripts import LSI_STEAK_STUDY_AGENT_DIR, LSI_STEAK_STUDY_CONFIG_DIR, LSI_STEAK_STUDY_RESULT_DIR
 
-from overcooked_ai_pcg.LSI.steak_study import ALL_STUDY_TYPES, DETAILED_STUDY_TYPES, NON_TRIAL_STUDY_TYPES, agents_play, correct_study_type, create_human_exp_log, human_play, human_play_obj, load_human_log_data, replay_with_joint_actions, write_to_human_exp_log
+from scripts.LSI.steak_study import ALL_STUDY_TYPES, DETAILED_STUDY_TYPES, NON_TRIAL_STUDY_TYPES, agents_play, correct_study_type, create_human_exp_log, human_play, human_play_obj, load_human_log_data, replay_with_joint_actions, write_to_human_exp_log
 from overcooked_ai_py.mdp.overcooked_mdp import OvercookedState, PlayerState
 
 app = FastAPI()

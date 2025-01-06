@@ -1,6 +1,6 @@
 import os
 import pandas as pd
-from overcooked_ai_pcg import LSI_STEAK_STUDY_RESULT_DIR
+from scripts import LSI_STEAK_STUDY_RESULT_DIR
 
 # Set the directory where your CSV files are located
 base_dir = os.path.join(os.getcwd(), 'overcooked_ai_py/data/logs/vr_analysis/')

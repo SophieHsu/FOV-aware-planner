@@ -3,7 +3,7 @@ import json
 import time
 import argparse
 import pygame
-from overcooked_ai_pcg.helper import lvl_str2grid, CONFIG
+from scripts.helper import lvl_str2grid, CONFIG
 from overcooked_ai_py.mdp.overcooked_mdp import OvercookedGridworld
 from overcooked_ai_py.mdp.overcooked_env import OvercookedEnv
 

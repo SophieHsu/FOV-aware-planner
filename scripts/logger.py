@@ -4,7 +4,7 @@ import os
 from abc import ABC, abstractmethod
 
 import numpy as np
-from overcooked_ai_pcg import LSI_LOG_DIR
+from scripts import LSI_LOG_DIR
 
 
 class LoggerBase(ABC):
