@@ -1173,18 +1173,6 @@ class VRtoOvercookedMapper():
                         state_dict['objects'].append(player['held_object'].copy())
                         player['held_object'] = None
 
-                # if 'steak' in player['held_object']['name']:
-                #     self.steak_on_stove = False
-
-                # comment back for bad json
-                # elif self.prev_human_holding is not None and 'steak' in player['held_object']['name'] and self.prev_human_holding['name'] == 'meat':
-                #     # got set to steak prematurely
-                #     pot_location = mdp.get_pot_locations()[0]
-                #     player['held_object']['position'] = pot_location
-                #     state_dict['objects'].append(player['held_object'].copy())
-                #     player['held_object'] = None
-
-        
         self.prev_human_holding = state_dict['players'][1]['held_object']
         
         state_obj = OvercookedState.from_dict(state_dict)
@@ -1192,42 +1180,47 @@ class VRtoOvercookedMapper():
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
-    parser.add_argument('-l',
-                        '--log_index',
-                        help='Integer: index of the study log',
-                        required=False,
-                        default=-1)
-    parser.add_argument('--gen_vid',
-                        action='store_true',
-                        help='Whether to continue running a previous study',
-                        default=False)
-    parser.add_argument('--gen_plot',
-                        action='store_true',
-                        help='Whether to continue running a previous study',
-                        default=False)
+    parser.add_argument(
+        '-p',
+        '--participants',
+        help='Comma-separated list of participant IDs to process (e.g., "4,16,18"). Default: 1,5',
+        type=str,
+        default="1,5"
+    )
+    parser.add_argument(
+        '-a',
+        '--awareness',
+        help='Comma-separated list of awareness states to process (e.g., "aware,unaware")',
+        type=str,
+        default="unaware,aware"
+    )
+    parser.add_argument(
+        '-m',
+        '--maps',
+        help='Comma-separated list of maps to process (e.g., "mid_1,side_4")',
+        type=str,
+        default="mid_1,side_4"
+    )
+
     opt = parser.parse_args()
 
-    participant = 8
-    aware = 'unaware'
-    map = 'mid'
+    # Convert string arguments to lists
+    participants = [int(p.strip()) for p in opt.participants.split(',')]
+    awareness_states = [a.strip() for a in opt.awareness.split(',')]
+    maps = [m.strip() for m in opt.maps.split(',')]
     
     KB_UPDATE_DELAY = 3
     ignore_participants = [5, 11, 12]
-    for participant in range(18,19): # 4,16):
+    for participant in participants:
         log_out_dir = os.path.join(os.getcwd(), f"overcooked_ai_py/data/logs/vr_analysis/{participant}")
         analysis_log_csv = create_analysis_log(log_out_dir, f'{participant}_kb{KB_UPDATE_DELAY}')
         if participant in ignore_participants:
             continue
-        for aware in ['unaware', 'aware']:
-            for map in ['mid_1','side_4']:
-                # if map == 'side' and aware == 'aware':
-                #     continue
+        for aware in awareness_states:
+            for map in maps:
                 log_dir = os.path.join(os.getcwd(), f"overcooked_ai_py/data/logs/vr_study_logs/{participant}/{participant}_{map}_{aware}.json")
                 f = open(log_dir)
                 log = json.load(f)
-
-                # log_index = opt.log_index
-                # _, human_log_data = load_human_log_data(log_index)
                 NO_FOG_COPY=False
 
                 # play all of the levels
@@ -1245,21 +1238,7 @@ if __name__ == "__main__":
                 lvl_config['lvl_type'] = layout_name
                 lvl_config["kb_search_depth"] = 0
                 lvl_config["vision_bound"] = 120
-
-                
-
-                # for log_index in range(1, log['i']):
-                    # get level string and logged joint actions from log file
-
-                    # overcooked layout string
                 lvl_str = lvl_config["lvl_str"]
-
-                # joint_actions = ast.literal_eval(lvl_config["joint_actions"])
-                # joint_actions = log
-
-                # replay the game
-                # if opt.gen_vid:
-                    # agent_save_path, _, human_save_path = gen_save_pths(lvl_config)
                 agent_save_path = os.path.join(os.getcwd(), 'overcooked_ai_py/data/logs/vr_analysis/robot_analysis')
                 human_save_path = os.path.join(os.getcwd(), 'overcooked_ai_py/data/logs/vr_analysis/human_analysis')
                 tmp_world_kb_log, tmp_human_kb_log, tmp_subtask_log, robot_holding_log, human_holding_log, robot_in_bound_count = replay_with_joint_actions(lvl_str, log, log_dir=log_out_dir, log_name=f'{participant}_{map}_{aware}_kb{KB_UPDATE_DELAY}', view_angle=lvl_config["vision_bound"], lvl_config=lvl_config, kb_update_delay=KB_UPDATE_DELAY)
@@ -1270,7 +1249,3 @@ if __name__ == "__main__":
                 # add turn count
                 robot_results.append(human_results[0])
                 write_to_analysis_log(analysis_log_csv, robot_results, f'{map}_{aware}_kb{KB_UPDATE_DELAY}', participant)               
-
-                # if NO_FOG_COPY and lvl_config["vision_bound"] > 0:
-                #     replay_with_joint_actions(lvl_str, joint_actions, log_dir=os.path.join(LSI_STEAK_STUDY_RESULT_DIR, log_index), log_name=lvl_config["lvl_type"]+'_'+str(lvl_config["kb_search_depth"])+'_nofog', view_angle=0)
-
