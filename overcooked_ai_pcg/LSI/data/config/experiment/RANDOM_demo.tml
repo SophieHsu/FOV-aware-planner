@@ -1,5 +1,0 @@
-visualize=false
-num_cores=30
-num_simulations=10000
-algorithm_config="random.tml"
-elite_map_config="demo.tml"

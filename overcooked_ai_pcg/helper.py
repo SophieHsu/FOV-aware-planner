@@ -27,8 +27,7 @@ from overcooked_ai_py.planning.planners import (Heuristic,
                                                 MediumLevelMdpPlanner,
                                                 MediumLevelPlanner)
 
-from overcooked_ai_pcg import (ERR_LOG_PIC, G_PARAM_FILE, LSI_CONFIG_AGENT_DIR,
-                               LSI_CONFIG_ALGO_DIR, LSI_CONFIG_MAP_DIR)
+from overcooked_ai_pcg import (LSI_CONFIG_AGENT_DIR, LSI_CONFIG_ALGO_DIR, LSI_CONFIG_MAP_DIR)
 obj_types = "12XSPOD "
 num_obj_type = len(obj_types)
 
@@ -165,35 +164,6 @@ def read_in_lsi_config(exp_config_file):
             os.path.join(LSI_CONFIG_AGENT_DIR, agent_config_file))
         agent_configs.append(agent_config)
     return experiment_config, algorithm_config, elite_map_config, agent_configs
-
-
-def plot_err(average_errG_log, average_errD_log, average_errD_fake_log,
-             average_errD_real_log, average_D_x_log, average_D_G_z1_log,
-             average_D_G_z2_log):
-    """
-    Given lists of recorded errors and plot them.
-    """
-    plt.subplot(2, 2, 1)
-    plt.plot(average_errD_log, 'b', label="err_D")
-    plt.legend()
-
-    plt.subplot(2, 2, 2)
-    plt.plot(average_errD_fake_log, 'r', label="err_D_fake")
-    plt.plot(average_errD_real_log, 'g', label="err_D_real")
-    plt.legend()
-
-    plt.subplot(2, 2, 3)
-    plt.plot(average_errG_log, 'r', label="err_G")
-    plt.legend()
-
-    plt.subplot(2, 2, 4)
-    plt.plot(average_D_x_log, 'r', label="D(x)")
-    plt.plot(average_D_G_z1_log, 'g', label="D(G(z1))")
-    plt.plot(average_D_G_z2_log, 'b', label="D(G(z2))")
-    plt.legend()
-
-    plt.savefig(ERR_LOG_PIC)
-    plt.show()
 
 
 def reset_env_from_mdp(mdp):
@@ -419,18 +389,6 @@ def setup_env_from_grid(layout_grid,
     gc.collect()
 
     return agent1, agent2, env, mdp
-
-
-def save_gan_param(G_params):
-    with open(G_PARAM_FILE, "w") as f:
-        json.dump(G_params, f)
-
-
-def read_gan_param():
-    with open(G_PARAM_FILE, "r") as f:
-        G_params = json.load(f)
-    return G_params
-
 
 def visualize_lvl(lvl_str, log_dir, filename):
     """

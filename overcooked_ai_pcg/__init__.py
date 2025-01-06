@@ -2,23 +2,6 @@ import os
 
 _current_dir = os.path.dirname(os.path.abspath(__file__))
 
-# GAN paths
-# data path
-GAN_DIR = os.path.join(_current_dir, "GAN_training")
-GAN_DATA_DIR = os.path.join(GAN_DIR, "data")
-GAN_TRAINING_DIR = os.path.join(GAN_DATA_DIR, "training")
-GAN_LOSS_DIR = os.path.join(GAN_DATA_DIR, "loss")
-
-if not os.path.exists(GAN_LOSS_DIR):
-    os.mkdir(GAN_LOSS_DIR)
-
-# plot pic path
-ERR_LOG_PIC = os.path.join(GAN_LOSS_DIR, "err.png")
-
-# G_param file path
-G_PARAM_FILE = os.path.join(GAN_DATA_DIR, "G_param.json")
-
-
 # LSI paths
 # data path
 LSI_DIR = os.path.join(_current_dir, "LSI")
