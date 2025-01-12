@@ -59,6 +59,11 @@ pip install -e .
 - `planners.py`: near-optimal agent planning logic
 - `search.py`: A\* search and shortest path logic
 
+`data`:
+- `layouts/`: contained with different kitchen layouts
+- `logs/`: the folder contains the logs from VR and analysis results (see more in the [analysis section](#vr-study-log-analysis-instructions))
+- `planners/`: a storage for precomputed planners
+
 ## Steak Task Instructions
 
 ### Objective:
@@ -78,6 +83,14 @@ Prepare and deliver a steak dish with garnish (onion) using the least number of 
   <br> Human's FOV-aware collaboration planner.
 </p>
 
+## VR Study Log Analysis Instructions
+Copy the generated log folder (named with the participant ID) into the `data/logs/vr_study_logs/` directory.
+Then use the `vr_analysis.py` script to analyze the results:  
+```
+python vr_analysis.py --participants {participant_id} --awareness {aware, unaware} --maps {mid_1, mid_4}
+```
+You should adjust the arguments (participant_id, awareness, and maps) based on the specific experiments you ran.
+The analyzed results will be saved in the `data/logs/vr_study_logs/{participant_id}` folder.
 
 ## Citation ##
 Please cite this work using the following Bibtex:
