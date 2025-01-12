@@ -1176,9 +1176,18 @@ class VRtoOvercookedMapper():
 def combine_json_logs(log_out_dir, aware, map_name, participant):
     participant_dir = os.path.join(log_out_dir, str(participant))
     json_files = sorted(
-        [jf for jf in os.listdir(participant_dir) if jf.endswith('.json')],
+        filter(
+            lambda jf: map_name in jf and ('unaware' in jf if aware == 'unaware' else 'aware' in jf),
+            filter(
+                lambda file_name: file_name.endswith('.json'),
+                os.listdir(participant_dir)
+            )
+        ),
         key=lambda x: os.path.getctime(os.path.join(participant_dir, x))
     )
+
+    if len(json_files) == 0:
+        return False
 
     combined_data = {}
     max_index = 0
@@ -1204,6 +1213,8 @@ def combine_json_logs(log_out_dir, aware, map_name, participant):
     output_file = os.path.join(participant_dir, f"{participant}_{map_name}_{aware}.json")
     with open(output_file, 'w') as fh:
         json.dump(combined_data, fh, indent=2)
+
+    return True
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
@@ -1245,8 +1256,9 @@ if __name__ == "__main__":
             continue
         for aware in awareness_states:
             for map in maps:
+                if not combine_json_logs(log_out_dir, aware, map, participant):
+                    continue
                 log_dir = os.path.join(os.getcwd(), f"overcooked_ai_py/data/logs/vr_study_logs/{participant}/{participant}_{map}_{aware}.json")
-                combine_json_logs(log_out_dir, aware, map, participant)
                 f = open(log_dir)
                 log = json.load(f)
                 NO_FOG_COPY=False
