@@ -2,17 +2,11 @@ import json
 import pygame
 import os
 import csv
-import ast
 import time
 import toml
-import shutil
-import gc
 import argparse
-import random
 import pickle
-import numpy as np
 import pandas as pd
-from pprint import pprint
 from scripts import (LSI_STEAK_STUDY_RESULT_DIR,
                                LSI_STEAK_STUDY_CONFIG_DIR,
                                LSI_STEAK_STUDY_AGENT_DIR)
@@ -1178,6 +1172,39 @@ class VRtoOvercookedMapper():
         state_obj = OvercookedState.from_dict(state_dict)
         return state_obj
 
+
+def combine_json_logs(log_out_dir, aware, map_name, participant):
+    participant_dir = os.path.join(log_out_dir, str(participant))
+    json_files = sorted(
+        [jf for jf in os.listdir(participant_dir) if jf.endswith('.json')],
+        key=lambda x: os.path.getctime(os.path.join(participant_dir, x))
+    )
+
+    combined_data = {}
+    max_index = 0
+
+    for file_name in json_files:
+        try:
+            with open(os.path.join(participant_dir, file_name), 'r') as fh:
+                data = json.load(fh)
+                if 'i' in data:
+                    max_index = max(max_index, data['i'])
+                combined_data.update(data)
+
+            processed_dir = os.path.join(participant_dir, "processed")
+            os.makedirs(processed_dir, exist_ok=True)
+            os.rename(os.path.join(participant_dir, file_name), os.path.join(processed_dir, file_name))
+
+        except (json.JSONDecodeError, IOError) as e:
+            print(f"Error processing {file_name}: {e}")
+            continue
+
+    combined_data['i'] = max_index
+
+    output_file = os.path.join(participant_dir, f"{participant}_{map_name}_{aware}.json")
+    with open(output_file, 'w') as fh:
+        json.dump(combined_data, fh, indent=2)
+
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument(
@@ -1219,6 +1246,7 @@ if __name__ == "__main__":
         for aware in awareness_states:
             for map in maps:
                 log_dir = os.path.join(os.getcwd(), f"overcooked_ai_py/data/logs/vr_study_logs/{participant}/{participant}_{map}_{aware}.json")
+                combine_json_logs(log_out_dir, aware, map, participant)
                 f = open(log_dir)
                 log = json.load(f)
                 NO_FOG_COPY=False
