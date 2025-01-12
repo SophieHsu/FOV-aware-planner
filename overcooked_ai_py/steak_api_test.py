@@ -8,19 +8,13 @@ import pygame
 # import matplotlib
 # matplotlib.use('TkAgg')
 # import matplotlib.pyplot as plt
-from argparse import ArgumentParser
-import numpy as np
-import gc
 import time
-from overcooked_ai_pcg.LSI.steak_study import create_human_exp_log, write_to_human_exp_log
-from overcooked_ai_pcg.helper import init_steak_qmdp_agent
 
-from overcooked_ai_py.mdp.overcooked_mdp import OvercookedGridworld, SteakHouseGridworld, OvercookedState, Direction, Action, PlayerState, ObjectState
+from overcooked_ai_py.mdp.overcooked_mdp import SteakHouseGridworld, OvercookedState, Direction, Action, PlayerState, ObjectState
 from overcooked_ai_py.mdp.overcooked_env import OvercookedEnv
 import overcooked_ai_py.agents.agent as agent
 import overcooked_ai_py.planning.planners as planners
-from overcooked_ai_py.mdp.layout_generator import LayoutGenerator
-from overcooked_ai_py.utils import load_dict_from_file
+from overcooked_ai_py.helpers import init_steak_qmdp_agent, create_human_exp_log
 
 NO_COUNTERS_PARAMS = {
     'start_orientations': False,
@@ -299,7 +293,7 @@ if __name__ == "__main__" :
 
 
     
-    mlp = planners.MediumLevelPlanner.from_pickle_or_compute(scenario_1_mdp, COUNTERS_PARAMS, force_compute=False)  
+    mlp = planners.MediumLevelPlanner.from_pickle_or_compute(scenario_1_mdp, COUNTERS_PARAMS, force_compute=True)  
     human_agent = agent.SteakLimitVisionHumanModel(mlp, env.state, auto_unstuck=True, explore=EXPLORE, vision_limit=VISION_LIMIT, vision_bound=VISION_BOUND, kb_update_delay=KB_UPDATE_DELAY, debug=True)
     human_agent.set_agent_index(1)
 
@@ -375,5 +369,5 @@ if __name__ == "__main__" :
     lvl_config['kb_search_depth'] = KB_SEARCH_DEPTH
     lvl_config['kb_update_delay'] = KB_UPDATE_DELAY
 
-    # write_to_human_exp_log(human_log_csv, results, lvl_config)
+    write_to_human_exp_log(human_log_csv, results, lvl_config)
     print("It took {} seconds for playing the entire level".format(time.time() - start_time))

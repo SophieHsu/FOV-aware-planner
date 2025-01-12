@@ -26,6 +26,5 @@ setup(
         'bokeh==2.2.3',  # For the dashboard.
         'toml',
         'seaborn',
-        'akro',
-        'garage==2021.3.0',
+        'akro'
     ])
