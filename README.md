@@ -84,7 +84,7 @@ Prepare and deliver a steak dish with garnish (onion) using the least number of 
 </p>
 
 ## VR Study Log Analysis Instructions
-Copy the generated log folder (named with the participant ID) into the `data/logs/vr_study_logs/` directory.
+Copy the generated log folder (named with the participant ID) into the `data/logs/vr_study_logs/` directory. Alternatively, you can combine multiple JSON files with unique maps and awareness parameters into a single folder named after the participant ID. This will allow you to analyze all runs together.
 Then use the `vr_analysis.py` script to analyze the results:  
 ```
 python vr_analysis.py --participants {participant_id} --awareness {aware, unaware} --maps {mid_1, mid_4}
