@@ -7,6 +7,17 @@ The 2D Grid World is a simulation environment designed to explore the dynamics o
   <br> Example of a 2D Grid World layout with agents performing tasks while considering the human's field of view (tiles that are dimmed).
 </p>
 
+## Overview ##
+
+This project is organized into three repositories including this one. Briefly, the repositories are described as follows.
+
+| **Repository**      | **Link**                                               | **Purpose**                                            |
+|---------------------|--------------------------------------------------------|--------------------------------------------------------|
+| `view-aware-hrc`    | [Link](https://github.com/SophieHsu/view-aware-hrc)    | Parent repo with setup and launch instructions.        |
+| `3d-plan-eval`      | [Link](https://github.com/SophieHsu/3d-plan-eval)      | Repo for running the vr kitchen environment.           |
+| `FOV-aware-planner` | [Link](https://github.com/SophieHsu/FOV-aware-planner) | Repo for running various planners for the robot agent. |
+
+For a more detailed description please refer to the individual READMEs of the repositories using the provided links.
 
 ## Introduction
 
@@ -95,7 +106,12 @@ The analyzed results will be saved in the `data/logs/vr_study_logs/{participant_
 ## Citation ##
 Please cite this work using the following Bibtex:
 ```
-Coming soon
+@inproceedings{hsu2025integrating,
+  title={Integrating Field of View in Human-Aware Collaborative Planning},
+  author={Hsu, Ya-Chuan and Defranco, Michael and Patel, Rutvik and Nikolaidis, Stefanos},
+  booktitle={Proceedings of the International Conference on Robotics and Automation (ICRA). IEEE},
+  year={2025}
+}
 ```
 
 ## Contact ##
